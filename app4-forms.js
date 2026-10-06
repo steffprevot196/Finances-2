@@ -288,6 +288,7 @@ function handleAddAsset(e) {
             delete asset.reclassSuggestion;
             if (bond) Object.assign(asset, bond);
             else { delete asset.coupon; delete asset.maturity; delete asset.rating; delete asset.nominal; }
+            normalizeAsset(asset);                     // ← AJOUT : resynchronise a.cadran, a.category, etc.
             upsertTodayHistoryPoint(asset, value, invested);
         }
     } else {
@@ -296,6 +297,7 @@ function handleAddAsset(e) {
             buys: [{ date: purchaseDateFR, type: 'Achat Initial', qty, price, frais, total: invested }],
             history: [{ date: purchaseDateFR, value: invested, invested }]
         }, fields, bond || {});
+        normalizeAsset(newAsset);                      // ← AJOUT : garantit a.cadran = a.cadrans.primary
         upsertTodayHistoryPoint(newAsset, value, invested);
         assets.push(newAsset);
     }
@@ -736,12 +738,25 @@ function handleAddCession(e) {
         cessions.push(cession);
     }
 
-    saveCessions();
-    closeModal('modal-add-cession');
-    calculateAnneeN1();
-    renderCessionsTable(cessionFilter);
-    e.target.reset();
-}
+        // Si la cession provient du flux "Vendre un actif", retirer l'actif du portefeuille
+        const sourceAssetId = parseFloat(document.getElementById('cession-source-asset').value);
+        if (!editId && sourceAssetId) {
+            const asset = assets.find(a => a.id === sourceAssetId);
+            if (asset) {
+                if (confirm(`Retirer "${asset.name}" de votre portefeuille ? (La cession est déjà enregistrée dans le registre fiscal.)`)) {
+                    assets = assets.filter(a => a.id !== sourceAssetId);
+                    saveToStorage();
+                }
+            }
+        }
+    
+        saveCessions();
+        closeModal('modal-add-cession');
+        calculateAnneeN1();
+        renderCessionsTable(cessionFilter);
+        refreshAllUI();
+        e.target.reset();
+    }
 
 function editCession(id) {
     const c = cessions.find(x => x.id === id);

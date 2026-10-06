@@ -180,7 +180,7 @@ function renderInventoryTable(filterCat = inventoryFilter, searchQuery) {
             <td class="p-3 text-center whitespace-nowrap">
                 <button title="Comparer" onclick="event.stopPropagation(); openAssetCompare(${asset.id})" class="p-1.5 text-gray-400 hover:text-indigo-400"><i class="fa-solid fa-code-compare"></i></button>
                 <button onclick="event.stopPropagation(); openAssetDetailModal(${asset.id})" class="p-1.5 text-gray-400 hover:text-blue-400"><i class="fa-solid fa-eye"></i></button>
-                <button onclick="event.stopPropagation(); openManualGoldUpdate(${asset.id})" class="p-1.5 text-gray-400 hover:text-amber-400" title="Mettre à jour manuellement la valeur AuCoffre"><i class="fa-solid fa-pen-to-square"></i></button>
+                ${hasTag(asset, 'Or & Métaux') ? `<button onclick="event.stopPropagation(); openManualGoldUpdate(${asset.id})" class="p-1.5 text-gray-400 hover:text-amber-400" title="Mettre à jour manuellement la valeur AuCoffre"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
                 <button onclick="event.stopPropagation(); openEditAssetModal(${asset.id})" class="p-1.5 text-gray-400 hover:text-emerald-400"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="event.stopPropagation(); deleteAsset(${asset.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
             </td>
