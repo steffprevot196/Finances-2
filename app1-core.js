@@ -705,18 +705,33 @@ function listLocalBackups() {
     return JSON.parse(localStorage.getItem('patriMonial_localBackups') || '[]');
 }
 
+// Export complet : actifs + cessions + arbitrages + noms de cadrans + préférences fiscales
 function exportData() {
-    const blob = new Blob([JSON.stringify(assets, null, 2)], { type: 'application/json' });
+    const snapshot = {
+        exportVersion: 2,
+        exportedAt: new Date().toISOString(),
+        app: 'PatriMonial',
+        data: {
+            assets,
+            cessions,
+            arbitrages,
+            cadranNames,
+            taxRegimeMode,
+            taxTMI
+        }
+    };
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `patrimonial_export_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `patrimonial_export_complet_${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
 
+// Import robuste : accepte l'ancien format (tableau d'actifs) ET le nouveau (snapshot complet)
 function handleImportJSON(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -724,13 +739,61 @@ function handleImportJSON(e) {
     reader.onload = (ev) => {
         try {
             const parsed = JSON.parse(ev.target.result);
-            if (!Array.isArray(parsed)) throw new Error('Le fichier ne contient pas une liste d\'actifs valide.');
-            assets = parsed;
-            saveToStorage();
+
+            // Détection du format
+            let newAssets, newCessions, newArbitrages, newCadranNames, newTaxMode, newTaxTMI;
+
+            if (Array.isArray(parsed)) {
+                // Ancien format : juste un tableau d'actifs
+                newAssets = parsed;
+                newCessions = cessions;         // on conserve les cessions actuelles
+                newArbitrages = arbitrages;
+                newCadranNames = cadranNames;
+                newTaxMode = taxRegimeMode;
+                newTaxTMI = taxTMI;
+            } else if (parsed && parsed.data && Array.isArray(parsed.data.assets)) {
+                // Nouveau format : snapshot complet
+                newAssets = parsed.data.assets;
+                newCessions = Array.isArray(parsed.data.cessions) ? parsed.data.cessions : [];
+                newArbitrages = Array.isArray(parsed.data.arbitrages) ? parsed.data.arbitrages : [];
+                newCadranNames = parsed.data.cadranNames || CADRAN_DEFAULT_NAMES;
+                newTaxMode = parsed.data.taxRegimeMode || 'PFU';
+                newTaxTMI = typeof parsed.data.taxTMI === 'number' ? parsed.data.taxTMI : 0.30;
+            } else {
+                throw new Error('Le fichier JSON n\'est ni un tableau d\'actifs ni un export complet PatriMonial.');
+            }
+
+            // Sauvegarde défensive de l'état actuel
+            createSnapshot('Avant import JSON');
+
+            // Confirmation utilisateur
+            const msg = `Importer cette sauvegarde ?\n\n` +
+                        `• ${newAssets.length} actif(s)\n` +
+                        `• ${newCessions.length} cession(s)\n` +
+                        `• ${newArbitrages.length} arbitrage(s)\n\n` +
+                        `Vos données actuelles seront remplacées (une sauvegarde locale de l'état actuel a été créée).`;
+            if (!confirm(msg)) return;
+
+            // Application
+            assets = newAssets;
+            cessions = newCessions;
+            arbitrages = newArbitrages;
+            cadranNames = newCadranNames;
+            taxRegimeMode = newTaxMode;
+            taxTMI = newTaxTMI;
+
+            // Migration v1 -> v2 si nécessaire (ajoute lots, reference, cadran, etc.)
+            assets.forEach(a => migrateAssetToV2(a));
+            cessions.forEach(normalizeCession);
+
+            // Persistance
+            saveToStorage(); saveCessions(); saveArbitrages(); saveTaxSettings();
+            localStorage.setItem('patriMonial_cadranNames', JSON.stringify(cadranNames));
+
             refreshAllUI();
-            alert(`Import réussi : ${assets.length} actif(s) chargé(s).`);
+            alert(`Import réussi :\n• ${assets.length} actif(s)\n• ${cessions.length} cession(s)\n• ${arbitrages.length} arbitrage(s)`);
         } catch (err) {
-            alert('Erreur : le fichier JSON est invalide ou corrompu.\n' + err.message);
+            alert('Erreur d\'import : ' + err.message);
         } finally {
             e.target.value = '';
         }
