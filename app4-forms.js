@@ -125,6 +125,7 @@ function openAddAssetModal() {
     document.getElementById('search-results-container').innerHTML = '';
     document.getElementById('add-yahoo-ticker').value = '';
     document.getElementById('add-isin').value = '';
+    document.getElementById('add-reference').value = '';
     document.getElementById('add-cadran').value = 'OR';
     document.getElementById('add-value-wrap').classList.add('hidden');
     document.getElementById('add-value').removeAttribute('required');
@@ -154,6 +155,7 @@ function openEditAssetModal(id) {
     document.getElementById('add-ticker').value = asset.ticker;
     document.getElementById('add-yahoo-ticker').value = asset.yahooTicker || '';
     document.getElementById('add-isin').value = asset.isin || '';
+    document.getElementById('add-reference').value = (asset.lots || []).map(l => l.reference).filter(Boolean).join(', ');
     setFormTags(asset.categories);
     updateTaxCategoryOptions(asset.taxCategory || 'NON_CONCERNE');
     document.getElementById('add-cadran').value = asset.cadrans.primary;
@@ -272,6 +274,8 @@ function handleAddAsset(e) {
     const invested = (qty * price) + frais;
     const value    = qty * unitValue;
     const isin = (document.getElementById('add-isin').value || '').toUpperCase().trim();
+    const referenceRaw = (document.getElementById('add-reference').value || '').trim();
+
     const fields = {
         name, ticker, isin, categories: tags, taxCategory,
         cadrans: { primary: primaryCadran, secondary: [] },
@@ -288,15 +292,51 @@ function handleAddAsset(e) {
             delete asset.reclassSuggestion;
             if (bond) Object.assign(asset, bond);
             else { delete asset.coupon; delete asset.maturity; delete asset.rating; delete asset.nominal; }
-            normalizeAsset(asset);                     // ← AJOUT : resynchronise a.cadran, a.category, etc.
+            normalizeAsset(asset);
             upsertTodayHistoryPoint(asset, value, invested);
         }
+    } else {
+        // Création des lots : si la référence contient plusieurs valeurs séparées par virgule,
+        // on crée un lot distinct par référence (chaque pièce physique = 1 lot nominatif).
+        const references = referenceRaw
+            ? referenceRaw.split(',').map(s => s.trim()).filter(Boolean)
+            : [];
+
+        let lots;
+        if (references.length > 0) {
+            // Cas nominatif : autant de lots que de références, chacun de qty 1
+            const qtyParRef = 1;
+            const fraisParRef = references.length > 0 ? frais / references.length : 0;
+            lots = references.map(ref => makeLot(
+                purchaseDate || new Date().toISOString().slice(0, 10),
+                qtyParRef,
+                price,
+                fraisParRef,
+                ref
+            ));
+            // Avertissement si quantité <> nombre de références
+            if (references.length !== qty) {
+                if (!confirm(`Vous avez saisi ${references.length} référence(s) mais ${qty} unité(s).\n` +
+                    `Chaque référence correspondra à 1 unité. Voulez-vous continuer ?`)) {
+                    return;
+                }
+            }
         } else {
+            // Cas standard : un seul lot global pour toute la quantité
+            lots = [makeLot(
+                purchaseDate || new Date().toISOString().slice(0, 10),
+                qty,
+                price,
+                frais,
+                ''
+            )];
+        }
+
         const newAsset = Object.assign({
             id: Date.now(),
-            buys: [{ date: purchaseDateFR, type: 'Achat Initial', qty, price, frais, total: invested }],
+            buys: [{ date: purchaseDateFR, type: 'Achat Initial', qty, price, frais, total: invested, reference: references.join(', ') || '' }],
             history: [{ date: purchaseDateFR, value: invested, invested }],
-            lots: [makeLot(purchaseDate || new Date().toISOString().slice(0, 10), qty, price, frais)]
+            lots
         }, fields, bond || {});
         normalizeAsset(newAsset);
         syncAssetFromLots(newAsset);
@@ -598,9 +638,17 @@ function openAddCessionModal() {
     document.getElementById('cession-prix-vente').value = '';
     document.getElementById('cession-prix-achat').value = '';
     document.getElementById('cession-qty').value = '';
+    document.getElementById('cession-qty').removeAttribute('readonly');
+    document.getElementById('cession-qty').classList.remove('opacity-60', 'cursor-not-allowed');
     document.getElementById('cession-qty').oninput = onCessionQtyChange;
     document.getElementById('cession-prix-vente').oninput = updateCessionUnitPrices;
     document.getElementById('cession-prix-achat').oninput = updateCessionUnitPrices;
+
+    // Cache le sélecteur nominatif à l'ouverture
+    const lotPickerWrap = document.getElementById('cession-lot-picker-wrap');
+    if (lotPickerWrap) lotPickerWrap.classList.add('hidden');
+    const lotHidden = document.getElementById('cession-lot-id-hidden');
+    if (lotHidden) lotHidden.value = '';
     const hint = document.getElementById('cession-qty-hint');
     if (hint) hint.innerText = '';
     const venteUnitEl = document.getElementById('cession-prix-vente-unit');
@@ -667,6 +715,98 @@ function prefillCessionFromAsset() {
 
     // Affiche immédiatement les prix unitaires (à partir des champs)
     updateCessionUnitPrices();
+
+    // Affiche le sélecteur nominatif si plusieurs pièces référencées disponibles
+    renderCessionLotPicker(asset);
+}
+
+// Affiche le sélecteur de pièce nominative si l'actif a plusieurs lots référencés
+function renderCessionLotPicker(asset) {
+    const wrap = document.getElementById('cession-lot-picker-wrap');
+    const picker = document.getElementById('cession-lot-picker');
+    if (!wrap || !picker) return;
+
+    const lotsDispos = (asset.lots || []).filter(l => (l.qtyRemaining || 0) > 0 && l.reference);
+    const tousLotsDispos = (asset.lots || []).filter(l => (l.qtyRemaining || 0) > 0);
+
+    // Cas 1 : pas de référence nominative → on cache et on utilise le FIFO
+    if (lotsDispos.length === 0) {
+        wrap.classList.add('hidden');
+        picker.innerHTML = '';
+        // Reset du champ caché de sélection
+        if (!document.getElementById('cession-lot-id-hidden')) {
+            const h = document.createElement('input');
+            h.type = 'hidden';
+            h.id = 'cession-lot-id-hidden';
+            h.value = '';
+            document.getElementById('modal-add-cession').appendChild(h);
+        } else {
+            document.getElementById('cession-lot-id-hidden').value = '';
+        }
+        return;
+    }
+
+    // Cas 2 : au moins un lot avec référence → on affiche le sélecteur
+    wrap.classList.remove('hidden');
+    if (!document.getElementById('cession-lot-id-hidden')) {
+        const h = document.createElement('input');
+        h.type = 'hidden';
+        h.id = 'cession-lot-id-hidden';
+        h.value = '';
+        document.getElementById('modal-add-cession').appendChild(h);
+    }
+
+    picker.innerHTML = lotsDispos.map((lot, i) => {
+        const dateStr = lot.date ? new Date(lot.date).toLocaleDateString('fr-FR') : '—';
+        const prixStr = formatEUR(lot.price || 0);
+        return `
+            <label class="flex items-start gap-2 p-2 bg-gray-950 border border-gray-800 rounded-lg cursor-pointer hover:border-indigo-500 transition">
+                <input type="radio" name="cession-lot-radio" value="${lot.id}" ${i === 0 ? 'checked' : ''} class="mt-0.5 accent-indigo-500" onchange="onCessionLotChange()">
+                <span class="flex-1 min-w-0">
+                    <span class="block text-[11px] font-bold text-white font-mono truncate">Réf. ${lot.reference}</span>
+                    <span class="block text-[10px] text-gray-400">
+                        Achetée le ${dateStr} · ${prixStr} / unité · Disponible : ${lot.qtyRemaining}
+                    </span>
+                </span>
+            </label>`;
+    }).join('');
+
+    // Sélectionne par défaut le premier lot et force la quantité à 1
+    const firstLot = lotsDispos[0];
+    document.getElementById('cession-lot-id-hidden').value = firstLot.id;
+    document.getElementById('cession-qty').value = 1;
+    document.getElementById('cession-qty').setAttribute('readonly', 'readonly');
+    document.getElementById('cession-qty').classList.add('opacity-60', 'cursor-not-allowed');
+
+    // Pré-remplit date achat et prix achat depuis ce lot
+    document.getElementById('cession-date-achat').value = firstLot.date || '';
+    document.getElementById('cession-prix-achat').value = ((firstLot.price || 0) * 1).toFixed(2);
+
+    // Hint quantité
+    const hint = document.getElementById('cession-qty-hint');
+    if (hint) hint.innerHTML = `<span class="text-indigo-400">Vente nominative — 1 pièce</span>`;
+
+    onCessionQtyChange();
+}
+
+// Appelée quand l'utilisateur change de pièce dans le sélecteur
+function onCessionLotChange() {
+    const radio = document.querySelector('input[name="cession-lot-radio"]:checked');
+    if (!radio) return;
+    const lotId = radio.value;
+    const hidden = document.getElementById('cession-lot-id-hidden');
+    if (hidden) hidden.value = lotId;
+
+    const sourceId = parseFloat(document.getElementById('cession-source-asset').value);
+    const asset = assets.find(a => a.id === sourceId);
+    if (!asset) return;
+    const lot = (asset.lots || []).find(l => String(l.id) === String(lotId));
+    if (!lot) return;
+
+    // Recalcule prix d'achat (total = unitaire × 1)
+    document.getElementById('cession-date-achat').value = lot.date || '';
+    document.getElementById('cession-prix-achat').value = ((lot.price || 0) + ((lot.frais || 0) / (lot.qty || 1))).toFixed(2);
+    updateCessionUnitPrices();
 }
 
 function toggleCessionFieldsByType() {
@@ -700,7 +840,16 @@ function onCessionQtyChange() {
 
     const maxQty = asset.qty;
     const unitValue = asset.qty > 0 ? (asset.value / asset.qty) : 0;
-    const pru = computePRUFromLots(asset) || (asset.qty > 0 ? asset.invested / asset.qty : 0);
+
+    // Si un lot nominatif est sélectionné, on prend SON prix d'achat, sinon PRU moyen
+    const selectedLotId = document.getElementById('cession-lot-id-hidden')?.value || '';
+    let pru;
+    if (selectedLotId) {
+        const lot = (asset.lots || []).find(l => String(l.id) === String(selectedLotId));
+        pru = lot ? ((lot.price || 0) + ((lot.frais || 0) / (lot.qty || 1))) : 0;
+    } else {
+        pru = computePRUFromLots(asset) || (asset.qty > 0 ? asset.invested / asset.qty : 0);
+    }
 
     // Mise à jour des prix totaux
     document.getElementById('cession-prix-achat').value = (pru * qty).toFixed(2);
@@ -841,22 +990,29 @@ function handleAddCession(e) {
         cessions.push(cession);
     }
 
-    // Si la cession provient du flux "Vendre un actif", consommer les lots en FIFO
+    // Si la cession provient du flux "Vendre un actif", consommer les lots
     const sourceAssetId = parseFloat(document.getElementById('cession-source-asset').value);
     if (!editId && sourceAssetId) {
         const asset = assets.find(a => a.id === sourceAssetId);
         if (asset) {
             const qtyToSell = parseFloat(document.getElementById('cession-qty').value) || asset.qty;
+            const selectedLotId = document.getElementById('cession-lot-id-hidden')?.value || '';
 
             if (qtyToSell > asset.qty) {
                 alert(`Quantité invalide : ${qtyToSell} demandées, ${asset.qty} disponibles.`);
                 return;
             }
 
-            // Consommation FIFO
-            const fifo = consumeFIFO(asset, qtyToSell);
-            if (fifo.error) {
-                alert(fifo.error);
+            // Consommation : nominative si un lot est sélectionné, sinon FIFO classique
+            let consommation;
+            if (selectedLotId) {
+                consommation = consumeLotById(asset, selectedLotId, qtyToSell);
+            } else {
+                consommation = consumeFIFO(asset, qtyToSell);
+            }
+
+            if (consommation.error) {
+                alert(consommation.error);
                 return;
             }
 
@@ -870,10 +1026,8 @@ function handleAddCession(e) {
                     saveToStorage();
                 }
             } else {
-                // Vente partielle : l'actif reste
-                // - sa valeur de marché est réduite proportionnellement à la quantité vendue
-                // - l'investi et le frais sont déjà recalculés par syncAssetFromLots
-                const totalQtyAvantVente = asset.qty + qtyToSell;  // qty restante + qty vendue
+                // Vente partielle : l'actif reste, on réduit proportionnellement sa valeur de marché
+                const totalQtyAvantVente = asset.qty + qtyToSell;
                 const ratioRestant = totalQtyAvantVente > 0 ? (asset.qty / totalQtyAvantVente) : 0;
                 asset.value = Math.round(asset.value * ratioRestant * 100) / 100;
                 upsertTodayHistoryPoint(asset, asset.value, asset.invested);

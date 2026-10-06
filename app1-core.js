@@ -309,7 +309,8 @@ a.cadran = a.cadrans.primary;
                 buyDate ? buyDate.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
                 Number(firstBuy.qty) || a.qty || 0,
                 Number(firstBuy.price) || (a.qty ? (a.invested || 0) / a.qty : 0),
-                Number(firstBuy.frais) || a.frais || 0
+                Number(firstBuy.frais) || a.frais || 0,
+                firstBuy.reference || a.reference || ''
             )];
         } else if (a.qty > 0) {
             // Pas de buys : on crée un lot unique à partir des totaux existants
@@ -317,9 +318,13 @@ a.cadran = a.cadrans.primary;
                 new Date().toISOString().slice(0, 10),
                 a.qty,
                 (a.invested || 0) / a.qty,
-                a.frais || 0
+                a.frais || 0,
+                a.reference || ''
             )];
         }
+    } else {
+        // Nettoyage : s'assurer que chaque lot a un champ `reference`
+        a.lots.forEach(l => { if (l.reference === undefined) l.reference = ''; });
     }
     return a;
 }
@@ -555,15 +560,16 @@ function rangeSelectHTML(id, currentVal, years, onChangeFn) {
 // - FIFO       : méthode utilisée pour la traçabilité et le calcul ligne à ligne
 // =====================================================================
 
-// Crée un lot à partir d'un achat
-function makeLot(date, qty, price, frais) {
+// Crée un lot à partir d'un achat (reference optionnelle : n° de série AuCoffre, etc.)
+function makeLot(date, qty, price, frais, reference) {
     return {
         id: Date.now() + Math.floor(Math.random() * 1000),
         date,
         qty,
         qtyRemaining: qty,
         price,
-        frais: frais || 0
+        frais: frais || 0,
+        reference: (reference || '').trim()
     };
 }
 
@@ -609,6 +615,25 @@ function consumeFIFO(asset, qtyToSell) {
         costBasis: totalCost,
         unitCost: totalCost / qtyToSell,
         consumedLots: consumed
+    };
+}
+
+// Consomme un lot spécifique (par son id) — utilisé pour la vente nominative
+// Retourne { costBasis, unitCost, consumedLots } ou { error }
+function consumeLotById(asset, lotId, qtyToSell) {
+    const lot = (asset.lots || []).find(l => String(l.id) === String(lotId));
+    if (!lot) return { error: 'Lot introuvable.' };
+    const available = lot.qtyRemaining || 0;
+    if (available < qtyToSell) {
+        return { error: `Quantité insuffisante dans ce lot : ${available} disponibles, ${qtyToSell} demandées.` };
+    }
+    const unitCost = (lot.price || 0) + ((lot.frais || 0) / (lot.qty || 1));
+    const totalCost = unitCost * qtyToSell;
+    lot.qtyRemaining = available - qtyToSell;
+    return {
+        costBasis: totalCost,
+        unitCost: unitCost,
+        consumedLots: [{ lotId: lot.id, date: lot.date, qty: qtyToSell, unitCost, reference: lot.reference || '' }]
     };
 }
 

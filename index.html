@@ -111,7 +111,7 @@
             </div>
 
             <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">Gain / Perte Latent</div>
+                <div class="text-xs font-medium text-gray-400 mb-1">Gain / Perte Potentiel</div>
                 <div class="text-2xl font-bold font-mono" id="stat-pnl">0,00 €</div>
                 <div class="text-xs font-semibold mt-1 font-mono" id="stat-pnl-pct">+0.00%</div>
                 <div class="absolute right-3 bottom-2 text-amber-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-arrow-trend-up"></i></div>
@@ -637,7 +637,7 @@
                     <div class="text-lg font-bold font-mono text-white" id="crypto-stat-invested">0,00 €</div>
                 </div>
                 <div class="bg-gray-900/60 border border-purple-900/40 rounded-xl p-3">
-                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Gain / Perte latent</div>
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Gain / Perte potentiel</div>
                     <div class="text-lg font-bold font-mono text-emerald-400" id="crypto-stat-pnl">+0,00 €</div>
                 </div>
                 <div class="bg-gray-900/60 border border-purple-900/40 rounded-xl p-3">
@@ -682,7 +682,7 @@
                     <div class="text-lg font-bold font-mono text-white" id="hors-stat-invested">0,00 €</div>
                 </div>
                 <div class="bg-gray-900/60 border border-blue-900/40 rounded-xl p-3">
-                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Gain / Perte latent</div>
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Gain / Perte potentiel</div>
                     <div class="text-lg font-bold font-mono text-emerald-400" id="hors-stat-pnl">+0,00 €</div>
                 </div>
                 <div class="bg-gray-900/60 border border-blue-900/40 rounded-xl p-3">
@@ -1218,6 +1218,17 @@
                         <option value="">-- Saisie libre --</option>
                     </select>
                 </div>
+
+                <!-- CHOIX NOMINATIF (visible uniquement si l'actif a plusieurs pièces référencées) -->
+                <div id="cession-lot-picker-wrap" class="hidden bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 space-y-2">
+                    <div class="text-[11px] font-bold text-indigo-300 uppercase tracking-wide flex items-center gap-1.5">
+                        <i class="fa-solid fa-list-ol"></i> Choix de la pièce à vendre
+                    </div>
+                    <p class="text-[10px] text-gray-400">
+                        Cet actif contient plusieurs pièces nominatives. Sélectionnez celle que vous vendez réellement — date et prix seront repris automatiquement.
+                    </p>
+                    <div id="cession-lot-picker" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
+                </div>
                 <form onsubmit="handleAddCession(event)" class="space-y-4">
                     <input type="hidden" id="cession-edit-id">
                     <div class="grid grid-cols-2 gap-3">
@@ -1459,6 +1470,12 @@
                             <label class="block text-gray-400 mb-1">Ticker Yahoo Finance (optionnel)</label>
                             <input type="text" id="add-yahoo-ticker" placeholder="ex: CW8.PA" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500 font-mono">
                         </div>
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Référence / N° de série (optionnel)
+                            <span class="text-gray-600 text-[10px] ml-1">— ex: pièces AuCoffre. Si renseigné, chaque référence crée une ligne distincte (quantité forcée à 1 par référence).</span>
+                        </label>
+                        <input type="text" id="add-reference" placeholder="ex: 791171560, 791171347 (séparées par des virgules)" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500 font-mono">
                     </div>
                     <div>
                         <label class="block text-gray-400 mb-1">Code ISIN (optionnel)</label>
