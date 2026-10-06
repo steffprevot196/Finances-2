@@ -294,12 +294,34 @@ a.cadran = a.cadrans.primary;
     a.envelopeOpenedAt = a.envelopeOpenedAt || '';
     delete a.isETF;
 
-    // Divers
+        // Divers
         a.valuationMode = a.valuationMode || (a.categories.some(t => MANUAL_VALUATION_TAGS.includes(t)) ? 'MANUAL' : 'QUOTE');
         a.yahooTicker   = a.yahooTicker || '';
         a.zone          = a.zone || 'UE';
         a.isin          = (a.isin || '').toUpperCase().trim();
-        return a;
+
+    // Initialisation des lots (rétrocompat : si absent, on en crée un à partir du premier achat)
+    if (!Array.isArray(a.lots) || a.lots.length === 0) {
+        const firstBuy = (a.buys && a.buys[0]) || null;
+        if (firstBuy) {
+            const buyDate = parseFlexDate(firstBuy.date);
+            a.lots = [makeLot(
+                buyDate ? buyDate.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+                Number(firstBuy.qty) || a.qty || 0,
+                Number(firstBuy.price) || (a.qty ? (a.invested || 0) / a.qty : 0),
+                Number(firstBuy.frais) || a.frais || 0
+            )];
+        } else if (a.qty > 0) {
+            // Pas de buys : on crée un lot unique à partir des totaux existants
+            a.lots = [makeLot(
+                new Date().toISOString().slice(0, 10),
+                a.qty,
+                (a.invested || 0) / a.qty,
+                a.frais || 0
+            )];
+        }
+    }
+    return a;
 }
 
 function fixRelativeHistoryDates(a) {
@@ -524,6 +546,91 @@ function rangeSelectHTML(id, currentVal, years, onChangeFn) {
     years.forEach(y => { opts += `<option value="Y-${y}" ${currentVal === 'Y-' + y ? 'selected' : ''}>Année ${y}</option>`; });
     return `<select id="${id}" onchange="${onChangeFn}(this.value)" class="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-indigo-500">${opts}</select>`;
 }
+
+// =====================================================================
+// GESTION DES LOTS (FIFO + PRU moyen)
+// =====================================================================
+// Chaque actif porte un tableau `lots`, chaque lot = { id, date, qty, qtyRemaining, price, frais }.
+// - PRU moyen  : méthode officielle française (art. 150-0 D du CGI)
+// - FIFO       : méthode utilisée pour la traçabilité et le calcul ligne à ligne
+// =====================================================================
+
+// Crée un lot à partir d'un achat
+function makeLot(date, qty, price, frais) {
+    return {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        date,
+        qty,
+        qtyRemaining: qty,
+        price,
+        frais: frais || 0
+    };
+}
+
+// Calcule le PRU moyen pondéré d'un actif (méthode fiscale française)
+// PRU = (Σ(qty × prix) + Σ frais) / Σ qty  → calculé uniquement sur les lots restants
+function computePRUFromLots(asset) {
+    const lots = (asset.lots || []).filter(l => (l.qtyRemaining || 0) > 0);
+    if (lots.length === 0) return 0;
+    const totalQty = lots.reduce((s, l) => s + (l.qtyRemaining || 0), 0);
+    if (totalQty <= 0) return 0;
+    const totalCost = lots.reduce((s, l) => s + (l.qtyRemaining || 0) * (l.price || 0), 0);
+    const totalFrais = lots.reduce((s, l) => s + (l.frais || 0), 0);
+    return (totalCost + totalFrais) / totalQty;
+}
+
+// Consomme `qtyToSell` unités en FIFO et retourne :
+//  - le prix de revient total des unités vendues (pour la fiscalité)
+//  - la liste des lots consommés (traçabilité)
+//  - le prix de revient unitaire pondéré des unités vendues
+function consumeFIFO(asset, qtyToSell) {
+    const lots = (asset.lots || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    let remaining = qtyToSell;
+    let totalCost = 0;
+    const consumed = [];
+
+    for (const lot of lots) {
+        if (remaining <= 0) break;
+        const available = lot.qtyRemaining || 0;
+        if (available <= 0) continue;
+        const take = Math.min(available, remaining);
+        const unitCost = (lot.price || 0) + ((lot.frais || 0) / (lot.qty || 1));
+        totalCost += take * unitCost;
+        lot.qtyRemaining = available - take;
+        consumed.push({ lotId: lot.id, date: lot.date, qty: take, unitCost });
+        remaining -= take;
+    }
+
+    if (remaining > 0) {
+        return { error: `Quantité insuffisante : ${qtyToSell} demandées, ${qtyToSell - remaining} disponibles en lots.` };
+    }
+
+    return {
+        costBasis: totalCost,
+        unitCost: totalCost / qtyToSell,
+        consumedLots: consumed
+    };
+}
+
+// Recalcule qty, invested et value à partir des lots restants
+function syncAssetFromLots(asset) {
+    const lots = asset.lots || [];
+    const qtyRemaining = lots.reduce((s, l) => s + (l.qtyRemaining || 0), 0);
+    const totalCost = lots.reduce((s, l) => s + (l.qtyRemaining || 0) * (l.price || 0), 0);
+    const totalFrais = lots.reduce((s, l) => s + (l.frais || 0), 0);
+
+    asset.qty = qtyRemaining;
+    asset.invested = totalCost + totalFrais;
+    asset.frais = totalFrais;
+
+    // La valeur actuelle est proportionnelle à la quantité restante si l'actif a déjà une valeur unitaire connue
+    // (l'ancien `value` / ancien `qty` donne la valeur unitaire, qu'on multiplie par le nouveau `qty`)
+    if (asset.qty > 0 && asset.value > 0) {
+        // On ne touche pas à `value` : il sera recalculé par les flux de mise à jour de cours
+    }
+}
+
+
 
 // =====================================================================
 // UPSERT POINT D'HISTORIQUE DU JOUR

@@ -291,17 +291,18 @@ function handleAddAsset(e) {
             normalizeAsset(asset);                     // ← AJOUT : resynchronise a.cadran, a.category, etc.
             upsertTodayHistoryPoint(asset, value, invested);
         }
-    } else {
+        } else {
         const newAsset = Object.assign({
             id: Date.now(),
             buys: [{ date: purchaseDateFR, type: 'Achat Initial', qty, price, frais, total: invested }],
-            history: [{ date: purchaseDateFR, value: invested, invested }]
+            history: [{ date: purchaseDateFR, value: invested, invested }],
+            lots: [makeLot(purchaseDate || new Date().toISOString().slice(0, 10), qty, price, frais)]
         }, fields, bond || {});
-        normalizeAsset(newAsset);                      // ← AJOUT : garantit a.cadran = a.cadrans.primary
+        normalizeAsset(newAsset);
+        syncAssetFromLots(newAsset);
         upsertTodayHistoryPoint(newAsset, value, invested);
         assets.push(newAsset);
     }
-
     const warnings = validateAssetCoherence(fields);
     if (warnings.length && !confirm('Avertissements :\n\n' + warnings.join('\n') + '\n\nContinuer quand même ?')) {
         return;
@@ -596,6 +597,10 @@ function openAddCessionModal() {
     document.getElementById('cession-date-achat').value = '';
     document.getElementById('cession-prix-vente').value = '';
     document.getElementById('cession-prix-achat').value = '';
+    document.getElementById('cession-qty').value = '';
+    document.getElementById('cession-qty').oninput = onCessionQtyChange;
+    const hint = document.getElementById('cession-qty-hint');
+    if (hint) hint.innerText = '';
     document.getElementById('cession-frais').value = 0;
     document.getElementById('cession-avant-2018').checked = false;
     document.getElementById('cession-enveloppe').value = 'CTO';
@@ -625,8 +630,23 @@ function prefillCessionFromAsset() {
         hasTag(asset, 'Obligation') ? 'OBLIGATION'
         : (hasTag(asset, 'ETF') ? 'ETF' : 'ACTION')
     );
-    document.getElementById('cession-name').value = asset.name;
-    document.getElementById('cession-prix-achat').value = (asset.invested || 0).toFixed(2);
+        document.getElementById('cession-name').value = asset.name;
+
+    // Quantité à vendre : pré-remplir avec la totalité détenue (mais l'utilisateur peut réduire)
+    const qtyInput = document.getElementById('cession-qty');
+    const qtyHint  = document.getElementById('cession-qty-hint');
+    if (qtyInput) {
+        qtyInput.value = asset.qty;
+        qtyInput.max = asset.qty;
+    }
+    if (qtyHint) {
+        qtyHint.innerText = `Détenu : ${asset.qty} unité(s)`;
+    }
+
+    // PRU moyen pondéré (méthode fiscale française) recalculé depuis les lots
+    const pru = computePRUFromLots(asset);
+    const prixAchatUnitaire = pru > 0 ? pru : (asset.qty > 0 ? (asset.invested / asset.qty) : 0);
+    document.getElementById('cession-prix-achat').value = (prixAchatUnitaire * asset.qty).toFixed(2);
     document.getElementById('cession-prix-vente').value = (asset.value || 0).toFixed(2);
     document.getElementById('cession-enveloppe').value = SECURITY_ENVELOPES.includes(asset.envelope)
         ? asset.envelope
@@ -658,6 +678,36 @@ function setCessionSubtype(value) {
 function populateCessionEnvelopeOptions() {
     document.getElementById('cession-enveloppe').innerHTML =
         SECURITY_ENVELOPES.map(c => `<option value="${c}">${ENVELOPPES[c].label}</option>`).join('');
+}
+
+// Recalcule les prix d'achat/vente totaux quand on change la quantité vendue
+function onCessionQtyChange() {
+    const qtyInput = document.getElementById('cession-qty');
+    const qty = parseFloat(qtyInput.value) || 0;
+    const sourceId = parseFloat(document.getElementById('cession-source-asset').value);
+    if (!sourceId) return;
+    const asset = assets.find(a => a.id === sourceId);
+    if (!asset) return;
+
+    const maxQty = asset.qty;
+    const unitValue = asset.qty > 0 ? (asset.value / asset.qty) : 0;
+    const pru = computePRUFromLots(asset) || (asset.qty > 0 ? asset.invested / asset.qty : 0);
+
+    // Mise à jour des prix totaux
+    document.getElementById('cession-prix-achat').value = (pru * qty).toFixed(2);
+    document.getElementById('cession-prix-vente').value = (unitValue * qty).toFixed(2);
+
+    // Hint
+    const hint = document.getElementById('cession-qty-hint');
+    if (hint) {
+        if (qty > maxQty) {
+            hint.innerHTML = `<span class="text-rose-400">⚠ Dépasse le détenu (${maxQty})</span>`;
+        } else if (qty < maxQty) {
+            hint.innerHTML = `Détenu : ${maxQty} · Vente partielle (${(maxQty - qty).toFixed(2)} resteront)`;
+        } else {
+            hint.innerHTML = `Vente totale · Détenu : ${maxQty}`;
+        }
+    }
 }
 
 function onCessionSubTypeChange() {
@@ -731,24 +781,50 @@ function handleAddCession(e) {
         coupons: parseFloat(document.getElementById('cession-coupons').value) || 0
     });
 
-    if (editId) {
+    
+
+        if (editId) {
         const idx = cessions.findIndex(c => c.id === parseFloat(editId));
         if (idx > -1) cessions[idx] = cession;
     } else {
         cessions.push(cession);
     }
 
-        // Si la cession provient du flux "Vendre un actif", retirer l'actif du portefeuille
-        const sourceAssetId = parseFloat(document.getElementById('cession-source-asset').value);
-        if (!editId && sourceAssetId) {
-            const asset = assets.find(a => a.id === sourceAssetId);
-            if (asset) {
-                if (confirm(`Retirer "${asset.name}" de votre portefeuille ? (La cession est déjà enregistrée dans le registre fiscal.)`)) {
+    // Si la cession provient du flux "Vendre un actif", consommer les lots en FIFO
+    const sourceAssetId = parseFloat(document.getElementById('cession-source-asset').value);
+    if (!editId && sourceAssetId) {
+        const asset = assets.find(a => a.id === sourceAssetId);
+        if (asset) {
+            const qtyToSell = parseFloat(document.getElementById('cession-qty').value) || asset.qty;
+
+            if (qtyToSell > asset.qty) {
+                alert(`Quantité invalide : ${qtyToSell} demandées, ${asset.qty} disponibles.`);
+                return;
+            }
+
+            // Consommation FIFO
+            const fifo = consumeFIFO(asset, qtyToSell);
+            if (fifo.error) {
+                alert(fifo.error);
+                return;
+            }
+
+            // Recalcule invested / frais / qty sur les lots restants
+            syncAssetFromLots(asset);
+
+            // Si plus rien, on supprime l'actif
+            if (asset.qty <= 0.0001) {
+                if (confirm(`Vente totale de "${asset.name}". L'actif sera retiré du portefeuille.`)) {
                     assets = assets.filter(a => a.id !== sourceAssetId);
                     saveToStorage();
                 }
+            } else {
+                // Vente partielle : l'actif reste, on ajoute un point d'historique
+                upsertTodayHistoryPoint(asset, asset.value * (asset.qty / (asset.qty + qtyToSell)), asset.invested);
+                saveToStorage();
             }
         }
+    }
     
         saveCessions();
         closeModal('modal-add-cession');

@@ -314,6 +314,10 @@ function saveManualRefresh() {
 // Point d'entrée central du rendu
 // ---------------------------------------------------------------------
 function refreshAllUI() {
+    // On calcule la fiscalité AVANT le bandeau pour que l'impôt estimé soit disponible
+    calculateAnneeN1();
+    renderCessionsTable(cessionFilter);
+
     calculateOverallStats();
     calculateRiskMetrics();
     renderInventoryTable();
@@ -322,8 +326,7 @@ function refreshAllUI() {
     updateGaveSection();
     updatePiliersSection();
     renderArbitragesTable();
-    calculateAnneeN1();
-    renderCessionsTable(cessionFilter);
+    computeAdvancedStats();
 
     if (activeTab === 'tab-dashboard') initDashboardCharts();
     else if (activeTab === 'tab-gave') initGaveDonutChart();

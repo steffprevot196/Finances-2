@@ -44,6 +44,7 @@ function switchTab(tabId) {
 // KPI bandeau (Total investi / Valeur / P&L / Composition)
 // ---------------------------------------------------------------------
 function calculateOverallStats() {
+    // --- 1) Positions détenues (latent) ---
     let totalInvested = 0, totalValue = 0, totalFrais = 0;
     assets.forEach(a => {
         totalInvested += a.invested || 0;
@@ -55,15 +56,15 @@ function calculateOverallStats() {
     document.getElementById('stat-total-frais').innerText    = formatEUR(totalFrais);
     document.getElementById('stat-total-value').innerText    = formatEUR(totalValue);
 
-    const pnl = totalValue - totalInvested;
-    const pnlEl = document.getElementById('stat-pnl');
-    pnlEl.innerText = (pnl >= 0 ? '+' : '') + formatEUR(pnl);
-    pnlEl.className = `text-2xl font-bold font-mono ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    const latentPnl = totalValue - totalInvested;
+    const latentPnlEl = document.getElementById('stat-pnl');
+    latentPnlEl.innerText = (latentPnl >= 0 ? '+' : '') + formatEUR(latentPnl);
+    latentPnlEl.className = `text-2xl font-bold font-mono ${latentPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
 
-    const pnlPct = totalInvested > 0 ? (pnl / totalInvested * 100) : 0;
-    const pnlPctEl = document.getElementById('stat-pnl-pct');
-    pnlPctEl.innerText = (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
-    pnlPctEl.className = `text-xs font-semibold mt-1 font-mono ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    const latentPct = totalInvested > 0 ? (latentPnl / totalInvested * 100) : 0;
+    const latentPctEl = document.getElementById('stat-pnl-pct');
+    latentPctEl.innerText = (latentPct >= 0 ? '+' : '') + latentPct.toFixed(2) + '%';
+    latentPctEl.className = `text-xs font-semibold mt-1 font-mono ${latentPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
 
     document.getElementById('stat-asset-count').innerText = assets.length + (assets.length > 1 ? ' Actifs' : ' Actif');
 
@@ -75,7 +76,81 @@ function calculateOverallStats() {
     document.getElementById('stat-hors-gave-count').innerText = horsCount;
     const cryptoCountEl = document.getElementById('stat-crypto-count');
     if (cryptoCountEl) cryptoCountEl.innerText = cryptoCount;
+
+    // --- 2) Performance réalisée (cessions) ---
+    let realizedGross = 0;         // Σ prix de vente
+    let realizedCost  = 0;         // Σ prix d'achat (PRU)
+    let realizedPnl   = 0;         // Σ (prix vente - prix achat - frais)
+    cessions.forEach(c => {
+        const vente = c.prixVente || 0;
+        const achat = c.prixAchat || 0;
+        const frais = c.frais || 0;
+        realizedGross += vente;
+        realizedCost  += achat;
+        realizedPnl   += (vente - achat - frais);
+    });
+
+    const realizedGrossEl = document.getElementById('stat-realized-gross');
+    if (realizedGrossEl) realizedGrossEl.innerText = formatEUR(realizedGross);
+
+    const realizedCountEl = document.getElementById('stat-realized-count');
+    if (realizedCountEl) realizedCountEl.innerText = `${cessions.length} opération(s)`;
+
+    const realizedPnlEl = document.getElementById('stat-realized-pnl');
+    if (realizedPnlEl) {
+        realizedPnlEl.innerText = (realizedPnl >= 0 ? '+' : '') + formatEUR(realizedPnl);
+        realizedPnlEl.className = `text-2xl font-bold font-mono ${realizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+
+    const realizedPct = realizedCost > 0 ? (realizedPnl / realizedCost * 100) : 0;
+    const realizedPctEl = document.getElementById('stat-realized-pnl-pct');
+    if (realizedPctEl) {
+        realizedPctEl.innerText = (realizedPct >= 0 ? '+' : '') + realizedPct.toFixed(2) + '%';
+        realizedPctEl.className = `text-xs mt-1 font-mono ${realizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+
+    // --- 3) Impôt estimé (lecture DOM, calculé par calculateAnneeN1) ---
+    let impotEstime = 0;
+    const impotEl = document.getElementById('cession-stat-impot-estime');
+    if (impotEl) {
+        const txt = impotEl.innerText.replace(/[^\d,.-]/g, '').replace(',', '.');
+        impotEstime = parseFloat(txt) || 0;
+    }
+
+    // Ajouter la fiscalité métaux et enveloppes pour un total honnête
+    const metauxEl = document.getElementById('decomp-metaux-total');
+    const envEl    = document.getElementById('decomp-enveloppes-total');
+    if (metauxEl) {
+        const t = metauxEl.innerText.replace(/[^\d,.-]/g, '').replace(',', '.');
+        impotEstime += parseFloat(t) || 0;
+    }
+    if (envEl) {
+        const t = envEl.innerText.replace(/[^\d,.-]/g, '').replace(',', '.');
+        impotEstime += parseFloat(t) || 0;
+    }
+
+    const totalTaxEl = document.getElementById('stat-total-tax');
+    if (totalTaxEl) totalTaxEl.innerText = formatEUR(impotEstime);
+
+    const realizedNet = realizedPnl - impotEstime;
+    const realizedNetEl = document.getElementById('stat-realized-net');
+    if (realizedNetEl) {
+        realizedNetEl.innerText = (realizedNet >= 0 ? '+' : '') + formatEUR(realizedNet);
+        realizedNetEl.className = `font-mono ${realizedNet >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+
+    // --- 4) P&L total = latent + réalisé ---
+    const totalPnl = latentPnl + realizedPnl;
+    const totalBase = totalInvested + realizedCost;
+    const totalPct = totalBase > 0 ? (totalPnl / totalBase * 100) : 0;
+
+    const totalPnlEl = document.getElementById('stat-total-pnl');
+    if (totalPnlEl) totalPnlEl.innerText = (totalPnl >= 0 ? '+' : '') + formatEUR(totalPnl);
+
+    const totalPnlPctEl = document.getElementById('stat-total-pnl-pct');
+    if (totalPnlPctEl) totalPnlPctEl.innerText = (totalPct >= 0 ? '+' : '') + totalPct.toFixed(2) + '%';
 }
+
 
 // ---------------------------------------------------------------------
 // Badges de tags et cadrans (utilisés dans toutes les tables)
@@ -658,4 +733,192 @@ function resetData() {
 // Fermeture de modal (utilitaire générique, appelé partout)
 function closeModal(id) {
     document.getElementById(id).classList.add('hidden');
+}
+
+// =====================================================================
+// STATS AVANCÉES PAR ONGLET (Lot D)
+// =====================================================================
+function computeAdvancedStats() {
+    const totalValue = assets.reduce((s, a) => s + (a.value || 0), 0);
+
+    // --- 1) INVENTAIRE ---
+    const invCount = assets.length;
+    const invEl = document.getElementById('inv-stat-count');
+    if (invEl) invEl.innerText = invCount;
+
+    // Plus grosse position
+    let topAsset = null, topVal = 0;
+    assets.forEach(a => {
+        if ((a.value || 0) > topVal) { topVal = a.value; topAsset = a; }
+    });
+    const topPctEl = document.getElementById('inv-stat-top-pct');
+    const topNameEl = document.getElementById('inv-stat-top-name');
+    if (topPctEl && topAsset) topPctEl.innerText = (totalValue > 0 ? (topVal / totalValue * 100) : 0).toFixed(1) + '%';
+    if (topNameEl) topNameEl.innerText = topAsset ? topAsset.name : '—';
+
+    // Concentration HHI (indice de Herfindahl-Hirschman)
+    // HHI = Σ (poids_i)² × 10000. Plus le HHI est élevé, plus le portefeuille est concentré.
+    let hhi = 0;
+    if (totalValue > 0) {
+        assets.forEach(a => {
+            const w = (a.value || 0) / totalValue;
+            hhi += w * w;
+        });
+        hhi *= 10000;
+    }
+    const hhiEl = document.getElementById('inv-stat-hhi');
+    const hhiLabelEl = document.getElementById('inv-stat-hhi-label');
+    if (hhiEl) hhiEl.innerText = Math.round(hhi);
+    if (hhiLabelEl) {
+        let label = '—';
+        if (hhi > 0 && hhi < 1500) label = 'Diversifié';
+        else if (hhi < 2500) label = 'Modérément concentré';
+        else if (hhi > 0) label = 'Très concentré';
+        hhiLabelEl.innerText = label;
+    }
+
+    // Position la plus ancienne
+    let oldestAsset = null, oldestDate = null;
+    assets.forEach(a => {
+        (a.lots || []).forEach(l => {
+            if ((l.qtyRemaining || 0) > 0) {
+                const d = parseFlexDate(l.date);
+                if (d && (!oldestDate || d < oldestDate)) {
+                    oldestDate = d;
+                    oldestAsset = a;
+                }
+            }
+        });
+        // Fallback sur buys[0] si pas de lots
+        if (!oldestDate && a.buys && a.buys[0]) {
+            const d = parseFlexDate(a.buys[0].date);
+            if (d && (!oldestDate || d < oldestDate)) { oldestDate = d; oldestAsset = a; }
+        }
+    });
+    const oldestYearsEl = document.getElementById('inv-stat-oldest-years');
+    const oldestNameEl  = document.getElementById('inv-stat-oldest-name');
+    if (oldestYearsEl && oldestDate) {
+        const years = (Date.now() - oldestDate.getTime()) / (1000 * 3600 * 24 * 365.25);
+        oldestYearsEl.innerText = years.toFixed(1) + ' ans';
+    }
+    if (oldestNameEl) oldestNameEl.innerText = oldestAsset ? oldestAsset.name : '—';
+
+    // --- 2) CRYPTO ---
+    const cryptos = assets.filter(a => hasTag(a, 'Crypto'));
+    const cryptoVal = cryptos.reduce((s, a) => s + (a.value || 0), 0);
+    const cryptoInvested = cryptos.reduce((s, a) => s + (a.invested || 0), 0);
+
+    const cryptoCntEl = document.getElementById('crypto-stat-count');
+    if (cryptoCntEl) cryptoCntEl.innerText = cryptos.length;
+
+    const cryptoInvEl = document.getElementById('crypto-stat-invested');
+    if (cryptoInvEl) cryptoInvEl.innerText = formatEUR(cryptoInvested);
+
+    const cryptoPnlEl = document.getElementById('crypto-stat-pnl');
+    if (cryptoPnlEl) {
+        const pnl = cryptoVal - cryptoInvested;
+        cryptoPnlEl.innerText = (pnl >= 0 ? '+' : '') + formatEUR(pnl);
+        cryptoPnlEl.className = `text-lg font-bold font-mono ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+
+    let topCrypto = null, topCryptoVal = 0;
+    cryptos.forEach(a => { if ((a.value || 0) > topCryptoVal) { topCryptoVal = a.value; topCrypto = a; } });
+    const cryptoTopPctEl = document.getElementById('crypto-stat-top-pct');
+    const cryptoTopNameEl = document.getElementById('crypto-stat-top-name');
+    if (cryptoTopPctEl && topCrypto) cryptoTopPctEl.innerText = (cryptoVal > 0 ? (topCryptoVal / cryptoVal * 100) : 0).toFixed(1) + '%';
+    if (cryptoTopNameEl) cryptoTopNameEl.innerText = topCrypto ? topCrypto.name : '—';
+
+    // --- 3) HORS-CADRAN ---
+    const hors = assets.filter(a => a.cadran === 'HORS_GAVE' && !hasTag(a, 'Crypto'));
+    const horsVal = hors.reduce((s, a) => s + (a.value || 0), 0);
+    const horsInvested = hors.reduce((s, a) => s + (a.invested || 0), 0);
+
+    const horsCntEl = document.getElementById('hors-stat-count');
+    if (horsCntEl) horsCntEl.innerText = hors.length;
+
+    const horsInvEl = document.getElementById('hors-stat-invested');
+    if (horsInvEl) horsInvEl.innerText = formatEUR(horsInvested);
+
+    const horsPnlEl = document.getElementById('hors-stat-pnl');
+    if (horsPnlEl) {
+        const pnl = horsVal - horsInvested;
+        horsPnlEl.innerText = (pnl >= 0 ? '+' : '') + formatEUR(pnl);
+        horsPnlEl.className = `text-lg font-bold font-mono ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+
+    const cash = hors.filter(a => hasTag(a, 'Devises/Liquidités')).reduce((s, a) => s + (a.value || 0), 0);
+    const horsCashEl = document.getElementById('hors-stat-cash');
+    if (horsCashEl) horsCashEl.innerText = formatEUR(cash);
+
+    // --- 4) PILIERS ---
+    const gaveAssets = assets.filter(a => GAVE_QUADRANTS.includes(a.cadran));
+    const gaveTotal = gaveAssets.reduce((s, a) => s + (a.value || 0), 0);
+    const totalPatrimoine = totalValue;
+
+    // Équilibre des 4 Cadrans : écart max à la cible 25%
+    let maxDeviation = 0;
+    if (gaveTotal > 0) {
+        GAVE_QUADRANTS.forEach(q => {
+            const qVal = assets.filter(a => a.cadran === q).reduce((s, a) => s + (a.value || 0), 0);
+            const pct = qVal / gaveTotal * 100;
+            maxDeviation = Math.max(maxDeviation, Math.abs(pct - 25));
+        });
+    }
+    const equilibreEl = document.getElementById('piliers-stat-equilibre');
+    if (equilibreEl) {
+        if (gaveTotal <= 0) equilibreEl.innerHTML = '<span class="text-gray-500">—</span>';
+        else {
+            const color = maxDeviation < 5 ? 'text-emerald-400' : maxDeviation < 15 ? 'text-amber-400' : 'text-rose-400';
+            equilibreEl.innerHTML = `<span class="${color}">±${maxDeviation.toFixed(1)}%</span>`;
+        }
+    }
+
+    const pctCryptoEl = document.getElementById('piliers-stat-pct-crypto');
+    if (pctCryptoEl) {
+        const pct = totalPatrimoine > 0 ? (cryptoVal / totalPatrimoine * 100) : 0;
+        pctCryptoEl.innerText = pct.toFixed(1) + '%';
+    }
+
+    const totalInvestedAll = assets.reduce((s, a) => s + (a.invested || 0), 0);
+    const totalFraisAll = assets.reduce((s, a) => s + (a.frais || 0), 0);
+    const fraisEl = document.getElementById('piliers-stat-frais');
+    if (fraisEl) fraisEl.innerText = formatEUR(totalFraisAll);
+    const fraisPctEl = document.getElementById('piliers-stat-frais-pct');
+    if (fraisPctEl) fraisPctEl.innerText = (totalInvestedAll > 0 ? (totalFraisAll / totalInvestedAll * 100) : 0).toFixed(2) + '% du capital';
+
+    // --- 5) FISCALITÉ ---
+    // PRU moyen pondéré global sur positions détenues
+    let totalQtyCost = 0;
+    let totalQty = 0;
+    assets.forEach(a => {
+        const pru = computePRUFromLots(a);
+        totalQtyCost += pru * (a.qty || 0);
+        totalQty += a.qty || 0;
+    });
+    const pruGlobalEl = document.getElementById('fiscal-stat-pru');
+    if (pruGlobalEl) pruGlobalEl.innerText = totalQty > 0 ? formatEUR(totalQtyCost / totalQty) + ' / unité' : '—';
+
+    const fraisCessionEl = document.getElementById('fiscal-stat-frais-cession');
+    if (fraisCessionEl) fraisCessionEl.innerText = formatEUR(cessions.reduce((s, c) => s + (c.frais || 0), 0));
+
+    // Taux d'imposition effectif
+    let impotTotal = 0;
+    const impotEl2 = document.getElementById('cession-stat-impot-estime');
+    if (impotEl2) {
+        const t = impotEl2.innerText.replace(/[^\d,.-]/g, '').replace(',', '.');
+        impotTotal += parseFloat(t) || 0;
+    }
+    const metauxEl2 = document.getElementById('decomp-metaux-total');
+    const envEl2 = document.getElementById('decomp-enveloppes-total');
+    if (metauxEl2) { const t = metauxEl2.innerText.replace(/[^\d,.-]/g, '').replace(',', '.'); impotTotal += parseFloat(t) || 0; }
+    if (envEl2)    { const t = envEl2.innerText.replace(/[^\d,.-]/g, '').replace(',', '.');  impotTotal += parseFloat(t) || 0; }
+
+    let pnlRealise = 0, costRealise = 0;
+    cessions.forEach(c => {
+        pnlRealise += (c.prixVente || 0) - (c.prixAchat || 0) - (c.frais || 0);
+        costRealise += (c.prixAchat || 0);
+    });
+    const effectiveRate = pnlRealise > 0 ? (impotTotal / pnlRealise * 100) : 0;
+    const effRateEl = document.getElementById('fiscal-stat-effective-rate');
+    if (effRateEl) effRateEl.innerText = effectiveRate.toFixed(1) + '%';
 }
