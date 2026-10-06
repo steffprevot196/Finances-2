@@ -5,21 +5,21 @@
 
 // --- CATALOGUE AUCOFFRE.COM (Jetons Or/Argent, Pièces, Lingots) ---
 const auCoffreCatalog = [
-    { name: 'Vera Valor 1 Ounce Gold (Or Pur 999.9)', ticker: 'VV1OZ', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 2480.00 },
-    { name: 'Vera Valor 1/20 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/20OZ', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 135.00 },
-    { name: 'Vera Valor 1/10 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/10OZ', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 265.00 },
-    { name: 'Vera Valor 1/2 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/2OZ', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 1260.00 },
-    { name: 'Vera Max 1/10 Ounce Gold', ticker: 'VMAX1/10', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 270.00 },
-    { name: 'Vera Silver 1oz Argent', ticker: 'VS1OZ', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 32.50 },
-    { name: 'Napoléon 20 Francs Or (Louis d\'Or)', ticker: 'NAP20', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 445.00 },
-    { name: 'Napoléon 10 Francs Or (Demi-Napoléon)', ticker: 'NAP10', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 230.00 },
-    { name: 'Krugerrand 1oz Or', ticker: 'KRUG1OZ', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2460.00 },
-    { name: 'Souverain Elisabeth II / George V Or', ticker: 'SOV-OR', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 550.00 },
-    { name: '50 Pesos Or Mexicain', ticker: 'PESO50', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2980.00 },
-    { name: 'Maple Leaf 1oz Or', ticker: 'MAPLE1OZ', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2475.00 },
-    { name: 'Philharmonique 1oz Or', ticker: 'PHIL1OZ', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2470.00 },
-    { name: 'Lingot 1kg Or Pur 999', ticker: 'LING1KG', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 78500.00 },
-    { name: 'Lingotin 100g Or Pur 999', ticker: 'LING100G', category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 7880.00 }
+    { name: 'Vera Valor 1 Ounce Gold (Or Pur 999.9)', ticker: 'VV1OZ', weightGrams: 31.10, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 2480.00 },
+    { name: 'Vera Valor 1/20 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/20OZ', weightGrams: 1.58, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 135.00 },
+    { name: 'Vera Valor 1/10 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/10OZ', weightGrams: 3.11, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 265.00 },
+    { name: 'Vera Valor 1/2 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/2OZ', weightGrams: 15.55, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 1260.00 },
+    { name: 'Vera Max 1/10 Ounce Gold', ticker: 'VMAX1/10', weightGrams: 3.11, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 270.00 },
+    { name: 'Vera Silver 1oz Argent', ticker: 'VS1OZ', weightGrams: 31.10, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 32.50 },
+    { name: 'Napoléon 20 Francs Or (Louis d\'Or)', ticker: 'NAP20', weightGrams: 5.80, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 445.00 },
+    { name: 'Napoléon 10 Francs Or (Demi-Napoléon)', ticker: 'NAP10', weightGrams: 2.90, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 230.00 },
+    { name: 'Krugerrand 1oz Or', ticker: 'KRUG1OZ', weightGrams: 31.10, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2460.00 },
+    { name: 'Souverain Elisabeth II / George V Or', ticker: 'SOV-OR', weightGrams: 7.32, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 550.00 },
+    { name: '50 Pesos Or Mexicain', ticker: 'PESO50', weightGrams: 37.50, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2980.00 },
+    { name: 'Maple Leaf 1oz Or', ticker: 'MAPLE1OZ', weightGrams: 31.10, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2475.00 },
+    { name: 'Philharmonique 1oz Or', ticker: 'PHIL1OZ', weightGrams: 31.10, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2470.00 },
+    { name: 'Lingot 1kg Or Pur 999', ticker: 'LING1KG', weightGrams: 1000, primePct: 0.01, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 78500.00 },
+    { name: 'Lingotin 100g Or Pur 999', ticker: 'LING100G', weightGrams: 100, primePct: 0.01, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 7880.00 }
 ];
 
 // --- CATALOGUE ACTIONS / ETF / FOREX ---
@@ -29,14 +29,30 @@ const popularMarketAssets = [
     { name: 'Franc Suisse (CHF/EUR)', ticker: 'CHF', category: 'Devises/Liquidités', cadran: 'MONNAIES', taxCategory: 'NON_CONCERNE', basePriceEUR: 1.05 },
     { name: 'Livre Sterling (GBP/EUR)', ticker: 'GBP', category: 'Devises/Liquidités', cadran: 'MONNAIES', taxCategory: 'NON_CONCERNE', basePriceEUR: 1.18 },
     { name: 'SpaceX (Space Exploration Technologies)', ticker: 'SPCX', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 160.00 },
-    { name: 'Amundi MSCI World ETF', ticker: 'CW8', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 512.00 },
-    { name: 'Amundi PEA MSCI World ETF', ticker: 'WCEA', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 5.40 },
-    { name: 'BNP Paribas Easy S&P 500 ETF', ticker: 'ESE', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 24.80 },
-    { name: 'iShares Core S&P 500 ETF', ticker: 'CSPX', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 520.00 },
+    { name: 'Amundi MSCI World ETF', ticker: 'CW8', isin: 'LU1737652237', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 512.00 },
+    { name: 'Amundi PEA MSCI World ETF', ticker: 'WCEA', isin: 'FR0011869353', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 5.40 },
+    { name: 'BNP Paribas Easy S&P 500 ETF', ticker: 'ESE', isin: 'FR0011550185', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 24.80 },
+    { name: 'iShares Core S&P 500 ETF', ticker: 'CSPX', isin: 'IE00B4L5Y983', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 520.00 },
     { name: 'NVIDIA Corporation', ticker: 'NVDA', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 125.00 },
     { name: 'Apple Inc.', ticker: 'AAPL', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 210.00 },
     { name: 'iShares Euro Cash ETF', ticker: 'CSH2', category: 'Devises/Liquidités', cadran: 'MONNAIES', taxCategory: 'NON_CONCERNE', basePriceEUR: 102.10 },
     { name: 'TotalEnergies SE', ticker: 'TTE', category: 'Actions/ETF', cadran: 'PETROLE', taxCategory: 'NON_CONCERNE', basePriceEUR: 62.50 }
+];
+
+// --- CATALOGUE CRYPTOMONNAIES (Correction 4) ---
+const cryptoCatalog = [
+    { name: 'Bitcoin',         ticker: 'BTC',   basePriceEUR: 62000 },
+    { name: 'Ethereum',        ticker: 'ETH',   basePriceEUR: 2400 },
+    { name: 'Solana',          ticker: 'SOL',   basePriceEUR: 140 },
+    { name: 'Cardano',         ticker: 'ADA',   basePriceEUR: 0.35 },
+    { name: 'Ripple',          ticker: 'XRP',   basePriceEUR: 0.55 },
+    { name: 'Dogecoin',        ticker: 'DOGE',  basePriceEUR: 0.12 },
+    { name: 'Binance Coin',    ticker: 'BNB',   basePriceEUR: 520 },
+    { name: 'Litecoin',        ticker: 'LTC',   basePriceEUR: 75 },
+    { name: 'Polkadot',        ticker: 'DOT',   basePriceEUR: 5.5 },
+    { name: 'Avalanche',       ticker: 'AVAX',  basePriceEUR: 28 },
+    { name: 'Polygon (MATIC)', ticker: 'MATIC', basePriceEUR: 0.45 },
+    { name: 'Chainlink',       ticker: 'LINK',  basePriceEUR: 14 }
 ];
 
 // --- DONNÉES DE DÉMO ---
@@ -142,8 +158,8 @@ const CADRAN_BADGE_COLORS = {
     MONNAIES: 'bg-blue-950 text-blue-300 border-blue-800/50',
     ASIE: 'bg-emerald-950 text-emerald-300 border-emerald-800/50',
     PETROLE: 'bg-rose-950 text-rose-300 border-rose-800/50',
+    CRYPTO: 'bg-purple-950 text-purple-300 border-purple-800/50',
     HORS_GAVE: 'bg-gray-800 text-gray-300 border-gray-700'
-    // Correction 5 : CRYPTO sera ajouté au Lot 1
 };
 
 const METAL_TAX_OPTIONS = [
@@ -252,8 +268,13 @@ function normalizeAsset(a) {
     if (!a.cadrans.primary) a.cadrans.primary = 'HORS_GAVE';
     if (!Array.isArray(a.cadrans.secondary)) a.cadrans.secondary = [];
     a.cadrans.secondary = [...new Set(a.cadrans.secondary)]
-        .filter(c => GAVE_CODES.includes(c) && c !== a.cadrans.primary);
-    a.cadran = a.cadrans.primary;
+    .filter(c => GAVE_CODES.includes(c) && c !== a.cadrans.primary);
+
+// Cohérence tag Crypto ↔ cadran CRYPTO (Correction 5)
+if (a.cadrans.primary === 'CRYPTO' && !a.categories.includes('Crypto')) a.cadrans.primary = 'HORS_GAVE';
+if (a.categories.includes('Crypto') && a.cadrans.primary === 'HORS_GAVE') a.cadrans.primary = 'CRYPTO';
+
+a.cadran = a.cadrans.primary;
 
     // Enveloppes (ancien nom "enveloppe" -> nouveau "envelope")
     if (a.enveloppe !== undefined) {
@@ -274,10 +295,11 @@ function normalizeAsset(a) {
     delete a.isETF;
 
     // Divers
-    a.valuationMode = a.valuationMode || (a.categories.some(t => MANUAL_VALUATION_TAGS.includes(t)) ? 'MANUAL' : 'QUOTE');
-    a.yahooTicker   = a.yahooTicker || '';
-    a.zone          = a.zone || 'UE';
-    return a;
+        a.valuationMode = a.valuationMode || (a.categories.some(t => MANUAL_VALUATION_TAGS.includes(t)) ? 'MANUAL' : 'QUOTE');
+        a.yahooTicker   = a.yahooTicker || '';
+        a.zone          = a.zone || 'UE';
+        a.isin          = (a.isin || '').toUpperCase().trim();
+        return a;
 }
 
 function fixRelativeHistoryDates(a) {
@@ -358,6 +380,7 @@ function bootMigration() {
 // =====================================================================
 function cadranLabel(code) {
     if (code === 'HORS_GAVE') return 'Hors-Cadran';
+    if (code === 'CRYPTO') return 'Cryptomonnaies';
     return cadranNames[code] || code;
 }
 
@@ -367,25 +390,27 @@ function cadranBadgeHTML(code) {
 }
 
 function cadranSelectHTML(assetId, currentCadran) {
-    const opts = [...GAVE_QUADRANTS, 'HORS_GAVE'].map(code =>
-        `<option value="${code}" ${code === currentCadran ? 'selected' : ''}>${code === 'HORS_GAVE' ? 'Hors-Cadran' : `Cadran ${CADRAN_NUM[code]} : ${cadranLabel(code)}`}</option>`
+    const opts = [...GAVE_QUADRANTS, 'CRYPTO', 'HORS_GAVE'].map(code =>
+        `<option value="${code}" ${code === currentCadran ? 'selected' : ''}>${code === 'HORS_GAVE' ? 'Hors-Cadran' : (code === 'CRYPTO' ? 'Cryptomonnaies' : `Cadran ${CADRAN_NUM[code]} : ${cadranLabel(code)}`)}</option>`
     ).join('');
     return `<select onchange="reassignAssetCadran(${assetId}, this.value)" class="bg-gray-950 border border-gray-800 rounded-md px-1.5 py-1 text-[10px] text-white focus:outline-none focus:border-indigo-500">${opts}</select>`;
 }
-
 // =====================================================================
 // PERSISTANCE (localStorage)
 // =====================================================================
 function saveToStorage() {
-    localStorage.setItem('patriMonial_assets', JSON.stringify(assets));
+    try { localStorage.setItem('patriMonial_assets', JSON.stringify(assets)); }
+    catch (err) { console.warn('Sauvegarde actifs impossible (quota dépassé ?) :', err); }
 }
 
 function saveCessions() {
-    localStorage.setItem('patriMonial_cessions', JSON.stringify(cessions));
+    try { localStorage.setItem('patriMonial_cessions', JSON.stringify(cessions)); }
+    catch (err) { console.warn('Sauvegarde cessions impossible :', err); }
 }
 
 function saveArbitrages() {
-    localStorage.setItem('patriMonial_arbitrages', JSON.stringify(arbitrages));
+    try { localStorage.setItem('patriMonial_arbitrages', JSON.stringify(arbitrages)); }
+    catch (err) { console.warn('Sauvegarde arbitrages impossible :', err); }
 }
 
 function saveTaxSettings() {

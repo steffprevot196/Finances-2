@@ -106,6 +106,7 @@ function assetSubtitleHTML(asset) {
     const parts = [asset.ticker];
     if (asset.envelope) parts.push(envelopeShort(asset.envelope));
     if (asset.valuationMode === 'MANUAL') parts.push('valo. manuelle');
+    if (asset.manualUpdateDate) parts.push(`MAJ ${new Date(asset.manualUpdateDate).toLocaleDateString('fr-FR')}`);
     return parts.join(' • ');
 }
 
@@ -179,6 +180,7 @@ function renderInventoryTable(filterCat = inventoryFilter, searchQuery) {
             <td class="p-3 text-center whitespace-nowrap">
                 <button title="Comparer" onclick="event.stopPropagation(); openAssetCompare(${asset.id})" class="p-1.5 text-gray-400 hover:text-indigo-400"><i class="fa-solid fa-code-compare"></i></button>
                 <button onclick="event.stopPropagation(); openAssetDetailModal(${asset.id})" class="p-1.5 text-gray-400 hover:text-blue-400"><i class="fa-solid fa-eye"></i></button>
+                <button onclick="event.stopPropagation(); openManualGoldUpdate(${asset.id})" class="p-1.5 text-gray-400 hover:text-amber-400" title="Mettre à jour manuellement la valeur AuCoffre"><i class="fa-solid fa-pen-to-square"></i></button>
                 <button onclick="event.stopPropagation(); openEditAssetModal(${asset.id})" class="p-1.5 text-gray-400 hover:text-emerald-400"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="event.stopPropagation(); deleteAsset(${asset.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
             </td>

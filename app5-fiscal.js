@@ -55,11 +55,14 @@ function computeEnvelopeCessionLine(c, pvBrute, years) {
     // est appelé isolément (affichage ligne par ligne).
     const label = c.envelope === 'PER' ? 'PER' : 'Assurance-Vie';
     if (c.envelopeOpenedAt && envYears >= 8) {
-        const tax = gain * 0.075 + gain * 0.172;
+        const ABATTEMENT_ANNUEL = 4600;
+        const abatt = Math.min(gain, ABATTEMENT_ANNUEL);
+        const base = Math.max(0, gain - abatt);
+        const tax = base * 0.075 + gain * 0.172;
         return {
-            pvBrute, years, base: gain,
+            pvBrute, years, base,
             taxLine: tax,
-            abattementLabel: 'Abattement annuel mutualisé (voir total enveloppes)',
+            abattementLabel: `-${formatEUR(abatt)} (abattement mutualisé)`,
             detentionTag: `${label} — ${envYears.toFixed(1)} ans`
         };
     }

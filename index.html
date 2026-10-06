@@ -405,6 +405,13 @@
                         <div id="drive-backup-list" class="space-y-1.5 max-h-32 overflow-y-auto"></div>
                     </div>
 
+                    <div class="border-t border-gray-800 pt-4 mt-4">
+                        <div class="text-[11px] font-bold text-gray-400 uppercase mb-2">Finnhub — Cours Actions & ETF</div>
+                        <p class="text-[11px] text-gray-500 mb-2">Clé API gratuite (60 req/min) — créez-en une sur finnhub.io</p>
+                        <input type="text" id="finnhub-key-input" onchange="saveFinnhubKey()" placeholder="votre_clé_api_finnhub" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono text-[11px] focus:outline-none focus:border-blue-500">
+                        <p id="finnhub-status" class="text-[10px] text-gray-500 mt-1"></p>
+                    </div>
+
                     <details class="mt-3 text-[10px] text-gray-500">
                         <summary class="cursor-pointer hover:text-gray-300">Comment créer un Client ID Google (une fois, ~5 min) ?</summary>
                         <ol class="list-decimal list-inside mt-1 space-y-0.5">
@@ -1007,6 +1014,31 @@
         </div>
     </div>
 
+    <!-- MODAL : MISE À JOUR MANUELLE PIÈCE AUCOFFRE -->
+    <div id="modal-manual-gold" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-coins text-amber-400"></i> Mise à jour manuelle — Pièce AuCoffre</h3>
+                <button onclick="closeModal('modal-manual-gold')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleManualGoldUpdate(event)" class="p-4 space-y-3 text-xs">
+                <input type="hidden" id="manual-gold-asset-id">
+                <div>
+                    <label class="block text-gray-400 mb-1">Prix unitaire indiqué sur AuCoffre.com (€) *</label>
+                    <input type="number" step="any" id="manual-gold-price" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1">Date de la mise à jour *</label>
+                    <input type="date" id="manual-gold-date" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1">Source (optionnel)</label>
+                    <input type="text" id="manual-gold-source" placeholder="ex: AuCoffre.com — page Napoléon 20 Frs" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <button type="submit" class="w-full px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium">Enregistrer la mise à jour</button>
+            </form>
+        </div>
+    </div>
     <!-- MODAL : VENDRE UN ACTIF (sélection date puis actif possédé à cette date) -->
     <div id="modal-sell-asset" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
@@ -1281,6 +1313,10 @@
                             <input type="text" id="add-yahoo-ticker" placeholder="ex: CW8.PA" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500 font-mono">
                         </div>
                     </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Code ISIN (optionnel)</label>
+                        <input type="text" id="add-isin" placeholder="ex: LU1737652237" maxlength="12" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono uppercase focus:outline-none focus:border-emerald-500">
+                    </div>
 
                     <div>
                         <label class="block text-gray-400 mb-1">Catégories * <span class="text-gray-600">(un actif peut cumuler plusieurs tags, ex: "ETF" + "Or & Métaux")</span></label>
@@ -1300,6 +1336,7 @@
                                 <option value="MONNAIES">Cadran 2 : MONNAIES / DEVISES</option>
                                 <option value="ASIE">Cadran 3 : ACTIONS / ASIE</option>
                                 <option value="PETROLE">Cadran 4 : PETROLE</option>
+                                <option value="CRYPTO">Cryptomonnaies</option>
                                 <option value="HORS_GAVE">Hors-Cadran & Divers</option>
                             </select>
                         </div>

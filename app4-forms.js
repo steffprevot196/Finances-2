@@ -124,6 +124,7 @@ function openAddAssetModal() {
     document.getElementById('search-results-container').classList.add('hidden');
     document.getElementById('search-results-container').innerHTML = '';
     document.getElementById('add-yahoo-ticker').value = '';
+    document.getElementById('add-isin').value = '';
     document.getElementById('add-cadran').value = 'OR';
     document.getElementById('add-value-wrap').classList.add('hidden');
     document.getElementById('add-value').removeAttribute('required');
@@ -152,6 +153,7 @@ function openEditAssetModal(id) {
     document.getElementById('add-name').value = asset.name;
     document.getElementById('add-ticker').value = asset.ticker;
     document.getElementById('add-yahoo-ticker').value = asset.yahooTicker || '';
+    document.getElementById('add-isin').value = asset.isin || '';
     setFormTags(asset.categories);
     updateTaxCategoryOptions(asset.taxCategory || 'NON_CONCERNE');
     document.getElementById('add-cadran').value = asset.cadrans.primary;
@@ -196,6 +198,27 @@ function recalculateAddTotals() {
     if (!valueInput.value || valueInput.value == '0') {
         valueInput.value = price.toFixed(4);
     }
+}
+
+// ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// VALIDATION DE COHÉRENCE (Partie 5)
+// ---------------------------------------------------------------------
+function validateAssetCoherence(fields) {
+    const warnings = [];
+    if (fields.cadrans.primary === 'CRYPTO' && !fields.categories.includes('Crypto'))
+        warnings.push('Le cadran "Cryptomonnaies" est sélectionné mais le tag "Crypto" est absent.');
+    if (fields.categories.includes('Crypto') && fields.cadrans.primary !== 'CRYPTO')
+        warnings.push('Un actif taggé Crypto devrait avoir le cadran "Cryptomonnaies".');
+    if (fields.categories.includes('Obligation') && (fields.envelope === 'PEA' || fields.envelope === 'PEA_PME'))
+        warnings.push('Les obligations ne sont pas éligibles au PEA.');
+    if (fields.isin && !/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(fields.isin))
+        warnings.push("Le format de l'ISIN est invalide (2 lettres + 9 alphanum + 1 chiffre).");
+    if (fields.isin) {
+        const duplicate = assets.find(a => a.isin === fields.isin && a.id !== fields.id);
+        if (duplicate) warnings.push(`Un actif avec cet ISIN existe déjà : ${duplicate.name}.`);
+    }
+    return warnings;
 }
 
 // ---------------------------------------------------------------------
@@ -248,8 +271,9 @@ function handleAddAsset(e) {
 
     const invested = (qty * price) + frais;
     const value    = qty * unitValue;
+    const isin = (document.getElementById('add-isin').value || '').toUpperCase().trim();
     const fields = {
-        name, ticker, categories: tags, taxCategory,
+        name, ticker, isin, categories: tags, taxCategory,
         cadrans: { primary: primaryCadran, secondary: [] },
         qty, frais, invested, value,
         envelope, envelopeOpenedAt, zone, yahooTicker, valuationMode,
@@ -274,6 +298,11 @@ function handleAddAsset(e) {
         }, fields, bond || {});
         upsertTodayHistoryPoint(newAsset, value, invested);
         assets.push(newAsset);
+    }
+
+    const warnings = validateAssetCoherence(fields);
+    if (warnings.length && !confirm('Avertissements :\n\n' + warnings.join('\n') + '\n\nContinuer quand même ?')) {
+        return;
     }
 
     saveToStorage();
@@ -315,7 +344,7 @@ async function triggerAssetSearch() {
 
     // 1) Catalogue AuCoffre
     auCoffreCatalog.forEach(c => {
-        if (c.name.toLowerCase().includes(qLower) || c.ticker.toLowerCase().includes(qLower)) {
+        if (c.name.toLowerCase().includes(qLower) || c.ticker.toLowerCase().includes(qLower) || (c.isin || '').toLowerCase().includes(qLower)) {
             results.push({
                 type: 'aucoffre',
                 badge: c.taxCategory === 'JETON' ? 'Jeton Or (Exo < 5k€)' : 'Or Cours Légitime',
@@ -332,26 +361,43 @@ async function triggerAssetSearch() {
         }
     });
 
-    // 2) Catalogue Actions / ETF / Forex
-    popularMarketAssets.forEach(m => {
-        if (m.name.toLowerCase().includes(qLower) || m.ticker.toLowerCase().includes(qLower)) {
-            results.push({
-                type: 'market',
-                badge: m.category === 'Devises/Liquidités' ? 'Devise / Forex' : 'Action / ETF',
-                badgeColor: m.category === 'Devises/Liquidités'
-                    ? 'bg-blue-950 text-blue-300 border-blue-800/50'
-                    : 'bg-indigo-950 text-indigo-300 border-indigo-800/50',
-                name: m.name,
-                ticker: m.ticker,
-                category: m.category,
-                cadran: m.cadran,
-                taxCategory: m.taxCategory || 'NON_CONCERNE',
-                priceEUR: m.basePriceEUR
-            });
-        }
-    });
-
-    // 3) Détection directe des devises courantes
+        // 2) Catalogue Actions / ETF / Forex
+        popularMarketAssets.forEach(m => {
+            if (m.name.toLowerCase().includes(qLower) || m.ticker.toLowerCase().includes(qLower) || (m.isin || '').toLowerCase().includes(qLower)) {
+                results.push({
+                    type: 'market',
+                    badge: m.category === 'Devises/Liquidités' ? 'Devise / Forex' : 'Action / ETF',
+                    badgeColor: m.category === 'Devises/Liquidités'
+                        ? 'bg-blue-950 text-blue-300 border-blue-800/50'
+                        : 'bg-indigo-950 text-indigo-300 border-indigo-800/50',
+                    name: m.name,
+                    ticker: m.ticker,
+                    category: m.category,
+                    cadran: m.cadran,
+                    taxCategory: m.taxCategory || 'NON_CONCERNE',
+                    priceEUR: m.basePriceEUR
+                });
+            }
+        });
+    
+        // 2bis) Catalogue Crypto (Correction 4)
+        cryptoCatalog.forEach(c => {
+            if (c.name.toLowerCase().includes(qLower) || c.ticker.toLowerCase().includes(qLower) || (c.isin || '').toLowerCase().includes(qLower)) {
+                results.push({
+                    type: 'crypto',
+                    badge: 'Crypto',
+                    badgeColor: 'bg-purple-950 text-purple-300 border-purple-800/50',
+                    name: c.name,
+                    ticker: c.ticker,
+                    tags: ['Crypto'],
+                    cadran: 'CRYPTO',
+                    taxCategory: 'NON_CONCERNE',
+                    priceEUR: c.basePriceEUR
+                });
+            }
+        });
+    
+        // 3) Détection directe des devises courantes
     if (qLower.includes('yen') || qLower === 'jpy') {
         if (!results.some(r => r.ticker === 'JPY')) {
             results.push({
@@ -382,6 +428,42 @@ async function triggerAssetSearch() {
     }
 
     renderSearchResults(results);
+
+    // Complément Finnhub (asynchrone, ne bloque pas)
+    if (typeof finnhubApiKey !== 'undefined' && finnhubApiKey && query.length >= 2) {
+        searchFinnhubSymbol(query).then(finnhubResults => {
+            if (finnhubResults.length) {
+                const combined = [...results, ...finnhubResults];
+                renderSearchResults(combined);
+            }
+        });
+    }
+
+    // Complément CoinGecko live (Partie 4.2)
+    if (query.length >= 2) {
+        fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data || !data.coins) return;
+                const liveResults = data.coins.slice(0, 6).map(c => ({
+                    type: 'crypto',
+                    badge: 'Crypto (live)',
+                    badgeColor: 'bg-purple-950 text-purple-300 border-purple-800/50',
+                    name: c.name,
+                    ticker: c.symbol.toUpperCase(),
+                    tags: ['Crypto'],
+                    cadran: 'CRYPTO',
+                    taxCategory: 'NON_CONCERNE',
+                    priceEUR: 0,
+                    coingeckoId: c.id
+                }));
+                if (liveResults.length) {
+                    const currentResults = document.querySelectorAll('#search-results-container > div').length;
+                    if (currentResults <= 1) renderSearchResults(liveResults);
+                }
+            })
+            .catch(err => console.warn('CoinGecko search failed:', err));
+    }
 }
 
 function renderSearchResults(results) {
@@ -417,6 +499,7 @@ function selectSearchResult(item) {
     document.getElementById('add-name').value = item.name;
     document.getElementById('add-ticker').value = item.ticker;
     document.getElementById('add-yahoo-ticker').value = item.yahooTicker || '';
+    document.getElementById('add-isin').value = item.isin || '';
 
     let tags = item.tags;
     if (!tags) {

@@ -53,7 +53,7 @@ async function fetchFrankfurterHistory(currency, days = 365) {
     const end = new Date();
     const start = new Date(Date.now() - days * 864e5);
     const fmt = d => d.toISOString().slice(0, 10);
-    const res = await fetch(`https://api.frankfurter.app/${fmt(start)}..${fmt(end)}?from=EUR&to=${currency}`);
+    const res = await fetch(`https://api.frankfurter.dev/v1/${fmt(start)}..${fmt(end)}?base=EUR&symbols=${currency}`);
     if (!res.ok) throw new Error(`Frankfurter HTTP ${res.status}`);
     const data = await res.json();
     return Object.entries(data.rates || {})
@@ -158,11 +158,7 @@ async function fetchLivePrices() {
     icon.classList.add('fa-spin');
     btn.disabled = true;
 
-    const cryptoMap = {
-        BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', ADA: 'cardano', XRP: 'ripple',
-        DOGE: 'dogecoin', BNB: 'binancecoin', LTC: 'litecoin', DOT: 'polkadot',
-        AVAX: 'avalanche-2', MATIC: 'matic-network', LINK: 'chainlink'
-    };
+    const cryptoMap = CRYPTO_COINGECKO_IDS; // Correction 8 : utilise la constante globale
     const currencyTickers = ['USD', 'JPY', 'CHF', 'GBP'];
     let updated = 0;
     const sourceErrors = [];
@@ -196,7 +192,7 @@ async function fetchLivePrices() {
         if (currencyAssets.length) {
             try {
                 const to = [...new Set(currencyAssets.map(a => a.ticker.toUpperCase()))].join(',');
-                const res = await fetch(`https://api.frankfurter.app/latest?from=EUR&to=${to}`);
+                const res = await fetch(`https://api.frankfurter.dev/v1/latest?base=EUR&symbols=${to}`);
                 if (!res.ok) throw new Error(`réponse HTTP ${res.status}`);
                 const data = await res.json();
                 currencyAssets.forEach(a => {
@@ -228,8 +224,36 @@ async function fetchLivePrices() {
         alert(`Cours actualisés automatiquement pour ${updated} actif(s) (crypto/devises).`);
     }
 
-    // Mise à jour manuelle groupée pour tout le reste
-    const autoUpdatedIds = new Set(
+        // --- Actions / ETF (Finnhub) ---
+        const stockAssets = assets.filter(a => (hasTag(a, 'Action') || hasTag(a, 'ETF')) && !hasTag(a, 'Crypto'));
+        if (stockAssets.length && finnhubApiKey) {
+            let stockUpdated = 0;
+            for (const a of stockAssets) {
+                const symbol = a.yahooTicker || a.ticker;
+                if (!symbol) continue;
+                try {
+                    const price = await fetchFinnhubQuote(symbol);
+                    if (price) {
+                        a.value = a.qty * price;
+                        upsertTodayHistoryPoint(a, a.value, a.invested);
+                        stockUpdated++;
+                    }
+                    await new Promise(r => setTimeout(r, 100));
+                } catch (err) { sourceErrors.push(`${a.name} (${symbol}) : ${err.message}`); }
+            }
+            if (stockUpdated > 0) {
+                updated += stockUpdated;
+                saveToStorage();
+                refreshAllUI();
+            }
+        }
+    
+        // --- Pièces AuCoffre : estimation via cours de l'or (Partie 4.3) ---
+        const auCoffreUpdated = await updateAuCoffreAssetsFromGoldPrice();
+        if (auCoffreUpdated > 0) updated += auCoffreUpdated;
+    
+        // Mise à jour manuelle groupée pour tout le reste
+        const autoUpdatedIds = new Set(
         assets.filter(a =>
             (hasTag(a, 'Crypto') && cryptoMap[a.ticker.toUpperCase()]) ||
             (hasTag(a, 'Devises/Liquidités') && currencyTickers.includes(a.ticker.toUpperCase()))
@@ -392,6 +416,10 @@ function initDriveSyncUI() {
     document.getElementById('drive-status-text').innerText = getDriveClientId()
         ? 'Client ID configuré — cliquez sur "Se connecter à Drive".'
         : 'Aucun Client ID Google configuré (voir les instructions ci-dessous).';
+    const finnhubInput = document.getElementById('finnhub-key-input');
+    const finnhubStatus = document.getElementById('finnhub-status');
+    if (finnhubInput) finnhubInput.value = finnhubApiKey;
+    if (finnhubStatus) finnhubStatus.innerText = finnhubApiKey ? '✅ Clé enregistrée' : '⚠️ Aucune clé';
 }
 
 function updateDriveSyncStatus() {
@@ -541,3 +569,104 @@ function restoreLocalBackup(index) {
     renderDriveBackupList();
     alert('Sauvegarde restaurée.');
 }
+
+// =====================================================================
+// FINNHUB — Cours Actions / ETF (Partie 4.1)
+// =====================================================================
+function saveFinnhubKey() {
+    finnhubApiKey = document.getElementById('finnhub-key-input').value.trim();
+    localStorage.setItem('patriMonial_finnhubKey', finnhubApiKey);
+    document.getElementById('finnhub-status').innerText = finnhubApiKey ? '✅ Clé enregistrée' : '⚠️ Aucune clé';
+}
+
+async function searchFinnhubSymbol(query) {
+    if (!finnhubApiKey || query.length < 2) return [];
+    try {
+        const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(query)}&token=${finnhubApiKey}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return (data.result || []).slice(0, 8).map(r => ({
+            type: 'stock',
+            badge: r.type === 'ETP' ? 'ETF' : 'Action',
+            badgeColor: r.type === 'ETP' ? 'bg-indigo-950 text-indigo-300 border-indigo-800/50' : 'bg-gray-800 text-gray-300 border-gray-700',
+            name: r.description,
+            ticker: r.symbol,
+            tags: r.type === 'ETP' ? ['ETF'] : ['Action'],
+            cadran: 'ASIE',
+            taxCategory: 'NON_CONCERNE',
+            priceEUR: 0
+        }));
+    } catch (err) { console.warn('Finnhub search failed:', err); return []; }
+}
+
+async function fetchFinnhubQuote(symbol) {
+    if (!finnhubApiKey) return null;
+    try {
+        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${finnhubApiKey}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return data.c || null;
+    } catch (err) { console.warn(`Finnhub quote failed for ${symbol}:`, err); return null; }
+}
+
+// =====================================================================
+// AUCOFFRE — Estimation automatique par cours de l'or (Partie 4.3)
+// =====================================================================
+async function fetchGoldPriceEURPerGram() {
+    try {
+        const res = await fetch('https://xaus.com/api/v1/price?currency=EUR&unit=gram');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return data.price || null;
+    } catch (err) { console.warn('XAUS Gold API failed:', err); return null; }
+}
+
+async function updateAuCoffreAssetsFromGoldPrice() {
+    const goldPricePerGram = await fetchGoldPriceEURPerGram();
+    if (!goldPricePerGram) return 0;
+    let updated = 0;
+    const auCoffreAssets = assets.filter(a => hasTag(a, 'Or & Métaux') && a.weightGrams && !a.manualValueOverride);
+    auCoffreAssets.forEach(a => {
+        const estimatedValue = a.qty * a.weightGrams * goldPricePerGram * (1 + (a.primePct || 0));
+        if (Math.abs(estimatedValue - a.value) > 0.01) {
+            a.value = estimatedValue;
+            upsertTodayHistoryPoint(a, a.value, a.invested);
+            updated++;
+        }
+    });
+    if (updated > 0) { saveToStorage(); refreshAllUI(); }
+    return updated;
+}
+
+function openManualGoldUpdate(assetId) {
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+    document.getElementById('manual-gold-asset-id').value = assetId;
+    document.getElementById('manual-gold-price').value = asset.qty ? (asset.value / asset.qty).toFixed(2) : '';
+    document.getElementById('manual-gold-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('manual-gold-source').value = '';
+    document.getElementById('modal-manual-gold').classList.remove('hidden');
+}
+
+function handleManualGoldUpdate(e) {
+    e.preventDefault();
+    const assetId = parseFloat(document.getElementById('manual-gold-asset-id').value);
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+    const unitPrice = parseFloat(document.getElementById('manual-gold-price').value);
+    const updateDate = document.getElementById('manual-gold-date').value;
+    const source = document.getElementById('manual-gold-source').value;
+    asset.value = asset.qty * unitPrice;
+    asset.manualValueOverride = true;
+    asset.manualUpdateDate = updateDate;
+    asset.manualUpdateSource = source;
+    const dateFR = new Date(updateDate).toLocaleDateString('fr-FR');
+    asset.history = (asset.history || []).filter(h => h.date !== dateFR);
+    asset.history.push({ date: dateFR, value: asset.value, invested: asset.invested });
+    saveToStorage();
+    closeModal('modal-manual-gold');
+    refreshAllUI();
+    alert(`Valeur mise à jour : ${formatEUR(asset.value)} (${formatEUR(unitPrice)} / unité)`);
+}
+
+// =====================================================================
