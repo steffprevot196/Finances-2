@@ -654,10 +654,17 @@ function prefillCessionFromAsset() {
     document.getElementById('cession-enveloppe-date').value = asset.envelopeOpenedAt || '';
     document.getElementById('cession-zone').value = asset.zone || 'UE';
 
-    const buyDate = asset.buys && asset.buys[0] ? parseFlexDate(asset.buys[0].date) : null;
+        const buyDate = asset.buys && asset.buys[0] ? parseFlexDate(asset.buys[0].date) : null;
     if (buyDate) document.getElementById('cession-date-achat').value = buyDate.toISOString().slice(0, 10);
 
     toggleCessionFieldsByType();
+
+    // Affiche immédiatement les prix unitaires
+    const venteUnitEl = document.getElementById('cession-prix-vente-unit');
+    const achatUnitEl = document.getElementById('cession-prix-achat-unit');
+    const unitValue = asset.qty > 0 ? asset.value / asset.qty : 0;
+    if (venteUnitEl) venteUnitEl.innerText = `${formatEUR(unitValue)} / unité`;
+    if (achatUnitEl) achatUnitEl.innerText = `${formatEUR(prixAchatUnitaire)} / unité`;
 }
 
 function toggleCessionFieldsByType() {
@@ -697,7 +704,7 @@ function onCessionQtyChange() {
     document.getElementById('cession-prix-achat').value = (pru * qty).toFixed(2);
     document.getElementById('cession-prix-vente').value = (unitValue * qty).toFixed(2);
 
-    // Hint
+        // Hint
     const hint = document.getElementById('cession-qty-hint');
     if (hint) {
         if (qty > maxQty) {
@@ -708,6 +715,12 @@ function onCessionQtyChange() {
             hint.innerHTML = `Vente totale · Détenu : ${maxQty}`;
         }
     }
+
+    // Affiche aussi les prix unitaires
+    const venteUnitEl = document.getElementById('cession-prix-vente-unit');
+    if (venteUnitEl) venteUnitEl.innerText = qty > 0 ? `${formatEUR(unitValue)} / unité` : '— €/unité';
+    const achatUnitEl = document.getElementById('cession-prix-achat-unit');
+    if (achatUnitEl) achatUnitEl.innerText = qty > 0 ? `${formatEUR(pru)} / unité` : '— €/unité';
 }
 
 function onCessionSubTypeChange() {
@@ -764,6 +777,23 @@ function handleAddCession(e) {
     const editId = document.getElementById('cession-edit-id').value;
     const type   = document.getElementById('cession-type').value;
 
+    // Lecture des valeurs saisies
+    let prixVente = parseFloat(document.getElementById('cession-prix-vente').value) || 0;
+    let prixAchat = parseFloat(document.getElementById('cession-prix-achat').value) || 0;
+    const frais   = parseFloat(document.getElementById('cession-frais').value) || 0;
+    const sourceAssetIdForCalc = parseFloat(document.getElementById('cession-source-asset').value);
+    const qtySaisie = parseFloat(document.getElementById('cession-qty').value) || 0;
+
+    // Recalcul défensif : si la vente vient d'un actif existant, on force la cohérence
+    // Prix d'achat = PRU moyen × quantité vendue
+    if (!editId && sourceAssetIdForCalc && qtySaisie > 0) {
+        const srcAsset = assets.find(a => a.id === sourceAssetIdForCalc);
+        if (srcAsset) {
+            const pru = computePRUFromLots(srcAsset) || (srcAsset.qty > 0 ? srcAsset.invested / srcAsset.qty : 0);
+            prixAchat = Math.round(pru * qtySaisie * 100) / 100;
+        }
+    }
+
     const cession = normalizeCession({
         id: editId ? parseFloat(editId) : Date.now(),
         type,
@@ -771,9 +801,9 @@ function handleAddCession(e) {
         name: document.getElementById('cession-name').value,
         dateVente: document.getElementById('cession-date-vente').value,
         dateAchat: document.getElementById('cession-date-achat').value,
-        prixVente: parseFloat(document.getElementById('cession-prix-vente').value) || 0,
-        prixAchat: parseFloat(document.getElementById('cession-prix-achat').value) || 0,
-        frais: parseFloat(document.getElementById('cession-frais').value) || 0,
+        prixVente: prixVente,
+        prixAchat: prixAchat,
+        frais: frais,
         avant2018: document.getElementById('cession-avant-2018').checked,
         envelope: type === 'ACTION_ETF' ? document.getElementById('cession-enveloppe').value : '',
         envelopeOpenedAt: document.getElementById('cession-enveloppe-date').value,

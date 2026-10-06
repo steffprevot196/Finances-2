@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatriMonial - Gestion & Suivi de Patrimoine</title>
+        <title>PatriMonial - Gestion & Suivi de Patrimoine</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -110,7 +111,7 @@
             </div>
 
             <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">P&L Latent (non réalisé)</div>
+                <div class="text-xs font-medium text-gray-400 mb-1">Gain / Perte Latent</div>
                 <div class="text-2xl font-bold font-mono" id="stat-pnl">0,00 €</div>
                 <div class="text-xs font-semibold mt-1 font-mono" id="stat-pnl-pct">+0.00%</div>
                 <div class="absolute right-3 bottom-2 text-amber-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-arrow-trend-up"></i></div>
@@ -141,7 +142,7 @@
             </div>
 
             <div class="bg-gray-900/80 border border-emerald-900/40 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">P&L Réalisé</div>
+                <div class="text-xs font-medium text-gray-400 mb-1">Gain / Perte Réalisé</div>
                 <div class="text-2xl font-bold font-mono" id="stat-realized-pnl">0,00 €</div>
                 <div class="text-xs text-gray-500 mt-1 font-mono" id="stat-realized-pnl-pct">+0.00%</div>
                 <div class="absolute right-3 bottom-2 text-emerald-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-check-double"></i></div>
@@ -150,12 +151,12 @@
             <div class="bg-gray-900/80 border border-rose-900/40 rounded-xl p-4 relative overflow-hidden">
                 <div class="text-xs font-medium text-gray-400 mb-1">Impôt Estimé</div>
                 <div class="text-2xl font-bold text-white font-mono" id="stat-total-tax">0,00 €</div>
-                <div class="text-xs text-gray-500 mt-1">P&L réalisé net : <span class="font-mono text-gray-300" id="stat-realized-net">0,00 €</span></div>
+                <div class="text-xs text-gray-500 mt-1">Net après impôt : <span class="font-mono text-gray-300" id="stat-realized-net">0,00 €</span></div>
                 <div class="absolute right-3 bottom-2 text-rose-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-receipt"></i></div>
             </div>
 
             <div class="bg-gradient-to-br from-indigo-950/60 to-purple-950/40 border border-indigo-800/50 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-indigo-300 mb-1">P&L Total (Latent + Réalisé)</div>
+                <div class="text-xs font-medium text-indigo-300 mb-1">Gain / Perte Total</div>
                 <div class="text-2xl font-bold font-mono text-white" id="stat-total-pnl">0,00 €</div>
                 <div class="text-xs text-indigo-300 mt-1 font-mono" id="stat-total-pnl-pct">+0.00%</div>
                 <div class="absolute right-3 bottom-2 text-indigo-400/10 text-5xl pointer-events-none"><i class="fa-solid fa-trophy"></i></div>
@@ -636,7 +637,7 @@
                     <div class="text-lg font-bold font-mono text-white" id="crypto-stat-invested">0,00 €</div>
                 </div>
                 <div class="bg-gray-900/60 border border-purple-900/40 rounded-xl p-3">
-                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">P&L latent</div>
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Gain / Perte latent</div>
                     <div class="text-lg font-bold font-mono text-emerald-400" id="crypto-stat-pnl">+0,00 €</div>
                 </div>
                 <div class="bg-gray-900/60 border border-purple-900/40 rounded-xl p-3">
@@ -681,7 +682,7 @@
                     <div class="text-lg font-bold font-mono text-white" id="hors-stat-invested">0,00 €</div>
                 </div>
                 <div class="bg-gray-900/60 border border-blue-900/40 rounded-xl p-3">
-                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">P&L latent</div>
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Gain / Perte latent</div>
                     <div class="text-lg font-bold font-mono text-emerald-400" id="hors-stat-pnl">+0,00 €</div>
                 </div>
                 <div class="bg-gray-900/60 border border-blue-900/40 rounded-xl p-3">
@@ -1258,12 +1259,14 @@
                             <p id="cession-qty-hint" class="text-[10px] text-gray-500 mt-1"></p>
                         </div>
                         <div>
-                            <label class="block text-gray-400 mb-1">Prix de Cession Net (€) *</label>
+                            <label class="block text-gray-400 mb-1">Prix de Vente Total (€) *</label>
                             <input type="number" step="any" id="cession-prix-vente" required placeholder="14470.00" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500 font-mono">
+                            <p id="cession-prix-vente-unit" class="text-[10px] text-gray-500 mt-1 font-mono">— €/unité</p>
                         </div>
                         <div>
-                            <label class="block text-gray-400 mb-1">Prix d'Achat / PRU (€) *</label>
+                            <label class="block text-gray-400 mb-1">Prix d'Achat Total (PRU) *</label>
                             <input type="number" step="any" id="cession-prix-achat" required placeholder="9200.00" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500 font-mono">
+                            <p id="cession-prix-achat-unit" class="text-[10px] text-gray-500 mt-1 font-mono">— €/unité</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3 items-end">

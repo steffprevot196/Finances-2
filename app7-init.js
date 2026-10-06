@@ -32,4 +32,17 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // 9. État initial du modal Google Drive
     initDriveSyncUI();
+        // 10. Force l'ouverture du calendrier natif sur tous les champs date (utile sur Firefox/Linux)
+    document.querySelectorAll('input[type="date"]').forEach(inp => {
+        inp.addEventListener('focus', () => {
+            if (typeof inp.showPicker === 'function') {
+                try { inp.showPicker(); } catch (e) { /* silencieux */ }
+            }
+        });
+        inp.addEventListener('click', () => {
+            if (typeof inp.showPicker === 'function') {
+                try { inp.showPicker(); } catch (e) { /* silencieux */ }
+            }
+        });
+    });
 });
