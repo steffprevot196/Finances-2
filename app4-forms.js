@@ -870,8 +870,13 @@ function handleAddCession(e) {
                     saveToStorage();
                 }
             } else {
-                // Vente partielle : l'actif reste, on ajoute un point d'historique
-                upsertTodayHistoryPoint(asset, asset.value * (asset.qty / (asset.qty + qtyToSell)), asset.invested);
+                // Vente partielle : l'actif reste
+                // - sa valeur de marché est réduite proportionnellement à la quantité vendue
+                // - l'investi et le frais sont déjà recalculés par syncAssetFromLots
+                const totalQtyAvantVente = asset.qty + qtyToSell;  // qty restante + qty vendue
+                const ratioRestant = totalQtyAvantVente > 0 ? (asset.qty / totalQtyAvantVente) : 0;
+                asset.value = Math.round(asset.value * ratioRestant * 100) / 100;
+                upsertTodayHistoryPoint(asset, asset.value, asset.invested);
                 saveToStorage();
             }
         }
