@@ -599,8 +599,14 @@ function openAddCessionModal() {
     document.getElementById('cession-prix-achat').value = '';
     document.getElementById('cession-qty').value = '';
     document.getElementById('cession-qty').oninput = onCessionQtyChange;
+    document.getElementById('cession-prix-vente').oninput = updateCessionUnitPrices;
+    document.getElementById('cession-prix-achat').oninput = updateCessionUnitPrices;
     const hint = document.getElementById('cession-qty-hint');
     if (hint) hint.innerText = '';
+    const venteUnitEl = document.getElementById('cession-prix-vente-unit');
+    const achatUnitEl = document.getElementById('cession-prix-achat-unit');
+    if (venteUnitEl) venteUnitEl.innerText = '— €/unité';
+    if (achatUnitEl) achatUnitEl.innerText = '— €/unité';
     document.getElementById('cession-frais').value = 0;
     document.getElementById('cession-avant-2018').checked = false;
     document.getElementById('cession-enveloppe').value = 'CTO';
@@ -659,12 +665,8 @@ function prefillCessionFromAsset() {
 
     toggleCessionFieldsByType();
 
-    // Affiche immédiatement les prix unitaires
-    const venteUnitEl = document.getElementById('cession-prix-vente-unit');
-    const achatUnitEl = document.getElementById('cession-prix-achat-unit');
-    const unitValue = asset.qty > 0 ? asset.value / asset.qty : 0;
-    if (venteUnitEl) venteUnitEl.innerText = `${formatEUR(unitValue)} / unité`;
-    if (achatUnitEl) achatUnitEl.innerText = `${formatEUR(prixAchatUnitaire)} / unité`;
+    // Affiche immédiatement les prix unitaires (à partir des champs)
+    updateCessionUnitPrices();
 }
 
 function toggleCessionFieldsByType() {
@@ -717,10 +719,29 @@ function onCessionQtyChange() {
     }
 
     // Affiche aussi les prix unitaires
+    updateCessionUnitPrices();
+}
+
+// Recalcule les prix unitaires AFFICHÉS à partir des valeurs RÉELLES des champs
+// (et non des valeurs théoriques), pour qu'ils suivent toute saisie manuelle.
+function updateCessionUnitPrices() {
+    const qty = parseFloat(document.getElementById('cession-qty').value) || 0;
+    const venteTotale = parseFloat(document.getElementById('cession-prix-vente').value) || 0;
+    const achatTotal  = parseFloat(document.getElementById('cession-prix-achat').value) || 0;
+
     const venteUnitEl = document.getElementById('cession-prix-vente-unit');
-    if (venteUnitEl) venteUnitEl.innerText = qty > 0 ? `${formatEUR(unitValue)} / unité` : '— €/unité';
     const achatUnitEl = document.getElementById('cession-prix-achat-unit');
-    if (achatUnitEl) achatUnitEl.innerText = qty > 0 ? `${formatEUR(pru)} / unité` : '— €/unité';
+
+    if (venteUnitEl) {
+        venteUnitEl.innerText = (qty > 0 && venteTotale > 0)
+            ? `${formatEUR(venteTotale / qty)} / unité`
+            : '— €/unité';
+    }
+    if (achatUnitEl) {
+        achatUnitEl.innerText = (qty > 0 && achatTotal > 0)
+            ? `${formatEUR(achatTotal / qty)} / unité`
+            : '— €/unité';
+    }
 }
 
 function onCessionSubTypeChange() {
