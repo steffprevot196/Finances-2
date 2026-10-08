@@ -3,6 +3,10 @@
 // Dépend de : app1-core.js, app2-ui.js
 // =====================================================================
 
+// Flag « champ Valeur Actuelle touché » — déclaré tôt pour éviter toute
+// ambiguïté sur sa portée (utilisé dans openAddAssetModal/openEditAssetModal).
+let _addValueTouched = false;
+
 // ---------------------------------------------------------------------
 // Chips de tags (catégories multi-sélection)
 // ---------------------------------------------------------------------
@@ -130,8 +134,10 @@ function openAddAssetModal() {
     document.getElementById('add-value-wrap').classList.add('hidden');
     document.getElementById('add-value').removeAttribute('required');
     document.getElementById('add-value').value = '';
+    _addValueTouched = false;
     document.getElementById('add-purchase-date').value = new Date().toISOString().slice(0, 10);
-    document.getElementById('add-broker').value = '';
+    document.getElementById('add-qty').value = 1;
+    setBrokerValue('');
     document.getElementById('add-bond-coupon').value = '';
     document.getElementById('add-bond-maturity').value = '';
     document.getElementById('add-bond-rating').value = '';
@@ -163,6 +169,7 @@ function openEditAssetModal(id) {
     document.getElementById('add-frais').value = asset.frais || 0;
     document.getElementById('add-value-wrap').classList.remove('hidden');
     document.getElementById('add-value').setAttribute('required', 'required');
+        _addValueTouched = true;   // en édition, la valeur existante ne doit pas être écrasée
     document.getElementById('add-value').value = asset.qty
         ? (asset.value / asset.qty).toFixed(4)
         : asset.value;
@@ -170,7 +177,7 @@ function openEditAssetModal(id) {
         ? ((asset.invested - (asset.frais || 0)) / asset.qty).toFixed(4)
         : asset.invested;
     document.getElementById('add-purchase-date').value = asset.purchaseDate || '';
-    document.getElementById('add-broker').value = asset.broker || '';
+    setBrokerValue(asset.broker || '');
 
     document.getElementById('add-valuation-mode').value = asset.valuationMode || 'MANUAL';
     document.getElementById('add-bond-coupon').value = asset.coupon !== undefined ? (asset.coupon * 100).toFixed(3) : '';
@@ -192,12 +199,14 @@ function openEditAssetModal(id) {
 
 // ---------------------------------------------------------------------
 // Recalcul automatique du total (quantité × prix)
+// Le flag _addValueTouched empêche d'écraser une valeur saisie
+// intentionnellement par l'utilisateur (y compris 0).
 // ---------------------------------------------------------------------
 function recalculateAddTotals() {
-    const qty   = parseFloat(document.getElementById('add-qty').value) || 0;
+    if (_addValueTouched) return;
     const price = parseFloat(document.getElementById('add-price').value) || 0;
     const valueInput = document.getElementById('add-value');
-    if (!valueInput.value || valueInput.value == '0') {
+    if (valueInput && !valueInput.value) {
         valueInput.value = price.toFixed(4);
     }
 }
@@ -284,7 +293,7 @@ function handleAddAsset(e) {
         purchaseDate, broker
     };
 
-    if (editId) {
+        if (editId) {
         const asset = assets.find(a => a.id === parseFloat(editId));
         if (asset) {
             Object.assign(asset, fields);
@@ -296,25 +305,18 @@ function handleAddAsset(e) {
             upsertTodayHistoryPoint(asset, value, invested);
         }
     } else {
-        // Création des lots : si la référence contient plusieurs valeurs séparées par virgule,
-        // on crée un lot distinct par référence (chaque pièce physique = 1 lot nominatif).
+        // Création des lots pour ce nouvel achat
         const references = referenceRaw
             ? referenceRaw.split(',').map(s => s.trim()).filter(Boolean)
             : [];
 
         let lots;
         if (references.length > 0) {
-            // Cas nominatif : autant de lots que de références, chacun de qty 1
-            const qtyParRef = 1;
-            const fraisParRef = references.length > 0 ? frais / references.length : 0;
+            const fraisParRef = frais / references.length;
             lots = references.map(ref => makeLot(
                 purchaseDate || new Date().toISOString().slice(0, 10),
-                qtyParRef,
-                price,
-                fraisParRef,
-                ref
+                1, price, fraisParRef, ref
             ));
-            // Avertissement si quantité <> nombre de références
             if (references.length !== qty) {
                 if (!confirm(`Vous avez saisi ${references.length} référence(s) mais ${qty} unité(s).\n` +
                     `Chaque référence correspondra à 1 unité. Voulez-vous continuer ?`)) {
@@ -322,27 +324,76 @@ function handleAddAsset(e) {
                 }
             }
         } else {
-            // Cas standard : un seul lot global pour toute la quantité
             lots = [makeLot(
                 purchaseDate || new Date().toISOString().slice(0, 10),
-                qty,
-                price,
-                frais,
-                ''
+                qty, price, frais, ''
             )];
         }
 
+        // ⭐ NOUVEAU : détection d'un actif existant avec le même ISIN ou ticker
+        const existing = assets.find(a => {
+            // On ne fusionne que si même enveloppe fiscale aussi
+            if ((a.envelope || '') !== (envelope || '')) return false;
+            if (isin && a.isin && a.isin.toUpperCase() === isin.toUpperCase()) return true;
+            if (!isin && a.ticker && a.ticker.toUpperCase() === ticker.toUpperCase()) return true;
+            return false;
+        });
+
+        if (existing) {
+            const msg = `Un actif "${existing.name}" (${existing.ticker}) existe déjà dans la même enveloppe.\n\n` +
+                `• OK = AJOUTER cet achat comme un nouveau lot à l'actif existant (recommandé → 1 seule ligne)\n` +
+                `• Annuler = CRÉER un actif séparé (2 lignes distinctes)`;
+
+            if (confirm(msg)) {
+                // Capturer la valeur unitaire marché AVANT modification
+                const oldUnitValue = existing.qty > 0 ? (existing.value / existing.qty) : price;
+
+                // Ajouter les nouveaux lots et le buy à l'actif existant
+                existing.lots = (existing.lots || []).concat(lots);
+                existing.buys = (existing.buys || []).concat([{
+                    date: purchaseDateFR, type: 'Achat Additionnel',
+                    qty, price, frais, total: invested,
+                    reference: references.join(', ') || ''
+                }]);
+
+                // Recalculer qty / invested / frais depuis les lots
+                syncAssetFromLots(existing);
+
+                // Recalculer la valeur de marché : qty × valeur unitaire précédente
+                existing.value = Math.round(existing.qty * oldUnitValue * 100) / 100;
+
+                upsertTodayHistoryPoint(existing, existing.value, existing.invested);
+                saveToStorage();
+                closeModal('modal-add-asset');
+                refreshAllUI();
+                e.target.reset();
+                document.getElementById('add-edit-id').value = '';
+                return;
+            }
+        }
+
+        // Création d'un actif séparé (nouveau ticker ou refus de fusion)
         const newAsset = Object.assign({
             id: Date.now(),
             buys: [{ date: purchaseDateFR, type: 'Achat Initial', qty, price, frais, total: invested, reference: references.join(', ') || '' }],
             history: [{ date: purchaseDateFR, value: invested, invested }],
             lots
         }, fields, bond || {});
+
+        // Paper trading : tout nouvel actif créé pendant que le mode est actif
+        // reçoit le flag `isPaper`. Il peut être promu en réel plus tard.
+        if (paperMode) newAsset.isPaper = true;
+
         normalizeAsset(newAsset);
         syncAssetFromLots(newAsset);
-        upsertTodayHistoryPoint(newAsset, value, invested);
+        // La qty réelle peut différer de la qty saisie si le nombre de références
+        // ne correspond pas (cf. confirm() ci-dessus). On réaligne `value` en conséquence.
+        newAsset.value = newAsset.qty * unitValue;
+        upsertTodayHistoryPoint(newAsset, newAsset.value, newAsset.invested);
         assets.push(newAsset);
     }
+
+
     const warnings = validateAssetCoherence(fields);
     if (warnings.length && !confirm('Avertissements :\n\n' + warnings.join('\n') + '\n\nContinuer quand même ?')) {
         return;
@@ -476,7 +527,13 @@ async function triggerAssetSearch() {
     if (typeof finnhubApiKey !== 'undefined' && finnhubApiKey && query.length >= 2) {
         searchFinnhubSymbol(query).then(finnhubResults => {
             if (finnhubResults.length) {
-                const combined = [...results, ...finnhubResults];
+                // Si la requête ressemble à un ISIN, on le propage aux résultats
+                // (l'API Finnhub ne renvoie pas l'ISIN dans sa réponse)
+                const isIsinQuery = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(query);
+                const enriched = isIsinQuery
+                    ? finnhubResults.map(r => ({ ...r, isin: query.toUpperCase() }))
+                    : finnhubResults;
+                const combined = [...results, ...enriched];
                 renderSearchResults(combined);
             }
         });
@@ -525,10 +582,10 @@ function renderSearchResults(results) {
         div.innerHTML = `
             <div>
                 <div class="font-bold text-white flex items-center gap-2">
-                    ${item.name}
-                    <span class="text-[9px] px-1.5 py-0.5 rounded border font-mono ${item.badgeColor}">${item.badge}</span>
+                    ${escapeHTML(item.name)}
+                    <span class="text-[9px] px-1.5 py-0.5 rounded border font-mono ${item.badgeColor}">${escapeHTML(item.badge)}</span>
                 </div>
-                <div class="text-[10px] text-gray-400 font-mono">${item.ticker} • ${item.category}</div>
+                <div class="text-[10px] text-gray-400 font-mono">${escapeHTML(item.ticker)} • ${escapeHTML(item.category || '')}</div>
             </div>
             <div class="text-right font-mono font-bold text-emerald-400">
                 ${formatEUR(item.priceEUR)}
@@ -595,8 +652,8 @@ function goToSellStep2() {
     list.innerHTML = eligible.length ? eligible.map(a => `
         <div onclick="selectAssetToSell(${a.id})" class="clickable-row flex justify-between items-center p-2.5 bg-gray-950 border border-gray-800 rounded-lg cursor-pointer hover:border-rose-700">
             <div>
-                <div class="font-bold text-white">${a.name}</div>
-                <div class="text-[10px] text-gray-500 font-mono">${a.ticker} • Qté ${a.qty} • Frais ${formatEUR(a.frais || 0)}</div>
+                <div class="font-bold text-white">${escapeHTML(a.name)}</div>
+                <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(a.ticker)} • Qté ${fmtQty(a.qty)} • Frais ${formatEUR(a.frais || 0)}</div>
             </div>
             <div class="text-right font-mono"><div class="font-bold text-white">${formatEUR(a.value)}</div></div>
         </div>`).join('')
@@ -626,7 +683,7 @@ function openAddCessionModal() {
 
     const sourceSelect = document.getElementById('cession-source-asset');
     sourceSelect.innerHTML = '<option value="">-- Saisie libre --</option>' +
-        assets.map(a => `<option value="${a.id}">${a.name} (${a.ticker})</option>`).join('');
+        assets.map(a => `<option value="${a.id}">${escapeHTML(a.name)} (${escapeHTML(a.ticker)})</option>`).join('');
     sourceSelect.value = '';
 
     populateCessionEnvelopeOptions();
@@ -722,40 +779,27 @@ function prefillCessionFromAsset() {
 
 // Affiche le sélecteur de pièce nominative si l'actif a plusieurs lots référencés
 function renderCessionLotPicker(asset) {
-    const wrap = document.getElementById('cession-lot-picker-wrap');
+    const wrap   = document.getElementById('cession-lot-picker-wrap');
     const picker = document.getElementById('cession-lot-picker');
-    if (!wrap || !picker) return;
+    const hidden = document.getElementById('cession-lot-id-hidden');
+    if (!wrap || !picker || !hidden) return;
 
     const lotsDispos = (asset.lots || []).filter(l => (l.qtyRemaining || 0) > 0 && l.reference);
-    const tousLotsDispos = (asset.lots || []).filter(l => (l.qtyRemaining || 0) > 0);
 
     // Cas 1 : pas de référence nominative → on cache et on utilise le FIFO
     if (lotsDispos.length === 0) {
         wrap.classList.add('hidden');
         picker.innerHTML = '';
-        // Reset du champ caché de sélection
-        if (!document.getElementById('cession-lot-id-hidden')) {
-            const h = document.createElement('input');
-            h.type = 'hidden';
-            h.id = 'cession-lot-id-hidden';
-            h.value = '';
-            document.getElementById('modal-add-cession').appendChild(h);
-        } else {
-            document.getElementById('cession-lot-id-hidden').value = '';
-        }
+        hidden.value = '';
+        const qtyInput = document.getElementById('cession-qty');
+        qtyInput.removeAttribute('readonly');
+        qtyInput.classList.remove('opacity-60', 'cursor-not-allowed');
+        qtyInput.oninput = onCessionQtyChange;
         return;
     }
 
     // Cas 2 : au moins un lot avec référence → on affiche le sélecteur
     wrap.classList.remove('hidden');
-    if (!document.getElementById('cession-lot-id-hidden')) {
-        const h = document.createElement('input');
-        h.type = 'hidden';
-        h.id = 'cession-lot-id-hidden';
-        h.value = '';
-        document.getElementById('modal-add-cession').appendChild(h);
-    }
-
     picker.innerHTML = lotsDispos.map((lot, i) => {
         const dateStr = lot.date ? new Date(lot.date).toLocaleDateString('fr-FR') : '—';
         const prixStr = formatEUR(lot.price || 0);
@@ -763,9 +807,9 @@ function renderCessionLotPicker(asset) {
             <label class="flex items-start gap-2 p-2 bg-gray-950 border border-gray-800 rounded-lg cursor-pointer hover:border-indigo-500 transition">
                 <input type="radio" name="cession-lot-radio" value="${lot.id}" ${i === 0 ? 'checked' : ''} class="mt-0.5 accent-indigo-500" onchange="onCessionLotChange()">
                 <span class="flex-1 min-w-0">
-                    <span class="block text-[11px] font-bold text-white font-mono truncate">Réf. ${lot.reference}</span>
+                    <span class="block text-[11px] font-bold text-white font-mono truncate">Réf. ${escapeHTML(lot.reference)}</span>
                     <span class="block text-[10px] text-gray-400">
-                        Achetée le ${dateStr} · ${prixStr} / unité · Disponible : ${lot.qtyRemaining}
+                        Achetée le ${dateStr} · ${prixStr} / unité · Disponible : ${fmtQty(lot.qtyRemaining)}
                     </span>
                 </span>
             </label>`;
@@ -773,10 +817,12 @@ function renderCessionLotPicker(asset) {
 
     // Sélectionne par défaut le premier lot et force la quantité à 1
     const firstLot = lotsDispos[0];
-    document.getElementById('cession-lot-id-hidden').value = firstLot.id;
-    document.getElementById('cession-qty').value = 1;
-    document.getElementById('cession-qty').setAttribute('readonly', 'readonly');
-    document.getElementById('cession-qty').classList.add('opacity-60', 'cursor-not-allowed');
+    hidden.value = firstLot.id;
+    const qtyInput = document.getElementById('cession-qty');
+    qtyInput.value = 1;
+    qtyInput.setAttribute('readonly', 'readonly');
+    qtyInput.classList.add('opacity-60', 'cursor-not-allowed');
+    qtyInput.oninput = null;
 
     // Pré-remplit date achat et prix achat depuis ce lot
     document.getElementById('cession-date-achat').value = firstLot.date || '';
@@ -981,68 +1027,89 @@ function handleAddCession(e) {
         coupons: parseFloat(document.getElementById('cession-coupons').value) || 0
     });
 
-    
+    // --- ÉTAPE 1 : VALIDER et SIMULER la consommation des lots AVANT toute mutation ---
+    let assetToModify = null;
+    let qtyToSell = 0;
+    const sourceAssetId = parseFloat(document.getElementById('cession-source-asset').value);
 
-        if (editId) {
+    if (!editId && sourceAssetId) {
+        assetToModify = assets.find(a => a.id === sourceAssetId);
+        if (!assetToModify) {
+            alert('Actif source introuvable.');
+            return;
+        }
+        qtyToSell = parseFloat(document.getElementById('cession-qty').value) || assetToModify.qty;
+        if (qtyToSell > assetToModify.qty) {
+            alert(`Quantité invalide : ${qtyToSell} demandées, ${assetToModify.qty} disponibles.`);
+            return;
+        }
+
+        const selectedLotId = document.getElementById('cession-lot-id-hidden')?.value || '';
+        const dryRun = selectedLotId
+            ? consumeLotById(assetToModify, selectedLotId, qtyToSell)
+            : consumeFIFO(assetToModify, qtyToSell);
+
+        if (dryRun.error) {
+            alert(dryRun.error);
+            return;
+        }
+        // Rollback : on restaure les lots tels qu'ils étaient avant le dry-run
+        // (consumeFIFO/consumeLotById mutent lot.qtyRemaining directement, il
+        // faut donc annuler explicitement).
+        if (selectedLotId) {
+            const lot = (assetToModify.lots || []).find(l => String(l.id) === String(selectedLotId));
+            if (lot) lot.qtyRemaining = (lot.qtyRemaining || 0) + qtyToSell;
+        } else {
+            dryRun.consumedLots.forEach(c => {
+                const lot = (assetToModify.lots || []).find(l => String(l.id) === String(c.lotId));
+                if (lot) lot.qtyRemaining = (lot.qtyRemaining || 0) + c.qty;
+            });
+        }
+    }
+
+    // --- ÉTAPE 2 : la cession est valide → on la persiste ---
+    if (editId) {
         const idx = cessions.findIndex(c => c.id === parseFloat(editId));
         if (idx > -1) cessions[idx] = cession;
     } else {
         cessions.push(cession);
     }
 
-    // Si la cession provient du flux "Vendre un actif", consommer les lots
-    const sourceAssetId = parseFloat(document.getElementById('cession-source-asset').value);
-    if (!editId && sourceAssetId) {
-        const asset = assets.find(a => a.id === sourceAssetId);
-        if (asset) {
-            const qtyToSell = parseFloat(document.getElementById('cession-qty').value) || asset.qty;
-            const selectedLotId = document.getElementById('cession-lot-id-hidden')?.value || '';
+    // --- ÉTAPE 3 : appliquer la consommation des lots pour de vrai ---
+    if (assetToModify) {
+        const selectedLotId = document.getElementById('cession-lot-id-hidden')?.value || '';
+        const consommation = selectedLotId
+            ? consumeLotById(assetToModify, selectedLotId, qtyToSell)
+            : consumeFIFO(assetToModify, qtyToSell);
 
-            if (qtyToSell > asset.qty) {
-                alert(`Quantité invalide : ${qtyToSell} demandées, ${asset.qty} disponibles.`);
-                return;
-            }
-
-            // Consommation : nominative si un lot est sélectionné, sinon FIFO classique
-            let consommation;
-            if (selectedLotId) {
-                consommation = consumeLotById(asset, selectedLotId, qtyToSell);
-            } else {
-                consommation = consumeFIFO(asset, qtyToSell);
-            }
-
-            if (consommation.error) {
-                alert(consommation.error);
-                return;
-            }
-
-            // Recalcule invested / frais / qty sur les lots restants
-            syncAssetFromLots(asset);
-
-            // Si plus rien, on supprime l'actif
-            if (asset.qty <= 0.0001) {
-                if (confirm(`Vente totale de "${asset.name}". L'actif sera retiré du portefeuille.`)) {
-                    assets = assets.filter(a => a.id !== sourceAssetId);
-                    saveToStorage();
-                }
-            } else {
-                // Vente partielle : l'actif reste, on réduit proportionnellement sa valeur de marché
-                const totalQtyAvantVente = asset.qty + qtyToSell;
-                const ratioRestant = totalQtyAvantVente > 0 ? (asset.qty / totalQtyAvantVente) : 0;
-                asset.value = Math.round(asset.value * ratioRestant * 100) / 100;
-                upsertTodayHistoryPoint(asset, asset.value, asset.invested);
-                saveToStorage();
-            }
+        // (Impossible d'échouer ici : on l'a validé en étape 1.)
+        if (consommation.error) {
+            // Sécurité ultime : on retire la cession que l'on vient d'ajouter
+            cessions = cessions.filter(c => c.id !== cession.id);
+            alert('Erreur inattendue lors de la consommation des lots : ' + consommation.error);
+            return;
         }
+
+        syncAssetFromLots(assetToModify);
+
+        if (assetToModify.qty <= 0.0001) {
+            if (confirm(`Vente totale de "${assetToModify.name}". L'actif sera retiré du portefeuille.`)) {
+                assets = assets.filter(a => a.id !== sourceAssetId);
+            }
+        } else {
+            const totalQtyAvantVente = assetToModify.qty + qtyToSell;
+            const ratioRestant = totalQtyAvantVente > 0 ? (assetToModify.qty / totalQtyAvantVente) : 0;
+            assetToModify.value = Math.round(assetToModify.value * ratioRestant * 100) / 100;
+            upsertTodayHistoryPoint(assetToModify, assetToModify.value, assetToModify.invested);
+        }
+        saveToStorage();
     }
-    
-        saveCessions();
-        closeModal('modal-add-cession');
-        calculateAnneeN1();
-        renderCessionsTable(cessionFilter);
-        refreshAllUI();
-        e.target.reset();
-    }
+
+    saveCessions();
+    closeModal('modal-add-cession');
+    refreshAllUI();   // inclut déjà calculateAnneeN1 + renderCessionsTable
+    e.target.reset();
+}
 
 function editCession(id) {
     const c = cessions.find(x => x.id === id);
@@ -1054,7 +1121,7 @@ function editCession(id) {
 
     const sourceSelect = document.getElementById('cession-source-asset');
     sourceSelect.innerHTML = '<option value="">-- Saisie libre --</option>' +
-        assets.map(a => `<option value="${a.id}">${a.name} (${a.ticker})</option>`).join('');
+        assets.map(a => `<option value="${a.id}">${escapeHTML(a.name)} (${escapeHTML(a.ticker)})</option>`).join('');
     sourceSelect.value = '';
 
     populateCessionEnvelopeOptions();
@@ -1095,9 +1162,14 @@ function openRecapModal() {
     const regimeLabel = taxRegimeMode === 'PFU'
         ? 'PFU / Flat Tax (30%)'
         : `Barème Progressif (TMI ${(taxTMI * 100).toFixed(0)}%)`;
-    const impotEstime    = document.getElementById('cession-stat-impot-estime').innerText;
-    const metalsTax      = document.getElementById('decomp-metaux-total').innerText;
-    const enveloppesTax  = document.getElementById('decomp-enveloppes-total').innerText;
+
+    // B14 : lecture via l'objet structuré (plus de parsing de texte DOM)
+    const tax = (typeof lastTaxBreakdown !== 'undefined' && lastTaxBreakdown)
+        ? lastTaxBreakdown
+        : (typeof computeTaxBreakdown === 'function' ? computeTaxBreakdown() : null);
+    const impotEstime   = tax ? formatEUR(tax.selectedTotal)     : '—';
+    const metalsTax     = tax ? formatEUR(tax.metalsTaxTotal)    : '—';
+    const enveloppesTax = tax ? formatEUR(tax.enveloppesTaxTotal) : '—';
 
     document.getElementById('modal-recap-body').innerHTML = `
         <div class="p-3 bg-gray-950 rounded-lg border border-gray-800">
@@ -1119,11 +1191,58 @@ function openRecapModal() {
             </div>
         </div>
         <div class="text-[10px] text-gray-500 font-sans leading-relaxed">Basé sur ${securities.length} cession(s) CTO/crypto, ${metals.length} cession(s) de métaux/jetons et ${enveloppes.length} cession(s) en enveloppe PEA/Assurance-Vie/PER enregistrée(s) dans le registre. Cette estimation est fournie à titre indicatif et ne remplace pas les cases précises de votre déclaration de revenus (2042, 2086, 2074...) ni l'avis d'un professionnel — en particulier pour le PER, dont la fiscalité dépend fortement du mode de sortie et de la déductibilité des versements.</div>
-        <button onclick="window.print()" class="w-full mt-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center justify-center gap-2 font-sans"><i class="fa-solid fa-print"></i> Imprimer / Exporter en PDF</button>
+        <button onclick="exportRecapPDF()" class="w-full mt-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center justify-center gap-2 font-sans"><i class="fa-solid fa-file-pdf"></i> Exporter en PDF (mise en page A4)</button>
     `;
     document.getElementById('modal-recap').classList.remove('hidden');
 }
+// Gestion du sélecteur de courtier (avec création custom)
+const KNOWN_BROKERS = [
+    'Boursorama', 'Bourse Direct', 'Fortuneo', 'Trade Republic', 'Interactive Brokers',
+    'Degiro', 'Saxo Banque', 'Binance', 'Coinbase', 'Kraken', 'Ledger', 'AuCoffre.com',
+    'Linxea', 'Yomoni', 'Nalo'
+];
 
+function onBrokerSelectChange() {
+    const sel = document.getElementById('add-broker-select');
+    const custom = document.getElementById('add-broker-custom');
+    const hidden = document.getElementById('add-broker');
+    if (sel.value === '__custom__') {
+        custom.classList.remove('hidden');
+        custom.focus();
+        custom.oninput = () => { hidden.value = custom.value.trim(); };
+        hidden.value = custom.value.trim();
+    } else {
+        custom.classList.add('hidden');
+        custom.value = '';
+        hidden.value = sel.value;
+    }
+}
+
+// Pré-remplit le sélecteur de courtier à partir d'une valeur enregistrée
+function setBrokerValue(brokerName) {
+    const sel = document.getElementById('add-broker-select');
+    const custom = document.getElementById('add-broker-custom');
+    const hidden = document.getElementById('add-broker');
+    const v = (brokerName || '').trim();
+    if (!v) {
+        sel.value = '';
+        custom.classList.add('hidden');
+        custom.value = '';
+        hidden.value = '';
+        return;
+    }
+    if (KNOWN_BROKERS.includes(v) || v === '') {
+        sel.value = v;
+        custom.classList.add('hidden');
+        custom.value = '';
+    } else {
+        sel.value = '__custom__';
+        custom.classList.remove('hidden');
+        custom.value = v;
+        custom.oninput = () => { hidden.value = custom.value.trim(); };
+    }
+    hidden.value = v;
+}
 // =====================================================================
 // SIMULATEUR FISCALITÉ MÉTAUX (indépendant du registre)
 // =====================================================================
@@ -1181,4 +1300,692 @@ function calculateMetalTaxSim() {
     }
 
     box.innerHTML = html;
+}
+
+
+// =====================================================================
+// IMPORT CSV / EXCEL — utiliser SheetJS (déjà chargé dans index.html)
+// Supporte : AuCoffre, Trade Republic, Boursorama, Scalable, Revolut…
+// Chaque ligne devient un nouveau lot (fusion si ticker existant).
+// =====================================================================
+let _csvRows = [];
+let _csvHeaders = [];
+
+const CSV_FIELD_DEFS = [
+    { key: 'name',   label: 'Nom du produit *',   patterns: ['nom','name','produit','libell','designation','description','title'] },
+    { key: 'ticker', label: 'Ticker / Symbole',    patterns: ['ticker','symbole','symbol','code','ref'] },
+    { key: 'qty',    label: 'Quantité *',          patterns: ['quantit','quantity','qty','nombre','shares','unit'] },
+    { key: 'price',  label: "Prix d'achat unitaire *", patterns: ["prix d'achat",'prix achat','prix unitaire','prix','price','cours','purchase price'] },
+    { key: 'date',   label: "Date d'achat",        patterns: ["date d'achat",'date achat','date','purchase date'] },
+    { key: 'frais',  label: 'Frais / Commission',  patterns: ['frais','commission','fee','courtage'] }
+];
+
+// Parse un nombre au format FR (1.234,56) ou EN (1,234.56)
+function _parseNumberLoose(raw) {
+    if (typeof raw === 'number') return raw;
+    if (raw === null || raw === undefined) return NaN;
+    let s = String(raw).trim().replace(/\s/g, '').replace(/[€$£]/g, '');
+    if (s === '') return NaN;
+    const hasComma = s.includes(',');
+    const hasDot = s.includes('.');
+    if (hasComma && hasDot) {
+        // Si la virgule est après le point → format FR (le point = milliers)
+        if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, '').replace(',', '.');
+        else s = s.replace(/,/g, '');
+    } else if (hasComma) {
+        s = s.replace(',', '.');
+    }
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : NaN;
+}
+
+function openCsvImportModal() {
+    resetCsvImport();
+    document.getElementById('modal-csv-import').classList.remove('hidden');
+}
+
+function resetCsvImport() {
+    _csvRows = [];
+    _csvHeaders = [];
+    const s1 = document.getElementById('csv-step-1');
+    const s2 = document.getElementById('csv-step-2');
+    const btn = document.getElementById('csv-import-btn');
+    if (s1) s1.classList.remove('hidden');
+    if (s2) s2.classList.add('hidden');
+    if (btn) btn.classList.add('hidden');
+    const inp = document.getElementById('input-import-csv');
+    if (inp) inp.value = '';
+}
+
+function handleImportCSVFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        try {
+            if (typeof XLSX === 'undefined') { alert('SheetJS non chargé — vérifiez votre connexion internet.'); return; }
+            const data = new Uint8Array(ev.target.result);
+            const wb = XLSX.read(data, { type: 'array', cellDates: true });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+
+            if (!json.length || json.length < 2) { alert('Fichier vide ou trop court.'); return; }
+
+            _csvHeaders = (json[0] || []).map(h => String(h || '').trim());
+            _csvRows = json.slice(1).filter(r => r.some(c => String(c || '').trim() !== ''));
+            if (!_csvRows.length) { alert('Aucune ligne de données détectée.'); return; }
+
+            renderCsvMapping();
+            renderCsvPreview();
+            document.getElementById('csv-step-1').classList.add('hidden');
+            document.getElementById('csv-step-2').classList.remove('hidden');
+            document.getElementById('csv-import-btn').classList.remove('hidden');
+        } catch (err) {
+            alert('Erreur de lecture du fichier : ' + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function _headerMatches(header, patterns) {
+    const h = String(header || '').toLowerCase().trim();
+    return patterns.some(p => h.includes(p));
+}
+
+function renderCsvMapping() {
+    const container = document.getElementById('csv-column-mapping');
+    container.innerHTML = CSV_FIELD_DEFS.map(f => {
+        let detected = '';
+        _csvHeaders.forEach((h, i) => {
+            if (detected === '' && _headerMatches(h, f.patterns)) detected = i;
+        });
+        const opts = '<option value="">— Ignorer —</option>' + _csvHeaders.map((h, i) =>
+            `<option value="${i}" ${String(detected) === String(i) ? 'selected' : ''}>${escapeHTML(h || '(colonne ' + (i + 1) + ')')}</option>`
+        ).join('');
+        return `<div>
+            <label class="block text-[10px] text-gray-400 uppercase mb-1">${escapeHTML(f.label)}</label>
+            <select data-csv-field="${f.key}" onchange="renderCsvPreview()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-1.5 text-white text-xs focus:outline-none focus:border-teal-500">${opts}</select>
+        </div>`;
+    }).join('');
+}
+
+function getCsvFieldMap() {
+    const map = {};
+    document.querySelectorAll('#csv-column-mapping select[data-csv-field]').forEach(sel => {
+        if (sel.value !== '') map[sel.dataset.csvField] = parseInt(sel.value);
+    });
+    return map;
+}
+
+function renderCsvPreview() {
+    const thead = document.getElementById('csv-preview-header');
+    const tbody = document.getElementById('csv-preview-body');
+    thead.innerHTML = _csvHeaders.map(h => `<th class="p-2 text-left">${escapeHTML(h || '')}</th>`).join('');
+    const rows = _csvRows.slice(0, 20).map(r =>
+        `<tr class="border-t border-gray-800/60">${
+            _csvHeaders.map((_, i) => `<td class="p-2 text-[11px]">${escapeHTML(String(r[i] ?? ''))}</td>`).join('')
+        }</tr>`
+    ).join('');
+    tbody.innerHTML = rows + (_csvRows.length > 20
+        ? `<tr><td colspan="${_csvHeaders.length}" class="p-2 text-center text-gray-500 text-[11px]">… et ${_csvRows.length - 20} autres lignes</td></tr>`
+        : '');
+}
+
+function confirmCsvImport() {
+    const map = getCsvFieldMap();
+    if (map.name === undefined || map.qty === undefined || map.price === undefined) {
+        alert('Vous devez mapper au minimum : Nom, Quantité et Prix d\'achat.');
+        return;
+    }
+    const mergeDup = document.getElementById('csv-merge-duplicates').checked;
+    const dryRun = document.getElementById('csv-dryrun').checked;
+
+    // Skeleton immédiat sur l'inventaire pendant la construction des actifs
+    if (!dryRun) showSkeletonFor('#table-inventory-body', 6, 13);
+
+    let created = 0, merged = 0, skipped = 0;
+    const todayISO = new Date().toISOString().slice(0, 10);
+
+    _csvRows.forEach((row, lineNo) => {
+        const name = String(row[map.name] || '').trim();
+        if (!name) { skipped++; return; }
+
+        const ticker = map.ticker !== undefined
+            ? (String(row[map.ticker] || '').trim().toUpperCase() || name.slice(0, 6).toUpperCase().replace(/\s/g, ''))
+            : name.slice(0, 6).toUpperCase().replace(/\s/g, '');
+
+        const qty = _parseNumberLoose(row[map.qty]);
+        const price = _parseNumberLoose(row[map.price]);
+        const frais = map.frais !== undefined ? (_parseNumberLoose(row[map.frais]) || 0) : 0;
+
+        let dateISO = todayISO;
+        let dateFR = new Date().toLocaleDateString('fr-FR');
+        if (map.date !== undefined && row[map.date]) {
+            const d = parseFlexDate(String(row[map.date]).trim());
+            if (d) {
+                dateISO = d.toISOString().slice(0, 10);
+                dateFR = d.toLocaleDateString('fr-FR');
+            }
+        }
+
+        if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(price) || price < 0) {
+            skipped++;
+            return;
+        }
+
+        // Fusion avec un actif existant ?
+        const existing = mergeDup ? assets.find(a => (a.ticker || '').toUpperCase() === ticker) : null;
+
+        if (existing) {
+            if (!dryRun) {
+                const oldUnit = existing.qty > 0 ? (existing.value / existing.qty) : price;
+                existing.lots = (existing.lots || []).concat([ makeLot(dateISO, qty, price, frais, '') ]);
+                existing.buys = (existing.buys || []).concat([{ date: dateFR, type: 'Import CSV', qty, price, frais, total: qty * price + frais }]);
+                syncAssetFromLots(existing);
+                existing.value = Math.round(existing.qty * oldUnit * 100) / 100;
+                upsertTodayHistoryPoint(existing, existing.value, existing.invested);
+            }
+            merged++;
+        } else {
+            const newAsset = {
+                id: Date.now() + Math.floor(Math.random() * 100000),
+                name, ticker,
+                categories: ['Action'],
+                taxCategory: 'NON_CONCERNE',
+                cadrans: { primary: 'HORS_GAVE', secondary: [] },
+                cadran: 'HORS_GAVE',
+                qty, frais, invested: qty * price + frais, value: qty * price,
+                envelope: 'CTO',
+                envelopeOpenedAt: '',
+                zone: 'UE',
+                valuationMode: 'QUOTE',
+                yahooTicker: '',
+                purchaseDate: dateISO,
+                broker: 'Import CSV',
+                lots: [ makeLot(dateISO, qty, price, frais, '') ],
+                buys: [{ date: dateFR, type: 'Import CSV', qty, price, frais, total: qty * price + frais }],
+                history: [{ date: dateFR, value: qty * price, invested: qty * price + frais }]
+            };
+            if (!dryRun) {
+                // Paper trading : les imports en mode actif deviennent des positions papier
+                if (paperMode) newAsset.isPaper = true;
+                normalizeAsset(newAsset);
+                assets.push(newAsset);
+            }
+            created++;
+        }
+    });
+
+    if (!dryRun) {
+        saveToStorage();
+        refreshAllUI();
+    }
+    closeModal('modal-csv-import');
+
+    alert(
+        `Import ${dryRun ? '(PRÉVISUALISATION) ' : ''}terminé :\n` +
+        `• ${created} nouvel/aux actif(s)\n` +
+        `• ${merged} lot(s) ajouté(s) à des actifs existants\n` +
+        `• ${skipped} ligne(s) ignorée(s) (données manquantes ou invalides)`
+    );
+}
+
+
+// =====================================================================
+// DUPLICATION D'UN ACTIF (variantes rapides : Vera Valor 1/10, 1/20…)
+// =====================================================================
+function duplicateAsset(id) {
+    const source = assets.find(a => a.id === id);
+    if (!source) return;
+
+    document.getElementById('dup-source-id').value = id;
+    document.getElementById('dup-source-label').innerText =
+        `${source.name} (${source.ticker}) — ${formatEUR(source.value || 0)}`;
+
+    // Pré-remplissage intelligent :
+    // - Nom : "Nom source — variante" (l'utilisateur remplace "variante" par 1/10, 1/20…)
+    // - Ticker : "TICKER-2" — l'utilisateur ajuste (VV1/10OZ, VV1/2OZ…)
+    // - Quantité / Prix : ceux de la source (PRU fiscal recalculé des lots)
+    // - Date / Frais : aujourd'hui, 0 €
+    document.getElementById('dup-name').value = source.name + ' — variante';
+    document.getElementById('dup-ticker').value = source.ticker + '-2';
+    document.getElementById('dup-qty').value = source.qty || 1;
+
+    const pru = computePRUFromLots(source) || (source.qty > 0 ? source.invested / source.qty : 0);
+    document.getElementById('dup-price').value = pru > 0 ? pru.toFixed(4) : '';
+    document.getElementById('dup-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('dup-frais').value = 0;
+
+    document.getElementById('modal-duplicate-asset').classList.remove('hidden');
+    setTimeout(() => document.getElementById('dup-name').select(), 50);
+}
+
+function handleDuplicateAsset(e) {
+    e.preventDefault();
+    const sourceId = parseFloat(document.getElementById('dup-source-id').value);
+    const source = assets.find(a => a.id === sourceId);
+    if (!source) { alert('Actif source introuvable.'); return; }
+
+    const name   = document.getElementById('dup-name').value.trim();
+    const ticker = document.getElementById('dup-ticker').value.trim().toUpperCase();
+    const qty    = parseFloat(document.getElementById('dup-qty').value) || 0;
+    const price  = parseFloat(document.getElementById('dup-price').value) || 0;
+    const frais  = parseFloat(document.getElementById('dup-frais').value) || 0;
+    const dateISO = document.getElementById('dup-date').value || new Date().toISOString().slice(0, 10);
+    const dateFR  = new Date(dateISO).toLocaleDateString('fr-FR');
+
+    if (!name || !ticker) { alert('Nom et ticker sont requis.'); return; }
+    if (qty <= 0 || price < 0) { alert('Quantité et prix doivent être positifs.'); return; }
+
+    // Alerte douce si le ticker existe déjà (l'utilisateur peut vouloir créer une
+    // variante ou écraser volontairement — on ne bloque pas, on prévient).
+    const dupTicker = assets.find(a => a.id !== sourceId && (a.ticker || '').toUpperCase() === ticker);
+    if (dupTicker && !confirm(`Un actif avec le ticker "${ticker}" existe déjà :\n"${dupTicker.name}"\n\nCréer quand même la copie ?`)) return;
+
+    // Clone superficiel : on garde categories, cadrans, envelope, taxCategory,
+    // isin, broker, valuationMode, zone, yahooTicker… puis on écrase les champs
+    // spécifiques au lot et on repart d'un historique propre.
+    const clone = JSON.parse(JSON.stringify(source));
+    clone.id           = Date.now() + Math.floor(Math.random() * 100000);
+    clone.name         = name;
+    clone.ticker       = ticker;
+    clone.qty          = qty;
+    clone.frais        = frais;
+    clone.invested     = qty * price + frais;
+    clone.value        = qty * price;
+    clone.purchaseDate = dateISO;
+
+    // Lot unique neuf, historique neuf, aucun flag résiduel de migration/override
+    clone.lots    = [ makeLot(dateISO, qty, price, frais, '') ];
+    clone.buys    = [{ date: dateFR, type: 'Copie', qty, price, frais, total: clone.invested }];
+    clone.history = [{ date: dateFR, value: clone.value, invested: clone.invested }];
+    delete clone.needsReclass;
+    delete clone.reclassSuggestion;
+    delete clone.manualValueOverride;
+    delete clone.manualUpdateDate;
+    delete clone.manualUpdateSource;
+
+    normalizeAsset(clone);
+    assets.push(clone);
+
+    saveToStorage();
+    closeModal('modal-duplicate-asset');
+    refreshAllUI();
+
+    // Redirige vers la copie : c'est presque toujours l'intention de l'utilisateur
+    // qui vient de dupliquer (pour l'éditer juste après).
+    setTimeout(() => openEditAssetModal(clone.id), 80);
+}
+
+
+// =====================================================================
+// EXPORT PDF — Récapitulatif fiscal (mise en page A4 dédiée)
+// Injecte un DOM HTML complet dans #print-fiscal-recap, puis déclenche
+// l'impression. Le CSS @media print masque tout le reste de l'app.
+// =====================================================================
+function exportRecapPDF() {
+    const container = document.getElementById('print-fiscal-recap');
+    if (!container) { alert('Conteneur d\'impression introuvable.'); return; }
+
+    const tax = (typeof computeTaxBreakdown === 'function')
+        ? computeTaxBreakdown()
+        : {
+            selectedTotal: 0, metalsTaxTotal: 0, enveloppesTaxTotal: 0, totalImpot: 0,
+            plusValuesBrutes: 0, moinsValuesBrutes: 0, netForPFU: 0, totalBrutVentes: 0,
+            securitiesCount: 0, pfuTotal: 0, baremeTotal: 0,
+            pfuIR: 0, pfuPS: 0, baremeIR: 0, baremePS: 0, csgDeductible: 0
+        };
+
+    const regimeLabel = taxRegimeMode === 'PFU'
+        ? 'PFU / Flat Tax (30 % — 12,8 % IR + 17,2 % PS)'
+        : `Barème Progressif (TMI ${(taxTMI * 100).toFixed(0)} %)`;
+
+    const exercise = new Date().getFullYear() - 1;  // exercice N-1
+    const nowFR    = new Date().toLocaleString('fr-FR');
+
+    // --- Groupement des cessions par grande famille fiscale ---
+    const groups = {
+        cto:    { label: 'Valeurs mobilières — CTO (Actions / ETF / Obligations)', rows: [] },
+        crypto: { label: 'Actifs numériques — Cryptomonnaies', rows: [] },
+        metals: { label: 'Métaux précieux, Jetons & Pièces à cours légal', rows: [] },
+        env:    { label: 'Enveloppes fiscales (PEA / PEA-PME / Assurance-Vie / PER)', rows: [] }
+    };
+    cessions.forEach(c => {
+        if (c.type === 'CRYPTO')                                          groups.crypto.rows.push(c);
+        else if (METAL_TYPES.includes(c.type))                            groups.metals.rows.push(c);
+        else if (c.type === 'ACTION_ETF' && c.envelope && c.envelope !== 'CTO') groups.env.rows.push(c);
+        else                                                              groups.cto.rows.push(c);
+    });
+
+    // --- Rendus ligne à ligne ---
+    const renderRows = (rows) => {
+        if (!rows.length) {
+            return `<tr><td colspan="7" style="text-align:center;color:#9ca3af;font-style:italic;padding:10px;">Aucune cession enregistrée dans cette catégorie.</td></tr>`;
+        }
+        return rows
+            .slice()
+            .sort((a, b) => new Date(b.dateVente) - new Date(a.dateVente))
+            .map(c => {
+                const line  = computeCessionLine(c);
+                const isPos = line.pvBrute >= 0;
+                const dateFR = c.dateVente ? new Date(c.dateVente).toLocaleDateString('fr-FR') : '—';
+                return `<tr>
+                    <td>${dateFR}</td>
+                    <td>${escapeHTML(c.name)}</td>
+                    <td class="pdf-num">${formatEUR(c.prixVente)}</td>
+                    <td class="pdf-num">${formatEUR(c.prixAchat)}</td>
+                    <td class="pdf-num" style="color:${isPos ? '#047857' : '#be123c'};font-weight:600;">${isPos ? '+' : ''}${formatEUR(line.pvBrute)}</td>
+                    <td style="font-size:9.5px;color:#4b5563;">${escapeHTML(line.abattementLabel)} · ${escapeHTML(line.detentionTag)}</td>
+                    <td class="pdf-num" style="color:#b45309;font-weight:600;">${formatEUR(line.taxLine)}</td>
+                </tr>`;
+            })
+            .join('');
+    };
+
+    const renderGroupTotal = (rows, label) => {
+        const pv  = rows.reduce((s, c) => s + Math.max(0, (c.prixVente || 0) - (c.prixAchat || 0) - (c.frais || 0)), 0);
+        const mv  = rows.reduce((s, c) => s + Math.min(0, (c.prixVente || 0) - (c.prixAchat || 0) - (c.frais || 0)), 0);
+        const t   = rows.reduce((s, c) => s + computeCessionLine(c).taxLine, 0);
+        return `<tr class="pdf-total-row">
+            <td colspan="4" style="text-align:right;">Sous-total — ${escapeHTML(label)}</td>
+            <td class="pdf-num">${formatEUR(pv + mv)}</td>
+            <td></td>
+            <td class="pdf-num">${formatEUR(t)}</td>
+        </tr>`;
+    };
+
+    // --- Page 1 : synthèse ---
+    let html = `<div class="pdf-page">
+        <div class="pdf-header">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div class="pdf-logo">📊</div>
+                <div>
+                    <h1>PatriMonial — Récapitulatif Fiscal</h1>
+                    <div style="font-size:11px;color:#4b5563;">Exercice ${exercise} · Déclaration des revenus ${exercise + 1}</div>
+                </div>
+            </div>
+            <div class="pdf-meta">
+                Édité le ${nowFR}<br>
+                Régime retenu : <b>${regimeLabel}</b>
+            </div>
+        </div>
+
+        <div class="pdf-kpi-grid">
+            <div class="pdf-kpi"><div class="label">Total cessions brutes</div><div class="value">${formatEUR(tax.totalBrutVentes)}</div></div>
+            <div class="pdf-kpi positive"><div class="label">Plus-values brutes</div><div class="value">${formatEUR(tax.plusValuesBrutes)}</div></div>
+            <div class="pdf-kpi negative"><div class="label">Moins-values brutes</div><div class="value">${formatEUR(tax.moinsValuesBrutes)}</div></div>
+            <div class="pdf-kpi accent"><div class="label">Impôt total estimé</div><div class="value">${formatEUR(tax.totalImpot)}</div></div>
+        </div>
+
+        <h2>1 · Synthèse du régime CTO (Titres &amp; Crypto)</h2>
+        <div class="pdf-kpi-grid">
+            <div class="pdf-kpi"><div class="label">Solde net imposable</div><div class="value">${formatEUR(tax.netForPFU)}</div></div>
+            <div class="pdf-kpi"><div class="label">PFU — IR 12,8 %</div><div class="value">${formatEUR(tax.pfuIR)}</div></div>
+            <div class="pdf-kpi"><div class="label">PFU — PS 17,2 %</div><div class="value">${formatEUR(tax.pfuPS)}</div></div>
+            <div class="pdf-kpi accent"><div class="label">Total PFU</div><div class="value">${formatEUR(tax.pfuTotal)}</div></div>
+        </div>
+        <div class="pdf-kpi-grid">
+            <div class="pdf-kpi"><div class="label">Barème — IR (TMI ${(taxTMI * 100).toFixed(0)} %)</div><div class="value">${formatEUR(tax.baremeIR)}</div></div>
+            <div class="pdf-kpi"><div class="label">Barème — PS 17,2 %</div><div class="value">${formatEUR(tax.baremePS)}</div></div>
+            <div class="pdf-kpi negative"><div class="label">Déduction CSG 6,8 %</div><div class="value">-${formatEUR(tax.csgDeductible)}</div></div>
+            <div class="pdf-kpi accent"><div class="label">Total Barème</div><div class="value">${formatEUR(tax.baremeTotal)}</div></div>
+        </div>
+        <div style="font-size:10px;color:#4b5563;margin-top:4px;">
+            Option retenue : <b>${regimeLabel}</b> · Impôt CTO : <b>${formatEUR(tax.selectedTotal)}</b>
+        </div>
+    </div>`;
+
+    // --- Page 2 : détail par catégorie ---
+    html += `<div class="pdf-page">
+        <div class="pdf-header" style="margin-bottom:12px;padding-bottom:8px;">
+            <div><h1 style="font-size:15px;">Détail des cessions par catégorie fiscale</h1></div>
+            <div class="pdf-meta">Exercice ${exercise}</div>
+        </div>`;
+
+    const sections = [
+        { idx: 2, data: groups.cto    },
+        { idx: 3, data: groups.crypto },
+        { idx: 4, data: groups.metals },
+        { idx: 5, data: groups.env    }
+    ];
+    sections.forEach(s => {
+        html += `<div class="pdf-section">
+            <h2>${s.idx} · ${s.data.label}</h2>
+            <table>
+                <thead><tr>
+                    <th>Date</th><th>Libellé</th>
+                    <th style="text-align:right;">Prix vente</th>
+                    <th style="text-align:right;">Prix achat</th>
+                    <th style="text-align:right;">Plus/moins-value</th>
+                    <th>Régime / abattement</th>
+                    <th style="text-align:right;">Impôt ligne</th>
+                </tr></thead>
+                <tbody>
+                    ${renderRows(s.data.rows)}
+                    ${s.data.rows.length ? renderGroupTotal(s.data.rows, s.data.label) : ''}
+                </tbody>
+            </table>
+        </div>`;
+    });
+
+    // --- Total général + pied de page ---
+    html += `<div class="pdf-section">
+        <h2>6 · Total général</h2>
+        <table>
+            <tbody>
+                <tr><td style="width:65%;">Impôt CTO / Crypto (régime sélectionné)</td><td class="pdf-num">${formatEUR(tax.selectedTotal)}</td></tr>
+                <tr><td>Impôt Métaux précieux / Jetons / Pièces à cours légal</td><td class="pdf-num">${formatEUR(tax.metalsTaxTotal)}</td></tr>
+                <tr><td>Impôt Enveloppes (PEA / AV / PER)</td><td class="pdf-num">${formatEUR(tax.enveloppesTaxTotal)}</td></tr>
+                <tr class="pdf-total-row"><td>Total impôt estimé pour l'exercice ${exercise}</td><td class="pdf-num">${formatEUR(tax.totalImpot)}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pdf-footer">
+        <b>Avertissement :</b> ce document est une estimation indicative produite automatiquement à partir des données saisies dans PatriMonial. Il ne remplace pas les cases précises de votre déclaration de revenus (2042, 2086, 2074…) ni l'avis d'un professionnel de la fiscalité — en particulier pour le PER, dont la fiscalité dépend fortement du mode de sortie et de la déductibilité des versements.
+        <br>Nombre de cessions prises en compte : <b>${cessions.length}</b> · Document généré le ${nowFR}.
+    </div>
+    </div>`;
+
+    container.innerHTML = html;
+
+    // Laisse le navigateur appliquer les styles avant d'ouvrir la boîte d'impression
+    setTimeout(() => window.print(), 150);
+}
+
+
+// =====================================================================
+// SIMULATEUR « ET SI JE VENDAIS ? » — calcul temps réel, 0 modification
+// ---------------------------------------------------------------------
+// La simulation se contente de construire une cession fictive (id=-1) et
+// de la passer à computeCessionLine() : on réutilise ainsi TOUTE la
+// logique fiscale (métaux, jetons, enveloppes PEA/AV/PER, PFU/Barème,
+// abattement durée) sans la dupliquer.
+// =====================================================================
+let _simulatorAssetId = null;
+
+function openSellSimulator(assetId) {
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+
+    _simulatorAssetId = assetId;
+
+    // En-tête
+    document.getElementById('sim-asset-name').innerText     = asset.name;
+    document.getElementById('sim-asset-ticker').innerText   = asset.ticker + (asset.envelope ? ' · ' + envelopeShort(asset.envelope) : '');
+    document.getElementById('sim-asset-held').innerText     = fmtQty(asset.qty) + ' u.';
+
+    const pru       = computePRUFromLots(asset) || (asset.qty > 0 ? asset.invested / asset.qty : 0);
+    const unitValue = asset.qty > 0 ? (asset.value / asset.qty) : 0;
+
+    document.getElementById('sim-asset-pru').innerText         = formatUnitPrice(pru);
+    document.getElementById('sim-asset-value-unit').innerText  = formatUnitPrice(unitValue);
+
+    // Inputs
+    const qtyInput = document.getElementById('sim-quantity');
+    qtyInput.max   = asset.qty;
+    qtyInput.value = asset.qty;
+    const slider = document.getElementById('sim-quantity-slider');
+    slider.max   = asset.qty;
+    slider.value = asset.qty;
+    document.getElementById('sim-unit-price').value = unitValue.toFixed(4);
+    document.getElementById('sim-sale-date').value  = new Date().toISOString().slice(0, 10);
+
+    document.getElementById('modal-simulate-sale').classList.remove('hidden');
+    recalcSimulation();
+}
+
+// Synchronisation slider ↔ champ numérique
+function onSimQuantityInput(source) {
+    const asset = assets.find(a => a.id === _simulatorAssetId);
+    if (!asset) return;
+    const max = asset.qty;
+    const slider = document.getElementById('sim-quantity-slider');
+    const number = document.getElementById('sim-quantity');
+
+    let v;
+    if (source === 'slider') {
+        v = parseFloat(slider.value) || 0;
+        number.value = v;
+    } else {
+        v = parseFloat(number.value) || 0;
+        v = Math.max(0, Math.min(v, max));
+        number.value = v;
+        slider.value = v;
+    }
+    recalcSimulation();
+}
+
+function simSetQuantityPct(pct) {
+    const asset = assets.find(a => a.id === _simulatorAssetId);
+    if (!asset) return;
+    const v = asset.qty * (pct / 100);
+    document.getElementById('sim-quantity').value = v;
+    document.getElementById('sim-quantity-slider').value = v;
+    recalcSimulation();
+}
+
+function recalcSimulation() {
+    const asset = assets.find(a => a.id === _simulatorAssetId);
+    if (!asset) return;
+
+    const qtyInput   = document.getElementById('sim-quantity');
+    const priceInput = document.getElementById('sim-unit-price');
+    const dateInput  = document.getElementById('sim-sale-date');
+
+    const qty       = Math.max(0, Math.min(parseFloat(qtyInput.value) || 0, asset.qty));
+    const unitPrice = parseFloat(priceInput.value) || 0;
+    const dateISO   = dateInput.value || new Date().toISOString().slice(0, 10);
+
+    // Rappel : delta vs valeur unitaire courante
+    const currentUnitValue = asset.qty > 0 ? (asset.value / asset.qty) : 0;
+    const deltaEl = document.getElementById('sim-price-delta');
+    if (currentUnitValue > 0 && unitPrice > 0) {
+        const d = ((unitPrice - currentUnitValue) / currentUnitValue) * 100;
+        const c = d >= 0 ? 'text-emerald-400' : 'text-rose-400';
+        deltaEl.className = 'text-[10px] mt-1 font-mono ' + c;
+        deltaEl.innerText = (d >= 0 ? '+' : '') + d.toFixed(2) + ' % vs cours actuel';
+    } else {
+        deltaEl.className = 'text-[10px] mt-1 font-mono text-gray-500';
+        deltaEl.innerText = '—';
+    }
+
+    // PRU fiscal (méthode officielle : lots restants uniquement)
+    const pru = computePRUFromLots(asset) || (asset.qty > 0 ? asset.invested / asset.qty : 0);
+
+    const totalSale = qty * unitPrice;
+    const totalCost = pru * qty;
+    const pnl       = totalSale - totalCost;
+
+    // --- Détermination du type fiscal, identique à prefillCessionFromAsset() ---
+    const security = isSecurityAsset(asset);
+    const cessionType = (!security && METAL_TYPES.includes(asset.taxCategory))
+        ? asset.taxCategory
+        : (hasTag(asset, 'Crypto') && !security ? 'CRYPTO' : 'ACTION_ETF');
+    const subType = hasTag(asset, 'Obligation') ? 'OBLIGATION'
+                  : hasTag(asset, 'ETF')        ? 'ETF'
+                  : 'ACTION';
+
+    // Date d'acquisition la plus ancienne connue (pour l'abattement durée)
+    const firstLot = (asset.lots || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+    const dateAchatISO = firstLot ? firstLot.date : (asset.purchaseDate || '');
+
+    // Cession fictive passée à computeCessionLine : réutilise 100 % de la fiscalité
+    const fakeCession = normalizeCession({
+        id: -1,
+        type: cessionType,
+        subType,
+        name: asset.name,
+        dateVente: dateISO,
+        dateAchat: dateAchatISO,
+        prixVente: totalSale,
+        prixAchat: totalCost,
+        frais: 0,
+        avant2018: false,
+        envelope: security ? (asset.envelope || 'CTO') : '',
+        envelopeOpenedAt: asset.envelopeOpenedAt || '',
+        zone: asset.zone || 'UE',
+        coupons: 0
+    });
+
+    const line = computeCessionLine(fakeCession);
+
+    // --- Rendu ---
+    document.getElementById('sim-result-total-sale').innerText = formatEUR(totalSale);
+    document.getElementById('sim-result-cost').innerText       = formatEUR(totalCost);
+
+    const pnlEl = document.getElementById('sim-result-pnl');
+    pnlEl.className = 'font-bold ' + (pnl >= 0 ? 'text-emerald-400' : 'text-rose-400');
+    pnlEl.innerText = (pnl >= 0 ? '+' : '') + formatEUR(pnl);
+
+    document.getElementById('sim-result-regime').innerText     = line.detentionTag || '—';
+    document.getElementById('sim-result-abattement').innerText = line.abattementLabel || '—';
+    document.getElementById('sim-result-tax').innerText        = formatEUR(line.taxLine);
+
+    const net = pnl - line.taxLine;
+    const netEl = document.getElementById('sim-result-net');
+    netEl.className = 'font-bold ' + (net >= 0 ? 'text-emerald-400' : 'text-rose-400');
+    netEl.innerText = (net >= 0 ? '+' : '') + formatEUR(net);
+
+    const netPct = totalSale > 0 ? (net / totalSale) * 100 : 0;
+    const netPctEl = document.getElementById('sim-result-net-pct');
+    netPctEl.className = 'font-mono ' + (net >= 0 ? 'text-emerald-400' : 'text-rose-400');
+    netPctEl.innerText = (netPct >= 0 ? '+' : '') + netPct.toFixed(2) + ' %';
+
+    // Avertissement (quantité nulle, partielle, ou dépasse)
+    const warn = document.getElementById('sim-warning');
+    const warns = [];
+    if (qty <= 0) warns.push('Quantité nulle : aucune vente simulée.');
+    if (qty > 0 && qty < asset.qty - 1e-9) warns.push(`Vente partielle : ${fmtQty(asset.qty - qty)} unité(s) resteront dans le portefeuille.`);
+    if (qty > asset.qty + 1e-9) warns.push('Quantité demandée supérieure à la position détenue.');
+    if (line.taxLine === 0 && pnl > 0) warns.push('Bonne nouvelle : aucune fiscalité estimée sur cette vente (franchise, abattement ou enveloppe exonérante).');
+    warn.innerHTML = warns.map(w => `<div><i class="fa-solid fa-circle-info mr-1"></i> ${escapeHTML(w)}</div>`).join('');
+    warn.classList.toggle('hidden', warns.length === 0);
+}
+
+// Ouvre le formulaire de cession pré-rempli avec les valeurs du simulateur.
+function simulateToCessionForm() {
+    const asset = assets.find(a => a.id === _simulatorAssetId);
+    if (!asset) { closeModal('modal-simulate-sale'); return; }
+
+    const qty       = parseFloat(document.getElementById('sim-quantity').value) || 0;
+    const unitPrice = parseFloat(document.getElementById('sim-unit-price').value) || 0;
+    const dateISO   = document.getElementById('sim-sale-date').value;
+
+    if (qty <= 0) { alert('Quantité nulle : rien à concrétiser.'); return; }
+
+    closeModal('modal-simulate-sale');
+    openAddCessionModal();
+
+    // Pré-remplissage via le flux normal du formulaire de cession
+    document.getElementById('cession-source-asset').value = asset.id;
+    prefillCessionFromAsset();
+
+    // Écrase ensuite avec les valeurs de la simulation
+    document.getElementById('cession-date-vente').value = dateISO;
+    document.getElementById('cession-qty').value        = qty;
+    document.getElementById('cession-prix-vente').value = (qty * unitPrice).toFixed(2);
+    // Le prix d'achat total sera recalculé côté handleAddCession (défensif)
+    updateCessionUnitPrices();
+    onCessionQtyChange();
 }

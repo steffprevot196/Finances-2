@@ -23,3 +23,346 @@ body {
 ::-webkit-scrollbar-track { background: #0b0f19; }
 ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+
+/* ============================================================
+   EXPORT PDF — Récapitulatif fiscal (mise en page A4 propre)
+   Le conteneur #print-fiscal-recap est vide à l'écran ; il est
+   rempli au moment du clic sur « Exporter en PDF », puis le
+   navigateur bascule en mode impression (only print visible).
+   ============================================================ */
+   #print-fiscal-recap { display: none; }
+
+   @media print {
+       /* Masque tout le reste de l'app */
+       body > *:not(#print-fiscal-recap) { display: none !important; }
+       body {
+           background: #ffffff !important;
+           color: #111827 !important;
+           padding: 0 !important;
+           margin: 0 !important;
+           min-height: 0 !important;
+       }
+       /* Affiche uniquement le container de print */
+       #print-fiscal-recap { display: block !important; }
+   
+       @page {
+           size: A4;
+           margin: 14mm 13mm;
+       }
+   
+       .pdf-page  { page-break-after: always; }
+       .pdf-page:last-child { page-break-after: auto; }
+       .pdf-section { page-break-inside: avoid; }
+   }
+   
+   #print-fiscal-recap {
+       color: #111827;
+       background: #ffffff;
+       font-family: 'Inter', system-ui, -apple-system, sans-serif;
+       padding: 0;
+       width: 100%;
+       line-height: 1.4;
+   }
+   #print-fiscal-recap .pdf-header {
+       display: flex; align-items: center; justify-content: space-between;
+       border-bottom: 3px solid #0f766e;
+       padding-bottom: 10px; margin-bottom: 16px;
+   }
+   #print-fiscal-recap .pdf-logo {
+       width: 44px; height: 44px; border-radius: 10px;
+       background: linear-gradient(135deg, #0f766e, #14b8a6);
+       color: #fff; display: flex; align-items: center; justify-content: center;
+       font-size: 22px; font-weight: 700; flex-shrink: 0;
+   }
+   #print-fiscal-recap h1 { font-size: 18px; margin: 0; color: #0f172a; }
+   #print-fiscal-recap h2 {
+       font-size: 12px; margin: 16px 0 8px;
+       padding: 5px 8px; background: #f3f4f6;
+       border-left: 4px solid #0f766e;
+       color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;
+   }
+   #print-fiscal-recap table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+   #print-fiscal-recap th {
+       background: #0f172a; color: #fff; padding: 6px 7px;
+       text-align: left; font-size: 9.5px;
+       text-transform: uppercase; letter-spacing: 0.3px;
+   }
+   #print-fiscal-recap td {
+       padding: 5px 7px;
+       border-bottom: 1px solid #e5e7eb;
+       color: #1f2937; vertical-align: top;
+   }
+   #print-fiscal-recap tr:nth-child(even) td { background: #f9fafb; }
+   #print-fiscal-recap .pdf-num {
+       text-align: right;
+       font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+       white-space: nowrap;
+   }
+   #print-fiscal-recap .pdf-kpi-grid {
+       display: grid; grid-template-columns: repeat(4, 1fr);
+       gap: 8px; margin-bottom: 10px;
+   }
+   #print-fiscal-recap .pdf-kpi {
+       border: 1px solid #e5e7eb; border-radius: 6px;
+       padding: 8px 10px; background: #f9fafb;
+   }
+   #print-fiscal-recap .pdf-kpi .label {
+       font-size: 9px; text-transform: uppercase;
+       color: #6b7280; letter-spacing: 0.4px;
+   }
+   #print-fiscal-recap .pdf-kpi .value {
+       font-size: 15px; font-weight: 700; color: #0f172a;
+       font-family: ui-monospace, monospace; margin-top: 2px;
+   }
+   #print-fiscal-recap .pdf-kpi.accent .value   { color: #b45309; }
+   #print-fiscal-recap .pdf-kpi.positive .value { color: #047857; }
+   #print-fiscal-recap .pdf-kpi.negative .value { color: #be123c; }
+   #print-fiscal-recap .pdf-total-row td {
+       font-weight: 700; background: #ecfdf5 !important;
+       color: #065f46; border-top: 2px solid #0f766e;
+   }
+   #print-fiscal-recap .pdf-footer {
+       margin-top: 22px; padding-top: 10px;
+       border-top: 1px solid #d1d5db;
+       font-size: 9px; color: #6b7280; line-height: 1.5;
+   }
+   #print-fiscal-recap .pdf-meta {
+       font-size: 10px; color: #4b5563;
+       text-align: right; line-height: 1.5;
+   }
+
+
+
+/* ============================================================
+   TOOLTIPS CUSTOM — remplacent les title= natifs du navigateur
+   Le #custom-tooltip est positionné en fixed (jamais clippé par
+   un conteneur overflow). La flèche s'adapte via data-placement.
+   ============================================================ */
+.custom-tooltip {
+    position: fixed;
+    top: 0; left: 0;
+    z-index: 9999;
+    background: #0b0f19;
+    color: #f3f4f6;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.4;
+    max-width: 320px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.65), 0 4px 6px -4px rgba(0,0,0,0.5);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-2px);
+    transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+    white-space: nowrap;
+    visibility: hidden;
+}
+.custom-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+}
+/* Flèche — placement "top" (infobulle au-dessus de l'élément) */
+.custom-tooltip[data-placement="top"]::after {
+    content: '';
+    position: absolute;
+    left: 50%; bottom: -5px;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #374151;
+}
+/* Flèche — placement "bottom" (infobulle en dessous) */
+.custom-tooltip[data-placement="bottom"]::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: -5px;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid #374151;
+}
+/* Multi-lignes : chaque ligne est un <div>, on laisse le wrap naturel */
+.custom-tooltip.multiline { white-space: normal; }
+
+
+/* ============================================================
+   SKELETON LOADING — lignes fantômes pendant les fetch longs
+   ============================================================ */
+.skeleton-row {
+    pointer-events: none;
+    opacity: 0.55;
+}
+.skeleton-block {
+    display: inline-block;
+    background: linear-gradient(
+        90deg,
+        #1f2937 0%,
+        #374151 40%,
+        #1f2937 80%
+    );
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.4s ease-in-out infinite;
+    border-radius: 4px;
+    height: 10px;
+    vertical-align: middle;
+}
+.skeleton-block.w-8  { width: 32px; }
+.skeleton-block.w-12 { width: 48px; }
+.skeleton-block.w-16 { width: 64px; }
+.skeleton-block.w-24 { width: 96px; }
+.skeleton-block.w-32 { width: 128px; }
+.skeleton-block.w-40 { width: 160px; }
+.skeleton-block.h-3 { height: 12px; }
+.skeleton-block.h-4 { height: 16px; }
+
+@keyframes skeletonShimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Variante carte mobile */
+.skeleton-card {
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid #1f2937;
+    border-radius: 12px;
+    padding: 12px;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton-block { animation: none; background: #1f2937; }
+}
+
+
+/* ============================================================
+   LIGNES / CARTES ACTIVE-INACTIVE
+   Fond teinté vert très pâle pour les gains, rosé pour les pertes,
+   + liseré vertical gauche coloré (accessible aux daltoniens).
+   Neutralisé si l'utilisateur désactive le teintage (toggle UI).
+   ============================================================ */
+body.tint-rows-enabled tr.row-profit,
+body.tint-rows-enabled tr.row-profit > td {
+    background-color: rgba(16, 185, 129, 0.045) !important;
+}
+body.tint-rows-enabled tr.row-loss,
+body.tint-rows-enabled tr.row-loss > td {
+    background-color: rgba(244, 63, 94, 0.05) !important;
+}
+
+body.tint-rows-enabled tr.row-profit { box-shadow: inset 3px 0 0 0 #10b981; }
+body.tint-rows-enabled tr.row-loss   { box-shadow: inset 3px 0 0 0 #f43f5e; }
+
+body.tint-rows-enabled tr.row-profit.clickable-row:hover,
+body.tint-rows-enabled tr.row-profit.clickable-row:hover > td {
+    background-color: rgba(16, 185, 129, 0.09) !important;
+}
+body.tint-rows-enabled tr.row-loss.clickable-row:hover,
+body.tint-rows-enabled tr.row-loss.clickable-row:hover > td {
+    background-color: rgba(244, 63, 94, 0.10) !important;
+}
+
+/* Carte mobile */
+body.tint-rows-enabled .card-profit {
+    background-color: rgba(16, 185, 129, 0.05) !important;
+    border-left: 3px solid #10b981;
+}
+body.tint-rows-enabled .card-loss {
+    background-color: rgba(244, 63, 94, 0.055) !important;
+    border-left: 3px solid #f43f5e;
+}
+
+/* Si teintage désactivé : rien ne change visuellement, mais on garde la
+   sémantique disponible pour d'éventuels styles conditionnels. */
+body:not(.tint-rows-enabled) tr.row-profit,
+body:not(.tint-rows-enabled) tr.row-loss { box-shadow: none; }
+
+
+
+/* ============================================================
+   THÈME CLAIR — couche d'override activée par <body class="light">
+   Re-mappe les classes Tailwind dark les plus fréquentes vers leurs
+   équivalents lisibles sur fond blanc. Aucun impact si .light est
+   absent (mode sombre = comportement d'origine strictement inchangé).
+   ============================================================ */
+body.light {
+    background-color: #f3f4f6 !important;
+    color: #111827 !important;
+}
+
+/* --- Fonds neutres (gradation gray-950 → gray-700) --- */
+body.light [class*="bg-gray-950"] { background-color: #f9fafb !important; }
+body.light [class*="bg-gray-900"] { background-color: #ffffff !important; }
+body.light [class*="bg-gray-800"] { background-color: #f3f4f6 !important; }
+body.light [class*="bg-gray-700"] { background-color: #e5e7eb !important; }
+
+/* --- Texte --- */
+body.light .text-white     { color: #111827 !important; }
+body.light .text-gray-200  { color: #1f2937 !important; }
+body.light .text-gray-300  { color: #374151 !important; }
+body.light .text-gray-400  { color: #4b5563 !important; }
+body.light .text-gray-500  { color: #6b7280 !important; }
+body.light .text-gray-600  { color: #9ca3af !important; }
+
+/* --- Couleurs sémantiques (assombries pour le contraste sur blanc) --- */
+body.light .text-emerald-300 { color: #047857 !important; }
+body.light .text-emerald-400 { color: #059669 !important; }
+body.light .text-rose-300    { color: #b91c1c !important; }
+body.light .text-rose-400    { color: #dc2626 !important; }
+body.light .text-amber-300   { color: #b45309 !important; }
+body.light .text-amber-400   { color: #d97706 !important; }
+body.light .text-blue-300    { color: #1d4ed8 !important; }
+body.light .text-blue-400    { color: #2563eb !important; }
+body.light .text-purple-300  { color: #6d28d9 !important; }
+body.light .text-purple-400  { color: #7c3aed !important; }
+body.light .text-teal-300    { color: #0f766e !important; }
+body.light .text-teal-400    { color: #0d9488 !important; }
+body.light .text-indigo-300  { color: #4338ca !important; }
+body.light .text-indigo-400  { color: #4f46e5 !important; }
+body.light .text-cyan-400    { color: #0891b2 !important; }
+
+/* --- Fonds pastel pour les pastilles / badges colorés --- */
+body.light [class*="bg-emerald-950"] { background-color: #d1fae5 !important; }
+body.light [class*="bg-rose-950"]    { background-color: #ffe4e6 !important; }
+body.light [class*="bg-amber-950"]   { background-color: #fef3c7 !important; }
+body.light [class*="bg-blue-950"]    { background-color: #dbeafe !important; }
+body.light [class*="bg-purple-950"]  { background-color: #ede9fe !important; }
+body.light [class*="bg-teal-950"]    { background-color: #ccfbf1 !important; }
+body.light [class*="bg-indigo-950"]  { background-color: #e0e7ff !important; }
+body.light [class*="bg-cyan-950"]    { background-color: #cffafe !important; }
+body.light [class*="bg-pink-950"]    { background-color: #fce7f3 !important; }
+
+/* --- Bordures --- */
+body.light [class*="border-gray-800"] { border-color: #d1d5db !important; }
+body.light [class*="border-gray-700"] { border-color: #cbd5e1 !important; }
+body.light [class*="divide-gray-800"] > * + * { border-color: #e5e7eb !important; }
+body.light [class*="border-indigo-800"],
+body.light [class*="border-indigo-700"] { border-color: #a5b4fc !important; }
+
+/* --- Scrollbar --- */
+body.light ::-webkit-scrollbar-track { background: #f3f4f6; }
+body.light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+body.light ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* --- Ombre du logo header (adoucie) --- */
+body.light .shadow-emerald-900\/30 { box-shadow: 0 4px 12px -2px rgba(15,118,110,0.15) !important; }
+
+/* --- Lignes de tableau : hover plus visible sur blanc --- */
+body.light .clickable-row:hover { background-color: rgba(229, 231, 235, 0.6) !important; }
+
+/* --- Tooltip custom : version claire --- */
+body.light .custom-tooltip {
+    background: #ffffff;
+    color: #111827;
+    border-color: #cbd5e1;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 4px 6px -4px rgba(0,0,0,0.1);
+}
+
+/* --- Boutons d'action (icônes) : hover plus contrasté en clair --- */
+body.light .bg-gray-800\/60 { background-color: #e5e7eb !important; }

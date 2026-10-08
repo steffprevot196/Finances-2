@@ -3,6 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self';
+                   script-src 'self' 'unsafe-inline'
+                              https://cdn.tailwindcss.com
+                              https://cdn.jsdelivr.net
+                              https://cdnjs.cloudflare.com
+                              https://accounts.google.com
+                              https://*.gstatic.com;
+                   connect-src 'self'
+                               https://api.coingecko.com
+                               https://api.frankfurter.dev
+                               https://finnhub.io
+                               https://xaus.com
+                               https://www.googleapis.com
+                               https://accounts.google.com
+                               https://oauth2.googleapis.com
+                               https://cdn.jsdelivr.net
+                               https://api.allorigins.win
+                               https://api.twelvedata.com;
+                   img-src 'self' data:;
+                   style-src 'self' 'unsafe-inline'
+                             https://fonts.googleapis.com
+                             https://cdnjs.cloudflare.com;
+                   font-src 'self' https://fonts.gstatic.com
+                            https://cdnjs.cloudflare.com;
+                   frame-ancestors 'none';
+                   base-uri 'self';">
         <title>PatriMonial - Gestion & Suivi de Patrimoine</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
     <!-- Tailwind CSS -->
@@ -41,6 +68,7 @@
 
     <!-- INPUTS FICHIERS MASQUÉS -->
     <input type="file" id="input-import-json" accept=".json" class="hidden" onchange="handleImportJSON(event)">
+    <input type="file" id="input-import-csv" accept=".csv,.xlsx,.xls" class="hidden" onchange="handleImportCSVFile(event)">
 
     <!-- HEADER GLOBAL -->
     <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-gray-800 pb-4">
@@ -57,6 +85,40 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+
+            <!-- TOGGLE THÈME CLAIR / SOMBRE -->
+            <button onclick="toggleLightMode()" id="theme-toggle-btn" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0" title="Basculer thème clair / sombre">
+                <i id="theme-toggle-icon" class="fa-solid fa-sun"></i>
+            </button>
+
+            <!-- TOGGLE PAPER TRADING -->
+            <button onclick="togglePaperMode()" id="paper-toggle-btn" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs text-gray-400 hover:text-white transition flex items-center gap-1.5 flex-shrink-0" title="Simuler des positions fictives en parallèle du portefeuille réel">
+                <i id="paper-toggle-icon" class="fa-solid fa-flask text-[11px]"></i>
+                <span class="hidden sm:inline">Paper</span>
+                <span id="paper-count-badge" class="hidden px-1.5 py-0.5 rounded bg-purple-950 border border-purple-800/60 text-purple-300 text-[9px] font-mono">0</span>
+            </button>
+
+            <!-- SÉLECTEUR DE PORTEFEUILLE -->
+            <div class="relative">
+                <button onclick="togglePortfolioMenu(event)" class="px-3 py-1.5 rounded-lg bg-indigo-950/60 text-indigo-200 border border-indigo-700/50 hover:bg-indigo-900/80 text-xs font-medium transition flex items-center gap-1.5 shadow" title="Changer de portefeuille (Perso, Pro, Enfants…)">
+                    <i class="fa-solid fa-folder-tree"></i>
+                    <span id="current-portfolio-label" class="max-w-[130px] truncate">Portefeuille</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] opacity-70"></i>
+                </button>
+                <div id="portfolio-menu" class="hidden absolute right-0 top-full mt-2 w-80 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-[60]">
+                    <div class="p-3 border-b border-gray-800 bg-gray-950">
+                        <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Patrimoine global (tous portefeuilles)</div>
+                        <div id="portfolio-global-total" class="text-lg font-bold font-mono text-white">0,00 €</div>
+                    </div>
+                    <div id="portfolio-list" class="max-h-64 overflow-y-auto"></div>
+                    <div class="p-2 border-t border-gray-800 flex gap-2">
+                        <button onclick="addPortfolio()" class="flex-1 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-medium transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-plus"></i> Nouveau portefeuille
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <button onclick="fetchLivePrices()" id="btn-live-prices" class="px-3 py-1.5 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-700/50 hover:bg-emerald-900/80 text-xs font-medium transition flex items-center gap-1.5 shadow" title="Actualiser crypto/devises automatiquement, puis mise à jour manuelle groupée pour le reste du portefeuille">
                 <i class="fa-solid fa-arrows-rotate" id="icon-refresh-prices"></i> Actualiser les cours
             </button>
@@ -78,6 +140,9 @@
             <button onclick="document.getElementById('input-import-json').click()" class="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 text-xs font-medium transition flex items-center gap-1.5" title="Restaurer un fichier JSON PatriMonial">
                 <i class="fa-solid fa-file-import"></i> Importer
             </button>
+            <button onclick="openCsvImportModal()" class="px-3 py-1.5 rounded-lg bg-teal-950/60 text-teal-300 border border-teal-700/50 hover:bg-teal-900/80 text-xs font-medium transition flex items-center gap-1.5 shadow" title="Importer un relevé CSV / Excel (AuCoffre, Trade Republic, Boursorama, Scalable, Revolut)">
+                <i class="fa-solid fa-file-csv"></i> Import CSV
+            </button>
             <button onclick="openSellAssetModal()" class="px-3.5 py-1.5 rounded-lg bg-rose-600 text-white font-medium hover:bg-rose-500 text-xs shadow-lg shadow-rose-900/40 transition flex items-center gap-1.5" title="Enregistrer la vente d'un actif que vous possédiez à une date donnée">
                 <i class="fa-solid fa-hand-holding-dollar"></i> Vendre un actif
             </button>
@@ -87,10 +152,32 @@
         </div>
     </header>
 
+    <!-- BANDEAU MODE PAPER TRADING (visible uniquement quand le mode est actif) -->
+    <div id="paper-mode-banner" class="hidden mb-4 bg-purple-950/30 border border-purple-800/50 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-purple-950 border border-purple-700/60 flex items-center justify-center text-purple-300">
+                <i class="fa-solid fa-flask"></i>
+            </div>
+            <div class="min-w-0">
+                <div class="text-sm font-bold text-purple-200">Mode Paper Trading actif</div>
+                <div class="text-[11px] text-gray-400">Les nouveaux actifs créés seront <b>fictifs</b> (badge <span class="text-purple-300 font-mono">📝 Papier</span>). Ils n'impactent pas vos calculs d'impôt tant qu'ils ne sont pas promus en réel.</div>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <label class="flex items-center gap-1.5 text-[11px] text-gray-400 cursor-pointer select-none">
+                <input type="checkbox" id="paper-include-stats" onchange="setPaperIncludeInStats(this.checked)" class="accent-purple-500">
+                Inclure dans les stats
+            </label>
+            <button onclick="deleteAllPaperAssets()" class="px-3 py-1.5 rounded-lg bg-rose-950/60 border border-rose-800/50 text-rose-300 hover:bg-rose-900/70 text-[11px] font-medium transition flex items-center gap-1.5">
+                <i class="fa-solid fa-trash-can text-[10px]"></i> Purger les positions papier
+            </button>
+        </div>
+    </div>
+
         <!-- METRICS / KPI BANNER — Positions actuelles -->
     <div class="mb-3">
         <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">📊 Positions actuelles</div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
                 <div class="text-xs font-medium text-gray-400 mb-1">Capital Investi</div>
                 <div class="text-2xl font-bold text-white font-mono" id="stat-total-invested">0,00 €</div>
@@ -115,6 +202,14 @@
                 <div class="text-2xl font-bold font-mono" id="stat-pnl">0,00 €</div>
                 <div class="text-xs font-semibold mt-1 font-mono" id="stat-pnl-pct">+0.00%</div>
                 <div class="absolute right-3 bottom-2 text-amber-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-arrow-trend-up"></i></div>
+            </div>
+
+            <div class="bg-gray-900/80 border border-teal-900/40 rounded-xl p-4 relative overflow-hidden">
+                <div class="text-xs font-medium text-gray-400 mb-1">Gain / Perte hors frais</div>
+                <div class="text-2xl font-bold font-mono" id="stat-pnl-hf">0,00 €</div>
+                <div class="text-xs font-semibold mt-1 font-mono" id="stat-pnl-hf-pct">+0.00%</div>
+                <div class="text-[10px] text-gray-500 mt-0.5" id="stat-pnl-hf-detail">frais neutralisés : 0,00 €</div>
+                <div class="absolute right-3 bottom-2 text-teal-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-filter-circle-dollar"></i></div>
             </div>
 
             <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
@@ -194,19 +289,38 @@
         <!-- TAB 0 : VUE D'ENSEMBLE -->
         <section id="tab-dashboard" class="tab-content space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5 flex flex-col justify-between">
-                    <div>
-                        <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2">
-                            <i class="fa-solid fa-chart-pie text-emerald-400"></i> Répartition par Catégorie
-                        </h3>
-                        <p class="text-xs text-gray-400 mb-4">Aperçu visuel de l'ensemble des actifs</p>
+                <div id="dashboard-alloc-card" class="lg:col-span-1 bg-gray-900/60 border border-gray-800 rounded-xl p-5 flex flex-col">
+                    <div class="flex justify-between items-start gap-3 mb-3">
+                        <div>
+                            <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-pie text-emerald-400"></i> Répartition par Actif
+                            </h3>
+                            <p class="text-xs text-gray-400">Aperçu visuel de l'ensemble des actifs</p>
+                        </div>
+                        <div class="flex rounded-lg bg-gray-950 border border-gray-800 p-0.5 text-[10px] flex-shrink-0">
+                            <button id="dashboard-alloc-btn-donut" onclick="setDashboardAllocView('donut')" class="px-2 py-1 rounded flex items-center gap-1 transition">
+                                <i class="fa-solid fa-chart-pie"></i> Donut
+                            </button>
+                            <button id="dashboard-alloc-btn-treemap" onclick="setDashboardAllocView('treemap')" class="px-2 py-1 rounded flex items-center gap-1 transition">
+                                <i class="fa-solid fa-table-cells"></i> Treemap
+                            </button>
+                        </div>
                     </div>
-                    <div class="w-full h-64 flex items-center justify-center">
+                    <div id="dashboard-alloc-donut-view" class="w-full h-64 flex items-center justify-center">
                         <canvas id="dashboardAllocChart"></canvas>
+                    </div>
+                    <div id="dashboard-alloc-treemap-view" class="hidden w-full h-80 relative rounded-lg overflow-hidden border border-gray-800 bg-gray-950">
+                        <svg id="dashboardTreemapSvg" class="w-full h-full block"></svg>
+                    </div>
+                    <div id="dashboard-treemap-legend" class="hidden mt-2 items-center justify-between text-[10px] text-gray-500">
+                        <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded" style="background:#ef4444;"></span> Perte</span>
+                        <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded" style="background:#4b5563;"></span> Neutre</span>
+                        <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded" style="background:#10b981;"></span> Gain</span>
+                        <span class="italic">taille = valeur · couleur = performance</span>
                     </div>
                 </div>
 
-                <div class="lg:col-span-2 bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+                <div id="dashboard-trajectory-card" class="lg:col-span-2 bg-gray-900/60 border border-gray-800 rounded-xl p-5">
                     <div class="flex justify-between items-center mb-4">
                         <div>
                             <h3 class="text-base font-bold text-white flex items-center gap-2">
@@ -219,6 +333,59 @@
                     <div class="h-64 w-full">
                         <canvas id="dashboardHistoryChart"></canvas>
                     </div>
+                </div>
+            </div>
+
+            <!-- HEATMAP CALENDAIRE (type GitHub contributions) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-days text-purple-400"></i> Heatmap Calendaire
+                        </h3>
+                        <p class="text-xs text-gray-400">Variation quotidienne du portefeuille sur les 12 derniers mois</p>
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                        <span>Moins</span>
+                        <div class="flex gap-0.5">
+                            <div class="w-3 h-3 rounded-sm" style="background:#7f1d1d"></div>
+                            <div class="w-3 h-3 rounded-sm" style="background:#b91c1c"></div>
+                            <div class="w-3 h-3 rounded-sm" style="background:#1f2937"></div>
+                            <div class="w-3 h-3 rounded-sm" style="background:#059669"></div>
+                            <div class="w-3 h-3 rounded-sm" style="background:#10b981"></div>
+                        </div>
+                        <span>Plus</span>
+                    </div>
+                </div>
+
+                <!-- KPIs heatmap -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Jours suivis</div>
+                        <div id="heatmap-stat-days" class="text-base font-bold font-mono text-white">—</div>
+                    </div>
+                    <div class="bg-gray-950 border border-emerald-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Jours positifs</div>
+                        <div id="heatmap-stat-up" class="text-base font-bold font-mono text-emerald-400">—</div>
+                    </div>
+                    <div class="bg-gray-950 border border-rose-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Jours négatifs</div>
+                        <div id="heatmap-stat-down" class="text-base font-bold font-mono text-rose-400">—</div>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Meilleur jour</div>
+                        <div id="heatmap-stat-best" class="text-base font-bold font-mono text-emerald-400">—</div>
+                        <div id="heatmap-stat-best-date" class="text-[9px] text-gray-500 truncate">—</div>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Pire jour</div>
+                        <div id="heatmap-stat-worst" class="text-base font-bold font-mono text-rose-400">—</div>
+                        <div id="heatmap-stat-worst-date" class="text-[9px] text-gray-500 truncate">—</div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto pb-1">
+                    <svg id="calendarHeatmapSvg" class="block" style="min-width:820px;"></svg>
                 </div>
             </div>
 
@@ -398,7 +565,19 @@
                     <button data-cat="CADRAN_PETROLE" onclick="filterCategory('CADRAN_PETROLE')" class="filter-btn filter-btn-cadran px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800" id="inv-filter-CADRAN_PETROLE">Cadran Pétrole</button>
                     <button data-cat="CADRAN_ALL4" onclick="filterCategory('CADRAN_ALL4')" class="filter-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">4 Cadrans de Gave</button>
                 </div>
-                <input type="text" id="inventory-search" oninput="searchInventory()" placeholder="Rechercher un actif..." class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-emerald-500 w-full md:w-64">
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    <input type="text" id="inventory-search" oninput="searchInventory()" placeholder="Rechercher un actif..." class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-emerald-500 flex-1 md:w-64">
+                    <label class="flex items-center gap-1.5 text-[11px] text-gray-500 whitespace-nowrap" title="Badge ⚠ sur tout actif dépassant ce poids dans le portefeuille">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
+                        Seuil&nbsp;:
+                        <input type="number" min="1" max="100" step="1" id="inventory-threshold-input" onchange="saveConcentrationThreshold(this.value)" class="w-14 bg-gray-900 border border-gray-800 rounded-lg px-1.5 py-1 text-xs text-white font-mono text-right focus:outline-none focus:border-amber-500">
+                        <span>%</span>
+                    </label>
+                    <button type="button" id="tint-toggle-btn" onclick="toggleTintRows()" class="px-2 py-1 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-400 hover:text-white transition flex items-center gap-1.5" title="Teinter les lignes : vert (gain), rouge (perte)">
+                        <i id="tint-toggle-icon" class="fa-solid fa-palette text-[11px]"></i>
+                        <span class="hidden sm:inline">Teintage</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Table desktop -->
@@ -411,9 +590,12 @@
                                 <th class="p-3">Catégories</th>
                                 <th class="p-3">Cadran(s) Gave</th>
                                 <th class="p-3 text-right">Quantité</th>
+                                <th class="p-3 text-right">PRU Unitaire</th>
+                                <th class="p-3 text-right">Valeur Unitaire</th>
                                 <th class="p-3 text-right">Frais Totaux</th>
                                 <th class="p-3 text-right">Total Investi</th>
                                 <th class="p-3 text-right">Valeur Actuelle</th>
+                                <th class="p-3 text-right">Tendance 30j</th>
                                 <th class="p-3 text-right">Plus / Moins-Value</th>
                                 <th class="p-3 text-right">Risque (Bêta réel)</th>
                                 <th class="p-3 text-center">Actions</th>
@@ -434,7 +616,7 @@
         <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
             <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
                 <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-cloud-arrow-up text-blue-400"></i> Synchronisation & Sauvegardes</h3>
-                <button onclick="closeModal('modal-drive-sync')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="closeModal('modal-drive-sync')" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 hover:bg-rose-900 hover:text-white transition flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-4 overflow-y-auto text-xs text-gray-300">
 
@@ -456,6 +638,15 @@
                         <div>
                             <label class="block text-gray-400 mb-1">Phrase secrète de chiffrement (jamais envoyée nulle part)</label>
                             <input type="password" id="drive-passphrase-input" placeholder="Au moins 8 caractères" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white text-[11px] focus:outline-none focus:border-blue-500">
+                            <div class="mt-2 p-2.5 bg-indigo-950/40 border border-indigo-800/50 rounded-lg text-[10px] text-indigo-200 leading-relaxed">
+                                <i class="fa-solid fa-shield-halved mr-1"></i>
+                                <b>Sécurité :</b> votre phrase n'est jamais écrite en clair. À la première saisie sur cet appareil,
+                                une clé de chiffrement non-exportable est dérivée (AES-256 / PBKDF2 250 000 itérations) et mémorisée
+                                localement. Vous n'aurez plus à la retaper ici.
+                                <button onclick="forgetMasterKey()" type="button" class="mt-1.5 w-full text-[10px] text-rose-300 hover:text-rose-200 underline">
+                                    Oublier la phrase sur cet appareil
+                                </button>
+                            </div>
                         </div>
                         <div class="flex gap-2">
                             <button onclick="connectDrive()" class="flex-1 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium">Se connecter à Drive</button>
@@ -466,8 +657,15 @@
                     </div>
 
                     <div class="border-t border-gray-800 pt-4 mt-4">
-                        <div class="text-[11px] font-bold text-gray-400 uppercase mb-2">Finnhub — Cours Actions & ETF</div>
-                        <p class="text-[11px] text-gray-500 mb-2">Clé API gratuite (60 req/min) — créez-en une sur finnhub.io</p>
+                        <div class="text-[11px] font-bold text-gray-400 uppercase mb-2">Twelve Data — Cours Actions & ETF (recommandé)</div>
+                        <p class="text-[11px] text-gray-500 mb-2">Clé API gratuite (800 req/jour, 8/min) — couvre Paris, Londres, Francfort, Munich… Créez-en une sur <b class="text-blue-400">twelvedata.com/pricing</b></p>
+                        <input type="text" id="twelve-key-input" onchange="saveTwelveDataKey()" placeholder="votre_clé_api_twelvedata" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono text-[11px] focus:outline-none focus:border-blue-500">
+                        <p id="twelve-status" class="text-[10px] text-gray-500 mt-1"></p>
+                    </div>
+
+                    <div class="border-t border-gray-800 pt-4 mt-4">
+                        <div class="text-[11px] font-bold text-gray-400 uppercase mb-2">Finnhub — fallback US uniquement</div>
+                        <p class="text-[11px] text-gray-500 mb-2">Ne couvre PAS les places européennes (.L, .PA, .DE, .MU). Utile uniquement pour les actions US.</p>
                         <input type="text" id="finnhub-key-input" onchange="saveFinnhubKey()" placeholder="votre_clé_api_finnhub" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono text-[11px] focus:outline-none focus:border-blue-500">
                         <p id="finnhub-status" class="text-[10px] text-gray-500 mt-1"></p>
                     </div>
@@ -627,7 +825,7 @@
             </div>
 
             <!-- STATS CRYPTO -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div class="bg-gray-900/60 border border-purple-900/40 rounded-xl p-3">
                     <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Nombre de cryptos</div>
                     <div class="text-lg font-bold font-mono text-purple-400" id="crypto-stat-count">0</div>
@@ -639,6 +837,11 @@
                 <div class="bg-gray-900/60 border border-purple-900/40 rounded-xl p-3">
                     <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Gain / Perte potentiel</div>
                     <div class="text-lg font-bold font-mono text-emerald-400" id="crypto-stat-pnl">+0,00 €</div>
+                </div>
+                <div class="bg-gray-900/60 border border-teal-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Gain / Perte hors frais</div>
+                    <div class="text-lg font-bold font-mono text-emerald-400" id="crypto-stat-pnl-hf">+0,00 €</div>
+                    <div class="text-[10px] text-gray-500" id="crypto-stat-pnl-hf-detail">frais : 0,00 €</div>
                 </div>
                 <div class="bg-gray-900/60 border border-purple-900/40 rounded-xl p-3">
                     <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Plus grosse ligne</div>
@@ -672,7 +875,7 @@
             </div>
 
             <!-- STATS HORS-CADRAN -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div class="bg-gray-900/60 border border-blue-900/40 rounded-xl p-3">
                     <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Nombre de lignes</div>
                     <div class="text-lg font-bold font-mono text-blue-400" id="hors-stat-count">0</div>
@@ -685,7 +888,15 @@
                     <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Gain / Perte potentiel</div>
                     <div class="text-lg font-bold font-mono text-emerald-400" id="hors-stat-pnl">+0,00 €</div>
                 </div>
+
+                    <div class="bg-gray-900/60 border border-teal-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Gain / Perte hors frais</div>
+                    <div class="text-lg font-bold font-mono text-emerald-400" id="hors-stat-pnl-hf">+0,00 €</div>
+                    <div class="text-[10px] text-gray-500" id="hors-stat-pnl-hf-detail">frais : 0,00 €</div>
+                </div>
+
                 <div class="bg-gray-900/60 border border-blue-900/40 rounded-xl p-3">
+                                    
                     <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Liquidités / Cash</div>
                     <div class="text-lg font-bold font-mono text-amber-400" id="hors-stat-cash">0,00 €</div>
                     <div class="text-[10px] text-gray-500">Devises + Livrets</div>
@@ -1229,6 +1440,7 @@
                     </p>
                     <div id="cession-lot-picker" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
                 </div>
+                <input type="hidden" id="cession-lot-id-hidden" value="">
                 <form onsubmit="handleAddCession(event)" class="space-y-4">
                     <input type="hidden" id="cession-edit-id">
                     <div class="grid grid-cols-2 gap-3">
@@ -1362,6 +1574,44 @@
                 <div class="h-64 w-full bg-gray-950 border border-gray-800 rounded-xl p-3">
                     <canvas id="assetHistoryChart"></canvas>
                 </div>
+
+                <!-- DÉTAIL DES LOTS (achats successifs) -->
+                <div>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                        <div class="text-xs font-bold text-gray-300 uppercase flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-blue-400"></i>
+                            Détail des achats successifs (lots)
+                        </div>
+                        <div class="flex items-center gap-2 text-[11px]">
+                            <label class="flex items-center gap-1.5 text-gray-400 cursor-pointer select-none" title="Afficher aussi les lots totalement vendus (grisés)">
+                                <input type="checkbox" id="lots-show-sold-toggle" onchange="toggleLotsSoldVisibility(this.checked)" class="accent-indigo-500" checked>
+                                Afficher les lots vendus
+                            </label>
+                            <button type="button" onclick="exportLotsCSV(currentAssetDetailId)" class="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] flex items-center gap-1" title="Exporter ce tableau en CSV (format Excel FR)">
+                                <i class="fa-solid fa-file-csv"></i> CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border border-gray-800">
+                        <table class="w-full text-left text-xs text-gray-300">
+                            <thead class="bg-gray-950 text-gray-400 uppercase font-medium">
+                                <tr>
+                                    <th class="p-2.5 cursor-pointer hover:text-white select-none" onclick="sortLots('date')">Date <i id="lots-sort-icon-date" class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                                    <th class="p-2.5" title="Référence / N° de série du lot">Réf.</th>
+                                    <th class="p-2.5 text-right cursor-pointer hover:text-white select-none" onclick="sortLots('qty')" title="Quantité achetée dans ce lot">Qté ach. <i id="lots-sort-icon-qty" class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                                    <th class="p-2.5 text-right cursor-pointer hover:text-white select-none" onclick="sortLots('qtyRemaining')" title="Quantité encore détenue dans ce lot">Qté rest. <i id="lots-sort-icon-qtyRemaining" class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                                    <th class="p-2.5 text-right cursor-pointer hover:text-white select-none" onclick="sortLots('price')" title="Prix d'achat unitaire de ce lot (frais inclus)">Prix lot <i id="lots-sort-icon-price" class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                                    <th class="p-2.5 text-right text-blue-300 cursor-pointer hover:text-white select-none" onclick="sortLots('cumPRU')" title="Prix de Revient Unitaire moyen pondéré de tous les lots jusqu'à celui-ci inclus">PRU cumulé <i id="lots-sort-icon-cumPRU" class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                                    <th class="p-2.5 text-right" title="Valeur unitaire actuelle (cours de marché)">Val. actuelle</th>
+                                    <th class="p-2.5 text-right cursor-pointer hover:text-white select-none" onclick="sortLots('pnl')" title="Plus-value ou moins-value latente si ce lot était vendu au cours actuel">P&amp;L latent <i id="lots-sort-icon-pnl" class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                                    <th class="p-2.5 text-right cursor-pointer hover:text-white select-none" onclick="sortLots('frais')">Frais <i id="lots-sort-icon-frais" class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                                    <th class="p-2.5 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-asset-lots-body" class="divide-y divide-gray-800/60 font-mono"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1447,7 +1697,7 @@
                         <span class="text-[10px] text-gray-400 font-normal">Saisir Nom ou Ticker</span>
                     </label>
                     <div class="flex gap-2">
-                        <input type="text" id="add-search-input" onkeyup="triggerAssetSearch()" placeholder="ex: Vera Valor, Yen, JPY, Napoléon 10, SpaceX, CW8..." class="w-full bg-gray-900 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500 font-sans">
+                        <input type="text" id="add-search-input" placeholder="ex: Vera Valor, Yen, JPY, Napoléon 10, SpaceX, CW8..." class="w-full bg-gray-900 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500 font-sans">
                         <button type="button" onclick="triggerAssetSearch()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition flex items-center gap-1">
                             <i class="fa-solid fa-magnifying-glass"></i>
                         </button>
@@ -1523,7 +1773,27 @@
                         </div>
                         <div>
                             <label class="block text-gray-400 mb-1">Courtier / Plateforme</label>
-<input type="text" id="add-broker" placeholder="ex: Boursorama, Binance, AuCoffre.com" autocomplete="off" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
+                            <select id="add-broker-select" onchange="onBrokerSelectChange()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
+                                <option value="">— Aucun —</option>
+                                <option value="Boursorama">Boursorama</option>
+                                <option value="Bourse Direct">Bourse Direct</option>
+                                <option value="Fortuneo">Fortuneo</option>
+                                <option value="Trade Republic">Trade Republic</option>
+                                <option value="Interactive Brokers">Interactive Brokers</option>
+                                <option value="Degiro">Degiro</option>
+                                <option value="Saxo Banque">Saxo Banque</option>
+                                <option value="Binance">Binance</option>
+                                <option value="Coinbase">Coinbase</option>
+                                <option value="Kraken">Kraken</option>
+                                <option value="Ledger">Ledger</option>
+                                <option value="AuCoffre.com">AuCoffre.com</option>
+                                <option value="Linxea">Linxea</option>
+                                <option value="Yomoni">Yomoni</option>
+                                <option value="Nalo">Nalo</option>
+                                <option value="__custom__">➕ Autre (saisir manuellement)</option>
+                            </select>
+                            <input type="text" id="add-broker-custom" placeholder="Nom du courtier / plateforme" autocomplete="off" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500 mt-1.5 hidden">
+                            <input type="hidden" id="add-broker" value="">
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
@@ -1596,6 +1866,323 @@
             </div>
         </div>
     </div>
+
+    <!-- MODAL : ÉDITER UN LOT INDIVIDUEL -->
+    <div id="modal-edit-lot" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-pen text-emerald-400"></i> Modifier un lot</h3>
+                <button onclick="closeModal('modal-edit-lot')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleEditLot(event)" class="p-4 space-y-3 text-xs">
+                <input type="hidden" id="lot-edit-asset-id">
+                <input type="hidden" id="lot-edit-lot-id">
+                <div>
+                    <label class="block text-gray-400 mb-1">Date d'achat *</label>
+                    <input type="date" id="lot-edit-date" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Quantité achetée *</label>
+                        <input type="number" step="any" id="lot-edit-qty" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Qté restante *</label>
+                        <input type="number" step="any" id="lot-edit-qty-remaining" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                        <p class="text-[10px] text-gray-500 mt-1">Doit être ≤ Quantité achetée</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Prix unitaire (€) *</label>
+                        <input type="number" step="any" id="lot-edit-price" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Frais (€)</label>
+                        <input type="number" step="any" id="lot-edit-frais" value="0" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1">Référence / N° de série</label>
+                    <input type="text" id="lot-edit-reference" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="pt-2 flex justify-end gap-2 border-t border-gray-800">
+                    <button type="button" onclick="closeModal('modal-edit-lot')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium">Enregistrer le lot</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- BANDEAU DE PROGRESSION DISCRET (opérations longues : actualisation API) -->
+    <div id="progress-toast" class="fixed bottom-4 right-4 z-[80] hidden bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden w-[calc(100vw-2rem)] max-w-sm">
+        <div class="p-3 flex items-start gap-3">
+            <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-950 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
+                <i id="progress-toast-icon" class="fa-solid fa-arrows-rotate fa-spin"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div id="progress-toast-title" class="text-xs font-bold text-white truncate">Traitement en cours…</div>
+                <div id="progress-toast-detail" class="text-[11px] text-gray-400 truncate mt-0.5">—</div>
+            </div>
+        </div>
+        <div class="h-1 bg-gray-800">
+            <div id="progress-toast-bar" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- MODAL : IMPORT CSV / EXCEL -->
+    <div id="modal-csv-import" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <div>
+                    <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-file-csv text-teal-400"></i> Import CSV / Excel</h3>
+                    <p class="text-[11px] text-gray-500 mt-0.5">Relevés AuCoffre, Trade Republic, Boursorama, Scalable, Revolut… (.csv, .xlsx)</p>
+                </div>
+                <button onclick="closeModal('modal-csv-import')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Étape 1 : sélection du fichier -->
+            <div id="csv-step-1" class="p-5 space-y-4">
+                <div onclick="document.getElementById('input-import-csv').click()" class="cursor-pointer border-2 border-dashed border-gray-700 hover:border-teal-500 rounded-xl p-8 text-center transition">
+                    <i class="fa-solid fa-file-arrow-up text-teal-400 text-3xl mb-2"></i>
+                    <div class="text-sm font-bold text-white">Cliquez pour choisir un fichier</div>
+                    <div class="text-[11px] text-gray-500 mt-1">Formats supportés : .csv, .xlsx, .xls</div>
+                </div>
+                <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 text-[11px] text-gray-400">
+                    <div class="font-bold text-gray-300 mb-1"><i class="fa-solid fa-lightbulb text-amber-400"></i> Comment ça marche</div>
+                    Chaque ligne du fichier deviendra un nouveau lot (ou un nouvel actif). Vous pourrez vérifier et ajuster le mapping des colonnes (nom, quantité, prix, date, frais) avant de valider. La fusion avec un actif existant du même ticker est proposée automatiquement.
+                </div>
+            </div>
+
+            <!-- Étape 2 : mapping + aperçu -->
+            <div id="csv-step-2" class="hidden p-5 space-y-4 overflow-y-auto">
+                <div class="flex justify-between items-center">
+                    <div class="text-xs font-bold text-gray-300 uppercase">Mapping des colonnes & aperçu</div>
+                    <button onclick="resetCsvImport()" class="text-[11px] text-indigo-400 hover:text-indigo-300"><i class="fa-solid fa-arrow-left"></i> Changer de fichier</button>
+                </div>
+                <div id="csv-column-mapping" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+                <div class="max-h-64 overflow-auto rounded-xl border border-gray-800">
+                    <table class="w-full text-xs text-gray-300">
+                        <thead class="bg-gray-950 text-gray-400 uppercase font-medium sticky top-0"><tr id="csv-preview-header"></tr></thead>
+                        <tbody id="csv-preview-body" class="font-mono"></tbody>
+                    </table>
+                </div>
+                <div class="bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 text-[11px] text-indigo-200 space-y-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="csv-merge-duplicates" class="accent-indigo-500" checked>
+                        Fusionner avec les actifs existants ayant le même ticker (recommandé)
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="csv-dryrun" class="accent-indigo-500">
+                        Mode prévisualisation (aucune modification enregistrée)
+                    </label>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-800 flex justify-end gap-2">
+                <button onclick="closeModal('modal-csv-import')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs">Annuler</button>
+                <button id="csv-import-btn" onclick="confirmCsvImport()" class="hidden px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium">Lancer l'import</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : PALETTE DE COMMANDES (Ctrl+K) -->
+    <div id="modal-command-palette" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-[12vh] z-[70] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col">
+            <div class="flex items-center gap-3 p-3 border-b border-gray-800 bg-gray-950">
+                <i class="fa-solid fa-terminal text-teal-400"></i>
+                <input type="text" id="cmd-palette-input" placeholder="Tapez une commande… (ajouter, vendre, exporter, crypto…)" autocomplete="off" spellcheck="false" class="flex-1 bg-transparent text-white text-sm focus:outline-none font-sans placeholder-gray-500">
+                <kbd class="text-[10px] text-gray-500 bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 font-mono">Échap</kbd>
+            </div>
+            <div id="cmd-palette-results" class="max-h-[60vh] overflow-y-auto"></div>
+            <div class="px-3 py-2 border-t border-gray-800 bg-gray-950 text-[10px] text-gray-500 flex justify-between">
+                <span><kbd class="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 font-mono">↑</kbd> <kbd class="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 font-mono">↓</kbd> naviguer</span>
+                <span><kbd class="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 font-mono">Entrée</kbd> exécuter · <kbd class="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 font-mono">Échap</kbd> fermer</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : DUPLIQUER UN ACTIF -->
+    <div id="modal-duplicate-asset" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-copy text-teal-400"></i> Dupliquer un actif</h3>
+                <button onclick="closeModal('modal-duplicate-asset')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleDuplicateAsset(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
+                <input type="hidden" id="dup-source-id">
+                <div class="bg-gray-950/60 border border-gray-800 rounded-lg p-2.5 text-[11px] text-gray-400">
+                    Source : <span id="dup-source-label" class="text-white font-bold"></span>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1">Nom du nouvel actif *</label>
+                    <input type="text" id="dup-name" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Ticker / Sigle *</label>
+                        <input type="text" id="dup-ticker" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono uppercase focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Quantité *</label>
+                        <input type="number" step="any" id="dup-qty" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-teal-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Prix unitaire (€) *</label>
+                        <input type="number" step="any" id="dup-price" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Date d'achat</label>
+                        <input type="date" id="dup-date" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-teal-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1">Frais d'achat total (€)</label>
+                    <input type="number" step="any" id="dup-frais" value="0" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="bg-indigo-950/30 border border-indigo-800/50 rounded-lg p-2.5 text-[11px] text-indigo-200">
+                    <i class="fa-solid fa-circle-info mr-1"></i> Catégories, cadran, enveloppe fiscale, ISIN, courtier et mode de valorisation seront <b>copiés</b> depuis l'actif source. Les lots, l'historique et les références ne sont <b>pas</b> dupliqués (la copie démarre avec un seul lot neuf).
+                </div>
+                <div class="pt-2 flex justify-end gap-2 border-t border-gray-800">
+                    <button type="button" onclick="closeModal('modal-duplicate-asset')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-medium">Créer la copie</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CONTENEUR D'IMPRESSION PDF (caché à l'écran, rempli au clic « Exporter en PDF ») -->
+    <div id="print-fiscal-recap"></div>
+
+    <!-- TOAST D'ANNULATION (Undo) -->
+    <div id="undo-toast" class="fixed bottom-4 left-4 z-[80] hidden bg-gray-900 border border-teal-700/60 rounded-xl shadow-2xl overflow-hidden max-w-sm">
+        <div class="p-3 flex items-center gap-3">
+            <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-teal-950 border border-teal-800/60 flex items-center justify-center text-teal-400">
+                <i id="undo-toast-icon" class="fa-solid fa-rotate-left"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div id="undo-toast-text" class="text-xs text-gray-200 truncate">Action annulée</div>
+                <div class="text-[10px] text-gray-500 mt-0.5">Ctrl+Z pour annuler à nouveau</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : SIMULATEUR « ET SI JE VENDAIS ? » -->
+    <div id="modal-simulate-sale" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <div>
+                    <h3 class="font-bold text-white text-sm"><i class="fa-solid fa-flask text-purple-400"></i> Simulateur — Et si je vendais ?</h3>
+                    <p class="text-[11px] text-gray-500 mt-0.5">Aucune modification du registre — simulation pure.</p>
+                </div>
+                <button onclick="closeModal('modal-simulate-sale')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-5 space-y-4 text-xs overflow-y-auto">
+                <!-- Bloc actif -->
+                <div class="bg-gray-950 border border-gray-800 rounded-xl p-3">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="min-w-0">
+                            <div id="sim-asset-name" class="font-bold text-white text-sm truncate">—</div>
+                            <div id="sim-asset-ticker" class="text-[10px] text-gray-500 font-mono">—</div>
+                        </div>
+                        <div class="text-right flex-shrink-0 ml-3">
+                            <div class="text-[10px] text-gray-500 uppercase">Détenu</div>
+                            <div id="sim-asset-held" class="font-mono font-bold text-white text-sm">—</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-gray-800">
+                        <div>
+                            <span class="text-gray-500">PRU unitaire : </span>
+                            <span id="sim-asset-pru" class="font-mono text-blue-300">—</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-gray-500">Valeur actuelle : </span>
+                            <span id="sim-asset-value-unit" class="font-mono text-emerald-400">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quantité -->
+                <div>
+                    <label class="block text-gray-400 mb-1.5">Quantité à vendre</label>
+                    <div class="flex items-center gap-3">
+                        <input type="range" id="sim-quantity-slider" min="0" max="1" step="any" oninput="onSimQuantityInput('slider')" class="flex-1 accent-purple-500 cursor-pointer">
+                        <input type="number" id="sim-quantity" step="any" oninput="onSimQuantityInput('number')" class="w-28 bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono text-right focus:outline-none focus:border-purple-500">
+                    </div>
+                    <div class="flex justify-between mt-1.5">
+                        <button type="button" onclick="simSetQuantityPct(25)"  class="text-[10px] text-indigo-400 hover:text-indigo-300">25 %</button>
+                        <button type="button" onclick="simSetQuantityPct(50)"  class="text-[10px] text-indigo-400 hover:text-indigo-300">50 %</button>
+                        <button type="button" onclick="simSetQuantityPct(75)"  class="text-[10px] text-indigo-400 hover:text-indigo-300">75 %</button>
+                        <button type="button" onclick="simSetQuantityPct(100)" class="text-[10px] text-indigo-400 hover:text-indigo-300">100 %</button>
+                    </div>
+                </div>
+
+                <!-- Prix + date -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1.5">Prix de vente unitaire (€)</label>
+                        <input type="number" id="sim-unit-price" step="any" oninput="recalcSimulation()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-purple-500">
+                        <div id="sim-price-delta" class="text-[10px] text-gray-500 mt-1 font-mono">—</div>
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1.5">Date de vente</label>
+                        <input type="date" id="sim-sale-date" oninput="recalcSimulation()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-purple-500">
+                    </div>
+                </div>
+
+                <!-- Résultats -->
+                <div class="bg-gray-950 border border-purple-800/40 rounded-xl p-4 space-y-2 font-mono">
+                    <div class="flex justify-between text-[11px]">
+                        <span class="text-gray-400">Prix de vente total</span>
+                        <span id="sim-result-total-sale" class="text-white font-bold">—</span>
+                    </div>
+                    <div class="flex justify-between text-[11px]">
+                        <span class="text-gray-400">Prix de revient (PRU × quantité)</span>
+                        <span id="sim-result-cost" class="text-gray-300">—</span>
+                    </div>
+                    <div class="flex justify-between text-[11px] border-t border-gray-800 pt-2">
+                        <span class="text-gray-400">Plus/moins-value brute</span>
+                        <span id="sim-result-pnl" class="font-bold">—</span>
+                    </div>
+                    <div class="flex justify-between text-[10px]">
+                        <span class="text-gray-500">Régime fiscal appliqué</span>
+                        <span id="sim-result-regime" class="text-gray-400 text-right">—</span>
+                    </div>
+                    <div class="flex justify-between text-[10px]">
+                        <span class="text-gray-500">Abattement / franchise</span>
+                        <span id="sim-result-abattement" class="text-gray-400 text-right">—</span>
+                    </div>
+                    <div class="flex justify-between text-[11px]">
+                        <span class="text-gray-400">Impôt estimé</span>
+                        <span id="sim-result-tax" class="text-amber-300 font-bold">—</span>
+                    </div>
+                    <div class="flex justify-between text-sm border-t-2 border-gray-700 pt-2">
+                        <span class="text-white font-bold">Net après impôt</span>
+                        <span id="sim-result-net" class="font-bold">—</span>
+                    </div>
+                    <div class="flex justify-between text-[10px]">
+                        <span class="text-gray-500">Rendement net / vente</span>
+                        <span id="sim-result-net-pct" class="font-mono">—</span>
+                    </div>
+                </div>
+
+                <div id="sim-warning" class="hidden bg-amber-950/40 border border-amber-800/50 text-amber-300 rounded-lg p-2.5 text-[11px]"></div>
+            </div>
+
+            <div class="p-4 border-t border-gray-800 flex justify-end gap-2">
+                <button onclick="closeModal('modal-simulate-sale')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs">Fermer</button>
+                <button onclick="simulateToCessionForm()" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-right"></i> Concrétiser en cession
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENEUR D'INFOBULLE CUSTOM (rempli par app1-core.js) -->
+    <div id="custom-tooltip" class="custom-tooltip" role="tooltip" aria-hidden="true"></div>
 
     <!-- === SCRIPTS APPLICATIFS (ordre imposé) === -->
     <script src="app1-core.js"></script>

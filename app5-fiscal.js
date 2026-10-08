@@ -155,16 +155,17 @@ function computeCessionLine(c) {
         : '—';
     return { pvBrute, years, base: baseLine + coupons, taxLine, abattementLabel, detentionTag };
 }
+// =====================================================================
+// CALCUL FISCAL STRUCTURÉ (sans DOM) — B14
+// =====================================================================
+// Retourne toutes les valeurs nécessaires au rendu de l'onglet Fiscalité
+// ET aux KPI du bandeau supérieur (via lastTaxBreakdown). Aucune lecture
+// ou écriture DOM : c'est une fonction pure, testable isolément.
+// =====================================================================
+let lastTaxBreakdown = null;
 
-// ---------------------------------------------------------------------
-// Calcul agrégé : nette PV et MV entre elles (Titres+Crypto) puis applique
-// UNE SEULE FOIS le régime choisi sur le solde net (Art. 200 A CGI).
-// Les Métaux/Jetons restent hors de ce calcul.
-// ---------------------------------------------------------------------
-function calculateAnneeN1() {
+function computeTaxBreakdown() {
     // Pool PFU/Barème (CTO) : uniquement titres SANS enveloppe fiscale dédiée.
-    // Une cession PEA/AV/PER suit son propre régime et ne doit pas être nettée
-    // avec les plus/moins-values du compte-titres ordinaire.
     const securities = cessions.filter(c =>
         (c.type === 'ACTION_ETF' && (!c.envelope || c.envelope === 'CTO')) || c.type === 'CRYPTO'
     );
@@ -175,24 +176,16 @@ function calculateAnneeN1() {
 
     const pvList = securities.map(c => (c.prixVente || 0) - (c.prixAchat || 0) - (c.frais || 0));
     const plusValuesBrutes  = pvList.filter(v => v > 0).reduce((a, b) => a + b, 0);
-    const moinsValuesBrutes = pvList.filter(v => v < 0).reduce((a, b) => a + b, 0); // négatif
+    const moinsValuesBrutes = pvList.filter(v => v < 0).reduce((a, b) => a + b, 0);
     const totalCoupons      = securities.reduce((s, c) => s + Math.max(0, c.coupons || 0), 0);
     const totalBrutVentes   = securities.reduce((s, c) => s + (c.prixVente || 0), 0);
     const netForPFU         = Math.max(0, plusValuesBrutes + moinsValuesBrutes + totalCoupons);
 
-    document.getElementById('cession-stat-total-brut').innerText = formatEUR(totalBrutVentes);
-    document.getElementById('cession-stat-count').innerText      = `${securities.length} opération(s)`;
-    document.getElementById('cession-stat-pv-brutes').innerText  = '+' + formatEUR(plusValuesBrutes + totalCoupons);
-    document.getElementById('cession-stat-mv-brutes').innerText  = formatEUR(moinsValuesBrutes);
-    document.getElementById('cession-stat-solde-net').innerText  = formatEUR(netForPFU);
-
-    // --- PFU ---
     const pfuIR    = netForPFU * 0.128;
     const pfuPS    = netForPFU * 0.172;
     const pfuTotal = pfuIR + pfuPS;
 
-    // --- Barème progressif ---
-    let baseAbatedTotal = totalCoupons; // coupons : jamais d'abattement durée
+    let baseAbatedTotal = totalCoupons;
     securities.forEach(c => {
         const pv = (c.prixVente || 0) - (c.prixAchat || 0) - (c.frais || 0);
         if (pv <= 0) return;
@@ -209,55 +202,13 @@ function calculateAnneeN1() {
     const csgDeductible = netForPFU * 0.068 * taxTMI;
     const baremeTotal   = Math.max(0, baremeIR + baremePS - csgDeductible);
 
-    document.getElementById('decomp-pfu-ir').innerText    = formatEUR(pfuIR);
-    document.getElementById('decomp-pfu-ps').innerText    = formatEUR(pfuPS);
-    document.getElementById('decomp-pfu-total').innerText = formatEUR(pfuTotal);
-    document.getElementById('decomp-tmi-label').innerText = `(TMI ${(taxTMI * 100).toFixed(0)}%)`;
-    document.getElementById('decomp-bareme-ir').innerText    = formatEUR(baremeIR);
-    document.getElementById('decomp-bareme-ps').innerText    = formatEUR(baremePS);
-    document.getElementById('decomp-bareme-csg').innerText   = '-' + formatEUR(csgDeductible);
-    document.getElementById('decomp-bareme-total').innerText = formatEUR(baremeTotal);
-
     const selectedTotal = taxRegimeMode === 'PFU' ? pfuTotal : baremeTotal;
-    document.getElementById('cession-stat-impot-estime').innerText = formatEUR(selectedTotal);
-    document.getElementById('cession-stat-regime-badge').innerText =
-        taxRegimeMode === 'PFU'
-            ? 'PFU / Flat Tax (30%)'
-            : `Barème Progressif (TMI ${(taxTMI * 100).toFixed(0)}%)`;
 
-    // --- Comparaison des régimes ---
-    const badge = document.getElementById('decomp-optimal-badge');
-    const adviceText = document.getElementById('decomp-advice-text');
-    if (securities.length === 0) {
-        badge.innerText = '—';
-        adviceText.innerText = 'Ajoutez des cessions pour comparer les régimes.';
-    } else {
-        const optimalIsBareme = baremeTotal < pfuTotal - 0.01;
-        const diff = Math.abs(pfuTotal - baremeTotal);
-        badge.innerText = optimalIsBareme ? 'Option Optimale : Barème' : 'Option Optimale : PFU (Flat Tax)';
-        adviceText.innerText = diff < 1
-            ? 'Les deux régimes sont quasiment équivalents pour votre situation actuelle.'
-            : (optimalIsBareme
-                ? `Le Barème Progressif est l'option la plus économique pour vous. Vous économisez ${formatEUR(diff)} par rapport au PFU.`
-                : `Le PFU (Flat Tax) est l'option la plus économique pour vous. Vous économisez ${formatEUR(diff)} par rapport au Barème Progressif.`);
-    }
-
-    document.getElementById('regime-option-pfu').className =
-        `flex items-start gap-3 p-3 rounded-xl border cursor-pointer mb-2 transition ${taxRegimeMode === 'PFU' ? 'border-indigo-500 bg-indigo-950/20' : 'border-gray-800'}`;
-    document.getElementById('regime-option-bareme').className =
-        `flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${taxRegimeMode === 'BAREME' ? 'border-indigo-500 bg-indigo-950/20' : 'border-gray-800'}`;
-
-    // --- Métaux / Jetons : régime séparé ---
     let metalsTaxTotal = 0;
     metals.forEach(c => { metalsTaxTotal += computeCessionLine(c).taxLine; });
-    document.getElementById('decomp-metaux-total').innerText = formatEUR(metalsTaxTotal);
 
-    // --- PEA / PEA-PME / AV / PER : régime séparé ---
-    // PEA/PEA-PME : chaque ligne se suffit à elle-même (seuil individuel au plan).
-    // AV/PER : abattement annuel (4 600 €/an, célibataire) MUTUALISÉ entre toutes
-    // les lignes ≥ 8 ans de la MÊME enveloppe et de la MÊME année civile.
     let enveloppesTaxTotal = 0;
-    const pooled = {}; // clé "AV-2025" -> { gain }
+    const pooled = {};
     enveloppeCessions.forEach(c => {
         const env = c.envelope;
         if (env === 'PEA' || env === 'PEA_PME') {
@@ -279,29 +230,100 @@ function calculateAnneeN1() {
         const base = Math.max(0, p.gain - abattement);
         enveloppesTaxTotal += base * 0.075 + p.gain * 0.172;
     });
-    document.getElementById('decomp-enveloppes-total').innerText = formatEUR(enveloppesTaxTotal);
 
-    // --- Suivi du plafond PEA : versements cumulés (invested) des actifs en PEA ---
     const peaAssets   = assets.filter(a => a.envelope === 'PEA' || a.envelope === 'PEA_PME');
     const peaInvested = peaAssets.reduce((s, a) => s + (a.invested || 0), 0);
+    const peaPlafond  = peaAssets.some(a => a.envelope === 'PEA_PME')
+        ? ENVELOPPES.PEA_PME.plafond : ENVELOPPES.PEA.plafond;
+
+    return {
+        securitiesCount: securities.length,
+        totalBrutVentes, plusValuesBrutes, moinsValuesBrutes, totalCoupons,
+        netForPFU, pfuIR, pfuPS, pfuTotal, baremeIR, baremePS, csgDeductible, baremeTotal,
+        selectedTotal, metalsTaxTotal, enveloppesTaxTotal,
+        peaInvested, peaPlafond, peaAssetsCount: peaAssets.length,
+        totalImpot: selectedTotal + metalsTaxTotal + enveloppesTaxTotal
+    };
+}
+
+// ---------------------------------------------------------------------
+// Calcul agrégé : nette PV et MV entre elles (Titres+Crypto) puis applique
+// UNE SEULE FOIS le régime choisi sur le solde net (Art. 200 A CGI).
+// Les Métaux/Jetons restent hors de ce calcul.
+// Ce renderer lit désormais l'objet structuré renvoyé par computeTaxBreakdown
+// (B14 : plus aucune donnée fiscale n'est lue depuis le DOM).
+// ---------------------------------------------------------------------
+function calculateAnneeN1() {
+    const t = computeTaxBreakdown();
+    lastTaxBreakdown = t;
+
+    // --- Bloc KPI cessions ---
+    document.getElementById('cession-stat-total-brut').innerText = formatEUR(t.totalBrutVentes);
+    document.getElementById('cession-stat-count').innerText      = `${t.securitiesCount} opération(s)`;
+    document.getElementById('cession-stat-pv-brutes').innerText  = '+' + formatEUR(t.plusValuesBrutes + t.totalCoupons);
+    document.getElementById('cession-stat-mv-brutes').innerText  = formatEUR(t.moinsValuesBrutes);
+    document.getElementById('cession-stat-solde-net').innerText  = formatEUR(t.netForPFU);
+
+    // --- Décomposition PFU / Barème ---
+    document.getElementById('decomp-pfu-ir').innerText    = formatEUR(t.pfuIR);
+    document.getElementById('decomp-pfu-ps').innerText    = formatEUR(t.pfuPS);
+    document.getElementById('decomp-pfu-total').innerText = formatEUR(t.pfuTotal);
+    document.getElementById('decomp-tmi-label').innerText = `(TMI ${(taxTMI * 100).toFixed(0)}%)`;
+    document.getElementById('decomp-bareme-ir').innerText    = formatEUR(t.baremeIR);
+    document.getElementById('decomp-bareme-ps').innerText    = formatEUR(t.baremePS);
+    document.getElementById('decomp-bareme-csg').innerText   = '-' + formatEUR(t.csgDeductible);
+    document.getElementById('decomp-bareme-total').innerText = formatEUR(t.baremeTotal);
+
+    document.getElementById('cession-stat-impot-estime').innerText = formatEUR(t.selectedTotal);
+    document.getElementById('cession-stat-regime-badge').innerText =
+        taxRegimeMode === 'PFU'
+            ? 'PFU / Flat Tax (30%)'
+            : `Barème Progressif (TMI ${(taxTMI * 100).toFixed(0)}%)`;
+
+    // --- Comparaison des régimes ---
+    const badge = document.getElementById('decomp-optimal-badge');
+    const adviceText = document.getElementById('decomp-advice-text');
+    if (t.securitiesCount === 0) {
+        badge.innerText = '—';
+        adviceText.innerText = 'Ajoutez des cessions pour comparer les régimes.';
+    } else {
+        const optimalIsBareme = t.baremeTotal < t.pfuTotal - 0.01;
+        const diff = Math.abs(t.pfuTotal - t.baremeTotal);
+        badge.innerText = optimalIsBareme ? 'Option Optimale : Barème' : 'Option Optimale : PFU (Flat Tax)';
+        adviceText.innerText = diff < 1
+            ? 'Les deux régimes sont quasiment équivalents pour votre situation actuelle.'
+            : (optimalIsBareme
+                ? `Le Barème Progressif est l'option la plus économique pour vous. Vous économisez ${formatEUR(diff)} par rapport au PFU.`
+                : `Le PFU (Flat Tax) est l'option la plus économique pour vous. Vous économisez ${formatEUR(diff)} par rapport au Barème Progressif.`);
+    }
+
+    document.getElementById('regime-option-pfu').className =
+        `flex items-start gap-3 p-3 rounded-xl border cursor-pointer mb-2 transition ${taxRegimeMode === 'PFU' ? 'border-indigo-500 bg-indigo-950/20' : 'border-gray-800'}`;
+    document.getElementById('regime-option-bareme').className =
+        `flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${taxRegimeMode === 'BAREME' ? 'border-indigo-500 bg-indigo-950/20' : 'border-gray-800'}`;
+
+    // --- Régimes séparés : métaux et enveloppes ---
+    document.getElementById('decomp-metaux-total').innerText     = formatEUR(t.metalsTaxTotal);
+    document.getElementById('decomp-enveloppes-total').innerText = formatEUR(t.enveloppesTaxTotal);
+
+    // --- Suivi du plafond PEA ---
     const peaPlafondEl = document.getElementById('pea-plafond-tracker');
     if (peaPlafondEl) {
-        if (peaAssets.length === 0) {
+        if (t.peaAssetsCount === 0) {
             peaPlafondEl.classList.add('hidden');
         } else {
-            const plafond = peaAssets.some(a => a.envelope === 'PEA_PME')
-                ? ENVELOPPES.PEA_PME.plafond
-                : ENVELOPPES.PEA.plafond;
-            const pct = Math.min(100, (peaInvested / plafond) * 100);
+            const pct = Math.min(100, (t.peaInvested / t.peaPlafond) * 100);
             peaPlafondEl.classList.remove('hidden');
             document.getElementById('pea-plafond-text').innerText =
-                `${formatEUR(peaInvested)} / ${formatEUR(plafond)} (${pct.toFixed(0)}%)`;
-            document.getElementById('pea-plafond-bar').style.width = pct + '%';
-            document.getElementById('pea-plafond-bar').className =
-                'h-full transition-all duration-500 ' +
+                `${formatEUR(t.peaInvested)} / ${formatEUR(t.peaPlafond)} (${pct.toFixed(0)}%)`;
+            const bar = document.getElementById('pea-plafond-bar');
+            bar.style.width = pct + '%';
+            bar.className = 'h-full transition-all duration-500 ' +
                 (pct >= 100 ? 'bg-rose-500' : pct >= 85 ? 'bg-amber-500' : 'bg-emerald-500');
         }
     }
+
+    return t;
 }
 
 // ---------------------------------------------------------------------
@@ -348,17 +370,17 @@ function renderCessionsTable(filter = cessionFilter) {
         return `<tr>
             <td class="p-3 whitespace-nowrap">${dateFR}</td>
             <td class="p-3">
-                <div class="font-bold text-white flex items-center gap-1.5">${typeIcons[c.type] || ''} ${c.name}</div>
+                <div class="font-bold text-white flex items-center gap-1.5">${typeIcons[c.type] || ''} ${escapeHTML(c.name)}</div>
                 <div class="text-[10px] text-gray-500 font-mono">${typeCatLabels[c.type] || ''}</div>
             </td>
             <td class="p-3 text-right font-mono">${formatEUR(c.prixVente)}</td>
             <td class="p-3 text-right font-mono">${formatEUR(c.prixAchat)}</td>
             <td class="p-3 whitespace-nowrap">
                 <span class="text-gray-300">${Math.floor(line.years)} ans</span>
-                <span class="ml-1 px-1.5 py-0.5 rounded bg-gray-800 text-[9px] text-gray-400 border border-gray-700">${line.detentionTag}</span>
+                <span class="ml-1 px-1.5 py-0.5 rounded bg-gray-800 text-[9px] text-gray-400 border border-gray-700">${escapeHTML(line.detentionTag)}</span>
             </td>
             <td class="p-3 text-right font-mono font-bold ${isPos ? 'text-emerald-400' : 'text-rose-400'}">${isPos ? '+' : ''}${formatEUR(line.pvBrute)}</td>
-            <td class="p-3 text-[11px] text-gray-400">${line.abattementLabel}</td>
+            <td class="p-3 text-[11px] text-gray-400">${escapeHTML(line.abattementLabel)}</td>
             <td class="p-3 text-right font-mono">${formatEUR(line.base)}</td>
             <td class="p-3 text-right font-mono text-amber-300">${formatEUR(line.taxLine)}</td>
             <td class="p-3 text-center whitespace-nowrap">

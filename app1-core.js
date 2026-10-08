@@ -80,11 +80,69 @@ const defaultArbitrages = [
 ];
 
 // =====================================================================
+// MULTI-PORTEFEUILLE — registre, sélection, bascule
+// ---------------------------------------------------------------------
+// Les clés localStorage sont namespacées par un suffixe `__<id>`.
+// Le portefeuille par défaut conserve les clés historiques
+// (patriMonial_assets, patriMonial_cessions…), ce qui permet la
+// compatibilité ascendante : les données des utilisateurs existants
+// sont rattachées automatiquement au portefeuille « principal ».
+// =====================================================================
+const PORTFOLIO_DEFAULT = 'default';
+
+function _loadPortfolioRegistry() {
+    try {
+        const raw = localStorage.getItem('patriMonial_portfolios');
+        if (raw) {
+            const p = JSON.parse(raw);
+            if (Array.isArray(p) && p.length) return p;
+        }
+    } catch (_) {}
+    return [{ id: PORTFOLIO_DEFAULT, name: 'Portefeuille principal' }];
+}
+
+let portfolios = _loadPortfolioRegistry();
+let currentPortfolioId = (() => {
+    const saved = localStorage.getItem('patriMonial_currentPortfolio');
+    if (saved && portfolios.some(p => p.id === saved)) return saved;
+    return PORTFOLIO_DEFAULT;
+})();
+
+function savePortfolioRegistry() {
+    try { localStorage.setItem('patriMonial_portfolios', JSON.stringify(portfolios)); } catch (_) {}
+}
+function persistCurrentPortfolio() {
+    localStorage.setItem('patriMonial_currentPortfolio', currentPortfolioId);
+}
+
+// Renvoie la clé localStorage namespacée pour le portefeuille courant.
+function pfKey(base) {
+    return currentPortfolioId === PORTFOLIO_DEFAULT ? base : base + '__' + currentPortfolioId;
+}
+function currentPortfolio() {
+    return portfolios.find(p => p.id === currentPortfolioId) || portfolios[0];
+}
+
+// Lecteurs tolérants (null si la clé n'existe pas encore)
+function readPortfolioAssets() {
+    try { const r = localStorage.getItem(pfKey('patriMonial_assets')); return r ? JSON.parse(r) : null; } catch (_) { return null; }
+}
+function readPortfolioCessions() {
+    try { const r = localStorage.getItem(pfKey('patriMonial_cessions')); return r ? JSON.parse(r) : null; } catch (_) { return null; }
+}
+function readPortfolioArbitrages() {
+    try { const r = localStorage.getItem(pfKey('patriMonial_arbitrages')); return r ? JSON.parse(r) : null; } catch (_) { return null; }
+}
+function readPortfolioCadranNames() {
+    try { const r = localStorage.getItem(pfKey('patriMonial_cadranNames')); return r ? JSON.parse(r) : null; } catch (_) { return null; }
+}
+
+// =====================================================================
 // ÉTAT GLOBAL DE L'APPLICATION
 // =====================================================================
-let assets       = JSON.parse(localStorage.getItem('patriMonial_assets'))     || defaultAssets;
-let cessions     = JSON.parse(localStorage.getItem('patriMonial_cessions'))   || JSON.parse(JSON.stringify(defaultCessions));
-let arbitrages   = JSON.parse(localStorage.getItem('patriMonial_arbitrages')) || JSON.parse(JSON.stringify(defaultArbitrages));
+let assets       = readPortfolioAssets()     || defaultAssets;
+let cessions     = readPortfolioCessions()   || JSON.parse(JSON.stringify(defaultCessions));
+let arbitrages   = readPortfolioArbitrages() || JSON.parse(JSON.stringify(defaultArbitrages));
 let taxRegimeMode = localStorage.getItem('patriMonial_taxMode') || 'PFU';
 let taxTMI        = parseFloat(localStorage.getItem('patriMonial_tmi')) || 0.30;
 let cessionFilter = 'ALL';
@@ -104,6 +162,7 @@ let compareChartHistoryInstance = { A: null, B: null };
 let currentQuadrantCode    = null;
 let currentAssetDetailId   = null;
 let dashboardRangeFilter   = 'ALL';
+let dashboardAllocView     = localStorage.getItem('patriMonial_allocView') || 'donut';
 let quadrantRangeFilter    = 'ALL';
 let assetDetailRangeFilter = 'ALL';
 let inventoryFilter        = 'ALL';
@@ -115,10 +174,32 @@ let compareSegmentB        = '';
 let compareRangeA          = 'ALL';
 let compareRangeB          = 'ALL';
 let pendingSellDate        = '';
+
+// État du tableau des lots (persiste entre les ouvertures du modal détail)
+let lotSortKey    = 'date';   // 'date' | 'qty' | 'qtyRemaining' | 'price' | 'cumPRU' | 'pnl' | 'frais'
+let lotSortDir    = 'asc';    // 'asc' | 'desc'
+let lotShowSold   = true;     // afficher les lots totalement vendus ?
 let lastRiskMetrics        = {};
 let realVolCache           = {};
 let realSeriesCache        = {};
 let finnhubApiKey          = localStorage.getItem('patriMonial_finnhubKey') || '';
+let twelveDataApiKey       = localStorage.getItem('patriMonial_twelveDataKey') || '';
+
+// Seuil de concentration (poids max d'un actif dans le portefeuille).
+// Au-delà : un badge ⚠ s'affiche sur la ligne / carte de l'actif.
+let concentrationThreshold = parseFloat(localStorage.getItem('patriMonial_concentrationThreshold'));
+if (!Number.isFinite(concentrationThreshold) || concentrationThreshold <= 0) concentrationThreshold = 0.25;
+
+// Teintage des lignes / cartes en fonction de la performance (actif)
+let tintRowsEnabled = localStorage.getItem('patriMonial_tintRows');
+tintRowsEnabled = (tintRowsEnabled === null) ? true : (tintRowsEnabled === 'true');
+
+// Thème clair (désactivé par défaut = mode sombre d'origine)
+let lightMode = localStorage.getItem('patriMonial_lightMode') === 'true';
+
+// Mode Paper Trading — nouveaux actifs marqués fictifs ; inclusion stats paramétrable
+let paperMode = localStorage.getItem('patriMonial_paperMode') === 'true';
+let paperIncludeInStats = localStorage.getItem('patriMonial_paperIncludeInStats') !== 'false';
 
 // =====================================================================
 // CONSTANTES MÉTIER
@@ -151,7 +232,7 @@ const LEGACY_ENVELOPE_MAP  = { ASSURANCE_VIE: 'AV' };
 
 const CADRAN_DEFAULT_NAMES = { OR: 'OR', MONNAIES: 'MONNAIES / DEVISES', ASIE: 'ACTIONS / ASIE', PETROLE: 'PÉTROLE / COMMODITIES' };
 const CADRAN_NUM = { OR: 1, MONNAIES: 2, ASIE: 3, PETROLE: 4 };
-let cadranNames = Object.assign({}, CADRAN_DEFAULT_NAMES, JSON.parse(localStorage.getItem('patriMonial_cadranNames') || '{}'));
+let cadranNames = Object.assign({}, CADRAN_DEFAULT_NAMES, readPortfolioCadranNames() || {});
 
 const CADRAN_BADGE_COLORS = {
     OR: 'bg-amber-950 text-amber-300 border-amber-800/50',
@@ -185,6 +266,368 @@ function formatEUR(v) {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v || 0);
 }
 
+// Formatage des prix UNITAIRE (PRU, valeur unitaire courante).
+// Adapte le nombre de décimales à l'ordre de grandeur pour rester lisible
+// sur les cryptos fractionnaires (ex: 0,00001234 € pour SHIB).
+function formatUnitPrice(v) {
+    if (!Number.isFinite(v)) return '—';
+    const abs = Math.abs(v);
+    if (abs === 0) return '0,00 €';
+    const decimals = abs < 0.01 ? 8 : abs < 1 ? 4 : 2;
+    return new Intl.NumberFormat('fr-FR', {
+        style: 'currency', currency: 'EUR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: decimals
+    }).format(v);
+}
+
+// --- Sécurité : échappement HTML pour les données importables (protection XSS) ---
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// --- Formatage des quantités (grands nombres crypto, fractions d'onces…) ---
+function fmtQty(q) {
+    return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 8 }).format(q || 0);
+}
+
+// --- Debounce générique (limite la fréquence d'appel des API externes) ---
+function debounce(fn, delay = 300) {
+    let timer = null;
+    return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+// =====================================================================
+// COUNT-UP ANIMÉ — interpolation douce d'un nombre affiché (KPI)
+// ---------------------------------------------------------------------
+// Élément suivi via el.dataset.countupValue : à la 1ʳᵉ invocation, la
+// valeur de départ vaut 0 (page fraîchement chargée) ; ensuite, la
+// valeur précédente est reprise pour une transition continue.
+// Le formateur `format(v)` gère l'affichage (€, %, signe…).
+// =====================================================================
+const _prefersReducedMotion = window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false;
+
+function countUp(el, target, format, opts = {}) {
+    if (!el) return;
+    if (!Number.isFinite(target)) { el.innerText = format(target); return; }
+
+    // Préférence OS : aucune animation
+    if (_prefersReducedMotion) {
+        el.innerText = format(target);
+        el.dataset.countupValue = String(target);
+        return;
+    }
+
+    const hasPrev = el.dataset.countupValue !== undefined;
+    const from = hasPrev ? parseFloat(el.dataset.countupValue) : 0;
+    el.dataset.countupValue = String(target);
+
+    // Variation négligeable : écriture directe (évite un micro-flash)
+    if (hasPrev && Math.abs(target - from) < 0.01) {
+        el.innerText = format(target);
+        return;
+    }
+
+    // Annule une éventuelle animation en cours sur cet élément
+    if (el._countUpRAF) { cancelAnimationFrame(el._countUpRAF); el._countUpRAF = null; }
+
+    // Durée : plus longue au 1er affichage (part de 0), plus courte sur les mises à jour
+    const duration = opts.duration ?? (hasPrev ? 400 : 700);
+    const start = performance.now();
+    const easeOut = t => 1 - Math.pow(1 - t, 3);
+
+    function tick(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const v = from + (target - from) * easeOut(t);
+        el.innerText = format(v);
+        if (t < 1) {
+            el._countUpRAF = requestAnimationFrame(tick);
+        } else {
+            el.innerText = format(target);
+            el._countUpRAF = null;
+        }
+    }
+    el._countUpRAF = requestAnimationFrame(tick);
+}
+
+// Formateurs prêts à l'emploi pour les KPI du bandeau
+function fmtSignedEUR(v) { return (v >= 0 ? '+' : '') + formatEUR(v); }
+function fmtSignedPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+
+// =====================================================================
+// TOOLTIPS CUSTOM — délégué d'événements global
+// ---------------------------------------------------------------------
+// Aucun code appelant à modifier : tout attribut `title="..."` posé
+// sur n'importe quel élément (y compris dynamiquement après un re-render)
+// devient automatiquement une infobulle stylée.
+// Les <title> SVG (treemap, heatmap) sont aussi pris en charge.
+// =====================================================================
+let _tooltipEl = null;
+let _tooltipShowTimer = null;
+let _tooltipCurrentTarget = null;
+
+function initCustomTooltips() {
+    if (_tooltipEl) return;
+    _tooltipEl = document.getElementById('custom-tooltip');
+    if (!_tooltipEl) {
+        _tooltipEl = document.createElement('div');
+        _tooltipEl.id = 'custom-tooltip';
+        _tooltipEl.className = 'custom-tooltip';
+        document.body.appendChild(_tooltipEl);
+    }
+
+    // Écoute en capture pour intercepter avant tout stopPropagation éventuel
+    document.addEventListener('mouseover',  _tooltipOnMouseOver,  true);
+    document.addEventListener('mouseout',   _tooltipOnMouseOut,   true);
+    document.addEventListener('focusin',    _tooltipOnFocusIn,    true);
+    document.addEventListener('focusout',   _tooltipHide,         true);
+    document.addEventListener('scroll',     _tooltipHide,         true);
+    document.addEventListener('click',      _tooltipHide,         true);
+    window.addEventListener('blur',         _tooltipHide);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') _tooltipHide(); }, true);
+}
+
+// Remonte la chaîne DOM jusqu'à un élément porteur d'un title= (ou d'un
+// <title> SVG enfant). Migre le title en dataset.tooltip pour neutraliser
+// définitivement le tooltip natif sur cet élément.
+function _findTooltipTarget(node) {
+    let current = node;
+    while (current && current !== document.body && current.nodeType === 1) {
+        if (current.dataset && current.dataset.tooltip) return current;
+
+        if (current.hasAttribute && current.hasAttribute('title')) {
+            const t = (current.getAttribute('title') || '').trim();
+            if (t) {
+                current.dataset.tooltip = t;
+                current.removeAttribute('title');
+                return current;
+            }
+        }
+        // Fallback SVG : <title> enfant direct
+        if (current.children && current.children.length) {
+            for (const child of current.children) {
+                if (child.tagName && child.tagName.toLowerCase() === 'title') {
+                    const txt = (child.textContent || '').trim();
+                    if (txt) {
+                        current.dataset.tooltip = txt;
+                        child.remove();
+                        return current;
+                    }
+                }
+            }
+        }
+        current = current.parentElement;
+    }
+    return null;
+}
+
+function _tooltipOnMouseOver(e) {
+    const target = _findTooltipTarget(e.target);
+    if (!target) return;
+    if (target === _tooltipCurrentTarget) return;
+
+    _tooltipHide();
+    _tooltipCurrentTarget = target;
+    _tooltipShowTimer = setTimeout(() => _tooltipShow(target), 300);
+}
+
+function _tooltipOnMouseOut(e) {
+    const t = _tooltipCurrentTarget;
+    if (!t) return;
+    const rel = e.relatedTarget;
+    if (rel && (t === rel || t.contains(rel))) return;
+    _tooltipHide();
+}
+
+function _tooltipOnFocusIn(e) {
+    const target = _findTooltipTarget(e.target);
+    if (!target) return;
+    _tooltipHide();
+    _tooltipCurrentTarget = target;
+    _tooltipShow(target);
+}
+
+function _tooltipShow(target) {
+    if (!_tooltipEl || !target.dataset || !target.dataset.tooltip) return;
+
+    const raw = target.dataset.tooltip;
+    const lines = raw.split(/\r?\n/);
+
+    // Reconstruit le contenu en <div> par ligne (sécurité : textContent)
+    _tooltipEl.innerHTML = '';
+    lines.forEach((line, i) => {
+        const d = document.createElement('div');
+        d.textContent = line;
+        if (i > 0) d.style.marginTop = '3px';
+        _tooltipEl.appendChild(d);
+    });
+    _tooltipEl.classList.toggle('multiline', lines.length > 1);
+
+    // Mesure hors-écran avant positionnement
+    _tooltipEl.style.visibility = 'hidden';
+    _tooltipEl.style.opacity = '0';
+    _tooltipEl.style.left = '-9999px';
+    _tooltipEl.style.top  = '-9999px';
+    _tooltipEl.classList.add('visible');
+
+    const rect   = target.getBoundingClientRect();
+    const ttRect = _tooltipEl.getBoundingClientRect();
+    const margin = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Préférence : au-dessus de l'élément, centré horizontalement
+    let placement = 'top';
+    let top  = rect.top - ttRect.height - margin;
+    let left = rect.left + rect.width / 2 - ttRect.width / 2;
+
+    if (top < margin) {
+        top = rect.bottom + margin;
+        placement = 'bottom';
+    }
+    // Clamp aux bords du viewport
+    left = Math.max(margin, Math.min(left, vw - ttRect.width - margin));
+    // Si le tooltip dépasse en bas, on le remonte pour rester visible
+    if (top + ttRect.height > vh - margin) {
+        top = Math.max(margin, vh - ttRect.height - margin);
+    }
+
+    _tooltipEl.style.left = left + 'px';
+    _tooltipEl.style.top  = top + 'px';
+    _tooltipEl.setAttribute('data-placement', placement);
+    _tooltipEl.setAttribute('aria-hidden', 'false');
+    _tooltipEl.style.visibility = '';
+    _tooltipEl.style.opacity = '';
+}
+
+function _tooltipHide() {
+    clearTimeout(_tooltipShowTimer);
+    _tooltipShowTimer = null;
+    _tooltipCurrentTarget = null;
+    if (_tooltipEl) {
+        _tooltipEl.classList.remove('visible');
+        _tooltipEl.setAttribute('aria-hidden', 'true');
+    }
+}
+
+// =====================================================================
+// SKELETON LOADING — affiche des lignes fantômes pendant une tâche async
+// ---------------------------------------------------------------------
+// withSkeleton(asyncFn, { rows, targetSelector, minMs }) :
+//   1. capture le contenu actuel de la zone cible,
+//   2. le remplace par N lignes shimmer,
+//   3. exécute asyncFn(),
+//   4. restaure le contenu réel OU le nouveau contenu rendu par la fonction.
+// minMs garantit un temps d'affichage minimum (évite le flash pour les
+// tâches trop rapides).
+// =====================================================================
+let _skeletonDepth = 0;
+
+function _skeletonRowsHTML(n, columns = 12) {
+    let html = '';
+    for (let i = 0; i < n; i++) {
+        const widths = ['w-24', 'w-16', 'w-24', 'w-8', 'w-12', 'w-12', 'w-8', 'w-16', 'w-16', 'w-16', 'w-12', 'w-12'];
+        let cells = '';
+        for (let c = 0; c < columns; c++) {
+            const w = widths[c % widths.length];
+            cells += `<td class="p-3"><span class="skeleton-block ${w}"></span></td>`;
+        }
+        html += `<tr class="skeleton-row">${cells}</tr>`;
+    }
+    return html;
+}
+
+function showSkeletonFor(selector, rows = 6, columns = 12) {
+    const el = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    if (!el) return null;
+    const backup = el.innerHTML;
+    el.innerHTML = _skeletonRowsHTML(rows, columns);
+    return backup;
+}
+
+function restoreSkeletonFor(selector, backup) {
+    const el = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    if (!el || backup === null) return;
+    el.innerHTML = backup;
+}
+
+async function withSkeleton(asyncFn, opts = {}) {
+    const selector = opts.selector || '#table-inventory-body';
+    const rows     = opts.rows     || 6;
+    const columns  = opts.columns  || 12;
+    const minMs    = opts.minMs    || 400;
+
+    // Un seul skeleton actif à la fois : si une tâche est déjà en cours,
+    // on n'en rajoute pas un second par-dessus.
+    if (_skeletonDepth > 0) {
+        return await asyncFn();
+    }
+    _skeletonDepth++;
+
+    const backup = showSkeletonFor(selector, rows, columns);
+    const t0 = performance.now();
+    let result;
+    try {
+        result = await asyncFn();
+    } finally {
+        const elapsed = performance.now() - t0;
+        const remaining = Math.max(0, minMs - elapsed);
+        if (remaining > 0) await new Promise(r => setTimeout(r, remaining));
+        // Si asyncFn a rendu l'UI (via refreshAllUI), on ne restaure PAS
+        // le backup — sinon on écraserait le rendu frais. On laisse les
+        // fonctions métier repeupler le tableau.
+        if (document.querySelector(selector) && document.querySelector(selector).querySelector('.skeleton-row')) {
+            restoreSkeletonFor(selector, backup);
+        }
+        _skeletonDepth--;
+    }
+    return result;
+}
+
+// =====================================================================
+// BANDEAU DE PROGRESSION DISCRET (opérations longues : API externes)
+// =====================================================================
+let _progressToastHideTimer = null;
+
+function showProgressToast(title, detail = '', pct = 0) {
+    const toast = document.getElementById('progress-toast');
+    if (!toast) return;
+    if (_progressToastHideTimer) { clearTimeout(_progressToastHideTimer); _progressToastHideTimer = null; }
+    const iconEl = document.getElementById('progress-toast-icon');
+    if (iconEl) iconEl.className = 'fa-solid fa-arrows-rotate fa-spin';
+    document.getElementById('progress-toast-title').innerText  = title;
+    document.getElementById('progress-toast-detail').innerText = detail || '—';
+    document.getElementById('progress-toast-bar').style.width  = Math.max(0, Math.min(100, pct)) + '%';
+    toast.classList.remove('hidden');
+}
+
+function updateProgressToast(detail, pct) {
+    const toast = document.getElementById('progress-toast');
+    if (!toast || toast.classList.contains('hidden')) return;
+    if (detail !== undefined) document.getElementById('progress-toast-detail').innerText = detail;
+    if (pct !== undefined)    document.getElementById('progress-toast-bar').style.width  = Math.max(0, Math.min(100, pct)) + '%';
+}
+
+function hideProgressToast(delay = 0) {
+    if (_progressToastHideTimer) clearTimeout(_progressToastHideTimer);
+    _progressToastHideTimer = setTimeout(() => {
+        const toast = document.getElementById('progress-toast');
+        if (toast) toast.classList.add('hidden');
+        const bar = document.getElementById('progress-toast-bar');
+        if (bar) bar.style.width = '0%';
+    }, delay);
+}
 function envelopeShort(code) {
     return code && ENVELOPPES[code] ? ENVELOPPES[code].short : '';
 }
@@ -323,8 +766,12 @@ a.cadran = a.cadrans.primary;
             )];
         }
     } else {
-        // Nettoyage : s'assurer que chaque lot a un champ `reference`
-        a.lots.forEach(l => { if (l.reference === undefined) l.reference = ''; });
+        // Nettoyage : s'assurer que chaque lot a `reference`, `qty` et `qtyRemaining`
+        a.lots.forEach(l => {
+            if (l.reference === undefined) l.reference = '';
+            if (l.qty === undefined)       l.qty = l.qtyRemaining || 0;
+            if (l.qtyRemaining === undefined) l.qtyRemaining = l.qty || 0;
+        });
     }
     return a;
 }
@@ -372,13 +819,13 @@ function normalizeCession(c) {
 // MIGRATION AU DÉMARRAGE (v1 -> v2)
 // =====================================================================
 function bootMigration() {
-    const storedVer = parseInt(localStorage.getItem('patriMonial_dataVersion') || '1', 10);
-    const hadData = localStorage.getItem('patriMonial_assets') !== null;
+    const storedVer = parseInt(localStorage.getItem(pfKey('patriMonial_dataVersion')) || '1', 10);
+    const hadData = localStorage.getItem(pfKey('patriMonial_assets')) !== null;
 
     if (hadData && storedVer < DATA_VERSION) {
         try {
             localStorage.setItem(
-                'patriMonial_backup_v' + storedVer + '_' + Date.now(),
+                pfKey('patriMonial_backup_v' + storedVer + '_' + Date.now()),
                 JSON.stringify({ assets, cessions, arbitrages })
             );
         } catch (err) {
@@ -392,10 +839,10 @@ function bootMigration() {
     if (storedVer < DATA_VERSION) {
         try {
             if (hadData) {
-                localStorage.setItem('patriMonial_assets', JSON.stringify(assets));
-                localStorage.setItem('patriMonial_cessions', JSON.stringify(cessions));
+                localStorage.setItem(pfKey('patriMonial_assets'), JSON.stringify(assets));
+                localStorage.setItem(pfKey('patriMonial_cessions'), JSON.stringify(cessions));
             }
-            localStorage.setItem('patriMonial_dataVersion', String(DATA_VERSION));
+            localStorage.setItem(pfKey('patriMonial_dataVersion'), String(DATA_VERSION));
         } catch (err) {
             console.warn('Écriture post-migration impossible :', err);
         }
@@ -413,30 +860,33 @@ function cadranLabel(code) {
 
 function cadranBadgeHTML(code) {
     const cls = CADRAN_BADGE_COLORS[code] || CADRAN_BADGE_COLORS.HORS_GAVE;
-    return `<span class="px-2 py-0.5 rounded border text-[10px] font-bold whitespace-nowrap ${cls}">${cadranLabel(code)}</span>`;
+    return `<span class="px-2 py-0.5 rounded border text-[10px] font-bold whitespace-nowrap ${cls}">${escapeHTML(cadranLabel(code))}</span>`;
 }
 
 function cadranSelectHTML(assetId, currentCadran) {
-    const opts = [...GAVE_QUADRANTS, 'CRYPTO', 'HORS_GAVE'].map(code =>
-        `<option value="${code}" ${code === currentCadran ? 'selected' : ''}>${code === 'HORS_GAVE' ? 'Hors-Cadran' : (code === 'CRYPTO' ? 'Cryptomonnaies' : `Cadran ${CADRAN_NUM[code]} : ${cadranLabel(code)}`)}</option>`
-    ).join('');
+    const opts = [...GAVE_QUADRANTS, 'CRYPTO', 'HORS_GAVE'].map(code => {
+        const label = code === 'HORS_GAVE'
+            ? 'Hors-Cadran'
+            : (code === 'CRYPTO' ? 'Cryptomonnaies' : `Cadran ${CADRAN_NUM[code]} : ${cadranLabel(code)}`);
+        return `<option value="${code}" ${code === currentCadran ? 'selected' : ''}>${escapeHTML(label)}</option>`;
+    }).join('');
     return `<select onchange="reassignAssetCadran(${assetId}, this.value)" class="bg-gray-950 border border-gray-800 rounded-md px-1.5 py-1 text-[10px] text-white focus:outline-none focus:border-indigo-500">${opts}</select>`;
 }
 // =====================================================================
 // PERSISTANCE (localStorage)
 // =====================================================================
 function saveToStorage() {
-    try { localStorage.setItem('patriMonial_assets', JSON.stringify(assets)); }
+    try { localStorage.setItem(pfKey('patriMonial_assets'), JSON.stringify(assets)); }
     catch (err) { console.warn('Sauvegarde actifs impossible (quota dépassé ?) :', err); }
 }
 
 function saveCessions() {
-    try { localStorage.setItem('patriMonial_cessions', JSON.stringify(cessions)); }
+    try { localStorage.setItem(pfKey('patriMonial_cessions'), JSON.stringify(cessions)); }
     catch (err) { console.warn('Sauvegarde cessions impossible :', err); }
 }
 
 function saveArbitrages() {
-    try { localStorage.setItem('patriMonial_arbitrages', JSON.stringify(arbitrages)); }
+    try { localStorage.setItem(pfKey('patriMonial_arbitrages'), JSON.stringify(arbitrages)); }
     catch (err) { console.warn('Sauvegarde arbitrages impossible :', err); }
 }
 
@@ -444,6 +894,244 @@ function saveTaxSettings() {
     localStorage.setItem('patriMonial_taxMode', taxRegimeMode);
     localStorage.setItem('patriMonial_tmi', String(taxTMI));
 }
+
+function saveConcentrationThreshold(pct) {
+    const v = parseFloat(pct);
+    if (!Number.isFinite(v) || v <= 0) return;
+    concentrationThreshold = Math.min(1, v / 100);
+    localStorage.setItem('patriMonial_concentrationThreshold', String(concentrationThreshold));
+    renderInventoryTable();
+    renderCryptoTable();
+    renderHorsGaveTable();
+    renderGaveDetailTable();
+}
+
+// Active/désactive le teintage performance des lignes et cartes.
+function setTintRowsEnabled(enabled) {
+    tintRowsEnabled = !!enabled;
+    localStorage.setItem('patriMonial_tintRows', String(tintRowsEnabled));
+    applyTintClassToBody();
+    // Rafraîchit toutes les tables pour faire apparaître / disparaître le teintage
+    renderInventoryTable();
+    renderCryptoTable();
+    renderHorsGaveTable();
+    renderGaveDetailTable();
+}
+
+function applyTintClassToBody() {
+    document.body.classList.toggle('tint-rows-enabled', !!tintRowsEnabled);
+}
+
+// =====================================================================
+// THÈME CLAIR — bascule + persistance
+// =====================================================================
+function applyLightModeClass() {
+    document.body.classList.toggle('light', !!lightMode);
+    updateThemeToggleUI();
+}
+
+function updateThemeToggleUI() {
+    const btn  = document.getElementById('theme-toggle-btn');
+    const icon = document.getElementById('theme-toggle-icon');
+    if (!btn || !icon) return;
+    if (lightMode) {
+        // En mode clair : on affiche une lune pour proposer de revenir au sombre
+        icon.className = 'fa-solid fa-moon';
+        btn.className = 'w-8 h-8 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0';
+        btn.title = 'Passer en mode sombre';
+    } else {
+        // En mode sombre : on affiche un soleil
+        icon.className = 'fa-solid fa-sun';
+        btn.className = 'w-8 h-8 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0';
+        btn.title = 'Passer en mode clair';
+    }
+}
+
+function setLightMode(enabled) {
+    lightMode = !!enabled;
+    localStorage.setItem('patriMonial_lightMode', String(lightMode));
+    applyLightModeClass();
+    // Re-rend les graphiques avec les bonnes couleurs de grille/libellés
+    if (typeof refreshAllUI === 'function') refreshAllUI();
+}
+
+function toggleLightMode() {
+    setLightMode(!lightMode);
+}
+
+// =====================================================================
+// PAPER TRADING — positions fictives marquées `isPaper: true`
+// =====================================================================
+function isPaperAsset(a) { return !!(a && a.isPaper); }
+
+// Renvoie la liste des actifs à utiliser pour les agrégats / KPI.
+// Si `paperIncludeInStats` est faux, exclut les positions papier.
+function statsAssets() {
+    return paperIncludeInStats ? assets : assets.filter(a => !isPaperAsset(a));
+}
+
+// Cessions à utiliser pour la fiscalité : on exclut celles issues d'actifs papier
+// (elles ne correspondent à aucune réalité fiscale tant que non promues).
+function statsCessions() {
+    if (paperIncludeInStats) return cessions;
+    const realIds = new Set(assets.filter(a => !isPaperAsset(a)).map(a => a.id));
+    return cessions.filter(c => !c.fromPaper || realIds.has(c.fromPaper));
+}
+
+function countPaperAssets() {
+    return assets.filter(isPaperAsset).length;
+}
+
+function applyPaperModeClass() {
+    document.body.classList.toggle('paper-mode', !!paperMode);
+}
+
+function updatePaperToggleUI() {
+    const btn   = document.getElementById('paper-toggle-btn');
+    const icon  = document.getElementById('paper-toggle-icon');
+    const badge = document.getElementById('paper-count-badge');
+    const banner = document.getElementById('paper-mode-banner');
+    const includeCb = document.getElementById('paper-include-stats');
+
+    const n = countPaperAssets();
+    if (badge) {
+        badge.textContent = String(n);
+        badge.classList.toggle('hidden', n === 0);
+    }
+    if (icon) {
+        icon.className = paperMode
+            ? 'fa-solid fa-flask text-[11px] text-purple-300'
+            : 'fa-solid fa-flask text-[11px] opacity-50';
+    }
+    if (btn) {
+        btn.className = paperMode
+            ? 'px-3 py-1.5 rounded-lg bg-purple-950/60 border border-purple-700/50 text-xs text-purple-200 hover:bg-purple-900/70 transition flex items-center gap-1.5 flex-shrink-0'
+            : 'px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs text-gray-400 hover:text-white transition flex items-center gap-1.5 flex-shrink-0';
+        btn.title = paperMode
+            ? 'Mode Paper Trading ACTIF — cliquez pour désactiver'
+            : 'Activer le mode Paper Trading (positions fictives)';
+    }
+    if (banner) banner.classList.toggle('hidden', !paperMode);
+    if (includeCb) includeCb.checked = paperIncludeInStats;
+}
+
+function setPaperMode(enabled) {
+    paperMode = !!enabled;
+    localStorage.setItem('patriMonial_paperMode', String(paperMode));
+    applyPaperModeClass();
+    updatePaperToggleUI();
+    if (typeof refreshAllUI === 'function') refreshAllUI();
+}
+
+function togglePaperMode() {
+    setPaperMode(!paperMode);
+}
+
+function setPaperIncludeInStats(enabled) {
+    paperIncludeInStats = !!enabled;
+    localStorage.setItem('patriMonial_paperIncludeInStats', String(paperIncludeInStats));
+    updatePaperToggleUI();
+    if (typeof refreshAllUI === 'function') refreshAllUI();
+}
+
+// Promotion d'une position papier en position réelle (retire le flag isPaper)
+function promotePaperAsset(id) {
+    const a = assets.find(x => x.id === id);
+    if (!a || !isPaperAsset(a)) return;
+    if (!confirm(`Promouvoir "${a.name}" du mode papier au portefeuille réel ?\n\nLa position sortira du mode fictif et sera incluse dans tous les calculs fiscaux (impôt, plus-values latentes, ratios de risque).`)) return;
+    delete a.isPaper;
+    saveToStorage();
+    if (typeof refreshAllUI === 'function') refreshAllUI();
+}
+
+// Purge en masse des positions papier (avec confirmation)
+function deleteAllPaperAssets() {
+    const n = countPaperAssets();
+    if (n === 0) { alert('Aucune position papier à supprimer.'); return; }
+    if (!confirm(`Supprimer définitivement les ${n} position(s) papier ?\n\nCette action est irréversible (mais vous pouvez Ctrl+Z juste après).`)) return;
+    pushUndo('Purge des positions papier');
+    assets = assets.filter(a => !isPaperAsset(a));
+    saveToStorage();
+    if (typeof refreshAllUI === 'function') refreshAllUI();
+}
+
+// Renvoie la classe CSS de teintage pour un actif ('' si neutre ou désactivé)
+function rowTintClass(asset) {
+    if (!tintRowsEnabled) return '';
+    const v = (asset.value || 0) - (asset.invested || 0);
+    if (v > 0.01)  return 'row-profit';
+    if (v < -0.01) return 'row-loss';
+    return '';
+}
+
+// Idem pour les cartes mobiles (classes distinctes)
+function cardTintClass(asset) {
+    if (!tintRowsEnabled) return '';
+    const v = (asset.value || 0) - (asset.invested || 0);
+    if (v > 0.01)  return 'card-profit';
+    if (v < -0.01) return 'card-loss';
+    return '';
+}
+
+// =====================================================================
+// UNDO — pile bornée à 10 états, capture complète avant chaque action
+// destructive. Restauration par Ctrl+Z ou via performUndo().
+// =====================================================================
+const UNDO_MAX = 10;
+let undoStack = [];
+let _undoToastTimer = null;
+
+function pushUndo(label) {
+    try {
+        undoStack.push({
+            label: label || 'Action',
+            at: Date.now(),
+            assets:       JSON.parse(JSON.stringify(assets)),
+            cessions:     JSON.parse(JSON.stringify(cessions)),
+            arbitrages:   JSON.parse(JSON.stringify(arbitrages)),
+            cadranNames:  JSON.parse(JSON.stringify(cadranNames))
+        });
+        while (undoStack.length > UNDO_MAX) undoStack.shift();
+    } catch (err) {
+        // Deep copy d'un très gros portefeuille peut être lente : on log mais
+        // on ne bloque jamais l'action utilisateur pour un souci d'undo.
+        console.warn('pushUndo a échoué (portefeuille trop volumineux ?) :', err);
+    }
+}
+
+function performUndo() {
+    if (!undoStack.length) {
+        showUndoToast('Aucune action à annuler', true);
+        return;
+    }
+    const snap = undoStack.pop();
+    assets      = snap.assets;
+    cessions    = snap.cessions;
+    arbitrages  = snap.arbitrages;
+    cadranNames = snap.cadranNames;
+    localStorage.setItem('patriMonial_cadranNames', JSON.stringify(cadranNames));
+    saveToStorage();
+    saveCessions();
+    saveArbitrages();
+    refreshAllUI();
+    showUndoToast(`Annulé : ${snap.label}`);
+}
+
+function showUndoToast(msg, isWarning) {
+    const toast = document.getElementById('undo-toast');
+    const text  = document.getElementById('undo-toast-text');
+    const icon  = document.getElementById('undo-toast-icon');
+    if (!toast || !text) return;
+    if (_undoToastTimer) { clearTimeout(_undoToastTimer); _undoToastTimer = null; }
+    text.innerText = msg;
+    if (icon) icon.className = isWarning
+        ? 'fa-solid fa-circle-info text-amber-400'
+        : 'fa-solid fa-rotate-left text-teal-400';
+    toast.classList.remove('hidden');
+    _undoToastTimer = setTimeout(() => toast.classList.add('hidden'), isWarning ? 1800 : 3200);
+}
+
+function undoCount() { return undoStack.length; }
 
 // =====================================================================
 // TIMELINE PORTEFEUILLE (utilisée par tous les graphiques)
@@ -673,14 +1361,14 @@ function upsertTodayHistoryPoint(asset, value, invested) {
 // SAUVEGARDE / RESTAURATION / IMPORT / EXPORT
 // =====================================================================
 function createSnapshot(label) {
-    const backups = JSON.parse(localStorage.getItem('patriMonial_localBackups') || '[]');
+    const backups = JSON.parse(localStorage.getItem(pfKey('patriMonial_localBackups')) || '[]');
     backups.push({
         label: label || new Date().toLocaleString('fr-FR'),
         at: Date.now(),
         data: currentDataSnapshot()
     });
     while (backups.length > 7) backups.shift();
-    try { localStorage.setItem('patriMonial_localBackups', JSON.stringify(backups)); }
+    try { localStorage.setItem(pfKey('patriMonial_localBackups'), JSON.stringify(backups)); }
     catch (err) { console.warn('Sauvegarde locale impossible (quota ?) :', err); }
 }
 
@@ -693,16 +1381,16 @@ function currentDataSnapshot() {
 }
 
 function checkDailyAutoBackup() {
-    const last = localStorage.getItem('patriMonial_lastAutoBackup');
+    const last = localStorage.getItem(pfKey('patriMonial_lastAutoBackup'));
     const todayStr = new Date().toDateString();
     if (last !== todayStr) {
         createSnapshot('Auto — ' + todayStr);
-        localStorage.setItem('patriMonial_lastAutoBackup', todayStr);
+        localStorage.setItem(pfKey('patriMonial_lastAutoBackup'), todayStr);
     }
 }
 
 function listLocalBackups() {
-    return JSON.parse(localStorage.getItem('patriMonial_localBackups') || '[]');
+    return JSON.parse(localStorage.getItem(pfKey('patriMonial_localBackups')) || '[]');
 }
 
 // Export complet : actifs + cessions + arbitrages + noms de cadrans + préférences fiscales
@@ -758,7 +1446,7 @@ function handleImportJSON(e) {
                 newArbitrages = Array.isArray(parsed.data.arbitrages) ? parsed.data.arbitrages : [];
                 newCadranNames = parsed.data.cadranNames || CADRAN_DEFAULT_NAMES;
                 newTaxMode = parsed.data.taxRegimeMode || 'PFU';
-                newTaxTMI = typeof parsed.data.taxTMI === 'number' ? parsed.data.taxTMI : 0.30;
+                newTaxTMI = Number.isFinite(parseFloat(parsed.data.taxTMI)) ? parseFloat(parsed.data.taxTMI) : 0.30;
             } else {
                 throw new Error('Le fichier JSON n\'est ni un tableau d\'actifs ni un export complet PatriMonial.');
             }
@@ -788,7 +1476,7 @@ function handleImportJSON(e) {
 
             // Persistance
             saveToStorage(); saveCessions(); saveArbitrages(); saveTaxSettings();
-            localStorage.setItem('patriMonial_cadranNames', JSON.stringify(cadranNames));
+            localStorage.setItem(pfKey('patriMonial_cadranNames'), JSON.stringify(cadranNames));
 
             refreshAllUI();
             alert(`Import réussi :\n• ${assets.length} actif(s)\n• ${cessions.length} cession(s)\n• ${arbitrages.length} arbitrage(s)`);
