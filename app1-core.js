@@ -158,6 +158,11 @@ let quadrantHistoryChartInstance  = null;
 let compareChartAllocInstance   = { A: null, B: null };
 let compareChartHistoryInstance = { A: null, B: null };
 
+// Paper Trading v2 — comparateur de scénarios (Étape C)
+let paperCompareState = { A: null, B: null };  // scenarioId sélectionnés
+let paperCompareChartAllocInstance   = { A: null, B: null };
+let paperCompareChartHistoryInstance = null;
+
 // État UI
 let currentQuadrantCode    = null;
 let currentAssetDetailId   = null;
@@ -200,6 +205,59 @@ let lightMode = localStorage.getItem('patriMonial_lightMode') === 'true';
 // Mode Paper Trading — nouveaux actifs marqués fictifs ; inclusion stats paramétrable
 let paperMode = localStorage.getItem('patriMonial_paperMode') === 'true';
 let paperIncludeInStats = localStorage.getItem('patriMonial_paperIncludeInStats') !== 'false';
+
+// =====================================================================
+// PAPER TRADING v2 — registre des scénarios (partagé entre portefeuilles)
+// =====================================================================
+const PAPER_SCENARIO_DEFAULT = 'default';
+const PAPER_SCENARIO_COLORS = ['#a855f7', '#06b6d4', '#f59e0b', '#ef4444', '#10b981', '#6366f1', '#ec4899', '#84cc16'];
+
+function _loadPaperScenarios() {
+    try {
+        const raw = localStorage.getItem('patriMonial_paperScenarios');
+        if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list) && list.length) return list;
+        }
+    } catch (_) {}
+    return [{
+        id: PAPER_SCENARIO_DEFAULT,
+        name: 'Scénario par défaut',
+        color: PAPER_SCENARIO_COLORS[0],
+        notes: '',
+        createdAt: Date.now()
+    }];
+}
+
+let paperScenarios = _loadPaperScenarios();
+let currentPaperScenarioId = (() => {
+    const saved = localStorage.getItem('patriMonial_currentPaperScenario');
+    if (saved && paperScenarios.some(s => s.id === saved)) return saved;
+    return paperScenarios[0].id;
+})();
+
+function savePaperScenarios() {
+    try { localStorage.setItem('patriMonial_paperScenarios', JSON.stringify(paperScenarios)); } catch (_) {}
+    localStorage.setItem('patriMonial_currentPaperScenario', currentPaperScenarioId);
+}
+
+function currentPaperScenario() {
+    return paperScenarios.find(s => s.id === currentPaperScenarioId) || paperScenarios[0];
+}
+
+function paperScenarioColor(scenarioId) {
+    const s = paperScenarios.find(x => x.id === scenarioId);
+    return s ? s.color : PAPER_SCENARIO_COLORS[0];
+}
+
+function paperScenarioName(scenarioId) {
+    const s = paperScenarios.find(x => x.id === scenarioId);
+    return s ? s.name : 'Scénario inconnu';
+}
+
+function paperAssetsOfScenario(scenarioId) {
+    return assets.filter(a => isPaperAsset(a) && (!scenarioId || a.paperScenarioId === scenarioId));
+}
 
 // =====================================================================
 // CONSTANTES MÉTIER
@@ -872,6 +930,7 @@ function cadranSelectHTML(assetId, currentCadran) {
     }).join('');
     return `<select onchange="reassignAssetCadran(${assetId}, this.value)" class="bg-gray-950 border border-gray-800 rounded-md px-1.5 py-1 text-[10px] text-white focus:outline-none focus:border-indigo-500">${opts}</select>`;
 }
+
 // =====================================================================
 // PERSISTANCE (localStorage)
 // =====================================================================
@@ -987,32 +1046,51 @@ function applyPaperModeClass() {
 }
 
 function updatePaperToggleUI() {
-    const btn   = document.getElementById('paper-toggle-btn');
-    const icon  = document.getElementById('paper-toggle-icon');
-    const badge = document.getElementById('paper-count-badge');
-    const banner = document.getElementById('paper-mode-banner');
+    const btn       = document.getElementById('paper-toggle-btn');
+    const icon      = document.getElementById('paper-toggle-icon');
+    const badge     = document.getElementById('paper-count-badge');
+    const banner    = document.getElementById('paper-mode-banner');
     const includeCb = document.getElementById('paper-include-stats');
+    const labelEl   = document.getElementById('paper-toggle-label');
+    const scenLabel = document.getElementById('paper-current-scenario-label');
 
-    const n = countPaperAssets();
+    const scen = currentPaperScenario();
+    // Le badge compte uniquement les positions du scénario courant (pour rester cohérent avec le sélecteur)
+    const n = scen ? assets.filter(a => isPaperAsset(a) && a.paperScenarioId === scen.id).length : 0;
+
     if (badge) {
         badge.textContent = String(n);
         badge.classList.toggle('hidden', n === 0);
     }
+    if (labelEl) {
+        labelEl.textContent = paperMode && scen ? scen.name : 'Paper';
+        if (paperMode && scen) labelEl.style.color = scen.color;
+        else labelEl.style.color = '';
+    }
+    if (scenLabel && scen) {
+        scenLabel.textContent = scen.name;
+        scenLabel.style.color = scen.color;
+    }
     if (icon) {
         icon.className = paperMode
-            ? 'fa-solid fa-flask text-[11px] text-purple-300'
+            ? 'fa-solid fa-flask text-[11px]'
             : 'fa-solid fa-flask text-[11px] opacity-50';
+        if (paperMode && scen) icon.style.color = scen.color;
+        else icon.style.color = '';
     }
     if (btn) {
         btn.className = paperMode
-            ? 'px-3 py-1.5 rounded-lg bg-purple-950/60 border border-purple-700/50 text-xs text-purple-200 hover:bg-purple-900/70 transition flex items-center gap-1.5 flex-shrink-0'
-            : 'px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs text-gray-400 hover:text-white transition flex items-center gap-1.5 flex-shrink-0';
+            ? 'px-3 py-1.5 rounded-lg bg-purple-950/60 border border-purple-700/50 text-xs text-purple-200 hover:bg-purple-900/70 transition flex items-center gap-1.5 flex-shrink-0 max-w-[240px]'
+            : 'px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs text-gray-400 hover:text-white transition flex items-center gap-1.5 flex-shrink-0 max-w-[240px]';
         btn.title = paperMode
-            ? 'Mode Paper Trading ACTIF — cliquez pour désactiver'
+            ? `Mode Paper Trading ACTIF — scénario : ${scen ? scen.name : '—'}`
             : 'Activer le mode Paper Trading (positions fictives)';
     }
     if (banner) banner.classList.toggle('hidden', !paperMode);
     if (includeCb) includeCb.checked = paperIncludeInStats;
+
+    // Menu scénarios : mise à jour si visible
+    if (typeof renderPaperScenarioMenu === 'function') renderPaperScenarioMenu();
 }
 
 function setPaperMode(enabled) {
@@ -1034,23 +1112,311 @@ function setPaperIncludeInStats(enabled) {
     if (typeof refreshAllUI === 'function') refreshAllUI();
 }
 
+// --- CRUD scénarios -----------------------------------------------------
+function setCurrentPaperScenario(scenarioId) {
+    if (!paperScenarios.some(s => s.id === scenarioId)) return;
+    currentPaperScenarioId = scenarioId;
+    savePaperScenarios();
+    updatePaperToggleUI();
+    if (typeof refreshAllUI === 'function') refreshAllUI();
+}
+
+function createPaperScenario(name) {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return null;
+    const id = 'ps_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const usedColors = new Set(paperScenarios.map(s => s.color));
+    const color = PAPER_SCENARIO_COLORS.find(c => !usedColors.has(c))
+        || PAPER_SCENARIO_COLORS[paperScenarios.length % PAPER_SCENARIO_COLORS.length];
+    paperScenarios.push({ id, name: trimmed, color, notes: '', createdAt: Date.now() });
+    savePaperScenarios();
+    return id;
+}
+
+function renamePaperScenario(id, newName) {
+    const s = paperScenarios.find(x => x.id === id);
+    if (!s) return;
+    const trimmed = (newName || '').trim();
+    if (!trimmed) return;
+    s.name = trimmed;
+    savePaperScenarios();
+    updatePaperToggleUI();
+    if (typeof refreshAllUI === 'function') refreshAllUI();
+}
+
+function deletePaperScenario(id) {
+    if (paperScenarios.length <= 1) {
+        alert('Impossible de supprimer le dernier scénario.');
+        return;
+    }
+    const s = paperScenarios.find(x => x.id === id);
+    if (!s) return;
+    const victims = assets.filter(a => isPaperAsset(a) && a.paperScenarioId === id);
+    const msg = `Supprimer le scénario "${s.name}" ?\n\n` +
+        (victims.length ? `${victims.length} position(s) papier rattachée(s) à ce scénario seront AUSSI supprimées.\n\n` : '') +
+        `Cette action est irréversible (Ctrl+Z pour annuler).`;
+    if (!confirm(msg)) return;
+
+    pushUndo('Suppression du scénario : ' + s.name);
+    const victimIds = new Set(victims.map(v => v.id));
+    assets = assets.filter(a => !victimIds.has(a.id));
+    paperScenarios = paperScenarios.filter(x => x.id !== id);
+    if (currentPaperScenarioId === id) currentPaperScenarioId = paperScenarios[0].id;
+    savePaperScenarios();
+    saveToStorage();
+    if (typeof refreshAllUI === 'function') refreshAllUI();
+    if (typeof renderPaperScenarioMenu === 'function') renderPaperScenarioMenu();
+}
+
+// Archive/désarchive un scénario : il garde ses positions et ses stats mais
+// n'apparaît plus dans le menu principal (sauf case "Afficher les archivés").
+function archivePaperScenario(id, archived = true) {
+    const s = paperScenarios.find(x => x.id === id);
+    if (!s) return;
+    s.archived = !!archived;
+    s.archivedAt = archived ? Date.now() : null;
+    savePaperScenarios();
+    updatePaperToggleUI();
+    if (typeof renderStrategiesTab === 'function') renderStrategiesTab();
+}
+
+function toggleArchivePaperScenario(id) {
+    const s = paperScenarios.find(x => x.id === id);
+    if (!s) return;
+    const victims = assets.filter(a => isPaperAsset(a) && a.paperScenarioId === id);
+    const verb = s.archived ? 'Désarchiver' : 'Archiver';
+    if (!confirm(`${verb} le scénario "${s.name}" ?\n\n` +
+        (s.archived
+            ? 'Il redeviendra visible dans le menu des scénarios actifs.'
+            : `Il restera conservé avec ses ${victims.length} position(s) mais n'apparaîtra plus dans le menu principal.`)
+    )) return;
+    archivePaperScenario(id, !s.archived);
+}
+
+function activePaperScenarios() {
+    return paperScenarios.filter(s => !s.archived);
+}
+function archivedPaperScenarios() {
+    return paperScenarios.filter(s => s.archived);
+}
+
+// Duplique un scénario (positions + paramètres) dans un nouveau scénario.
+// Le nouveau scénario devient le scénario courant après duplication.
+function duplicatePaperScenario(id) {
+    const s = paperScenarios.find(x => x.id === id);
+    if (!s) return;
+    const defaultName = s.name + ' (copie)';
+    const newName = prompt('Nom du nouveau scénario dupliqué :', defaultName);
+    if (!newName || !newName.trim()) return;
+
+    pushUndo('Duplication du scénario : ' + s.name);
+
+    const newId = createPaperScenario(newName);
+    if (!newId) return;
+
+    // Clone les positions papier rattachées au scénario source
+    const srcAssets = assets.filter(a => isPaperAsset(a) && a.paperScenarioId === id);
+    const clones = srcAssets.map(a => {
+        const c = JSON.parse(JSON.stringify(a));
+        c.id = Date.now() + Math.floor(Math.random() * 100000);
+        c.paperScenarioId = newId;
+        // Nouveaux IDs de lots pour éviter les collisions
+        if (Array.isArray(c.lots)) {
+            c.lots.forEach(l => { l.id = Date.now() + Math.floor(Math.random() * 100000); });
+        }
+        return c;
+    });
+    assets.push(...clones);
+    saveToStorage();
+    setCurrentPaperScenario(newId);
+    if (typeof refreshAllUI === 'function') refreshAllUI();
+    if (typeof renderStrategiesTab === 'function') renderStrategiesTab();
+    alert(`Scénario dupliqué : ${clones.length} position(s) copiée(s) dans "${newName}".`);
+}
+
+// Agrège les valeurs d'un scénario jour par jour (pour la sparkline 60j).
+// Renvoie un tableau { date, value } trié par date, en réutilisant l'historique
+// de chaque actif du scénario.
+function buildPaperScenarioSeries(scenarioId, days = 60) {
+    // ... (code existant inchangé)
+    const list = assets.filter(a => isPaperAsset(a) && a.paperScenarioId === scenarioId);
+    if (!list.length) return [];
+    const cutoff = Date.now() - days * 864e5;
+
+    const allPoints = [];
+    list.forEach(a => {
+        (a.history || []).forEach(h => {
+            const d = parseFlexDate(h.date);
+            if (d && Number.isFinite(h.value)) allPoints.push({ date: d, id: a.id, value: h.value });
+        });
+        allPoints.push({ date: new Date(), id: a.id, value: a.value || 0 });
+    });
+    if (!allPoints.length) return [];
+    allPoints.sort((x, y) => x.date - y.date);
+
+    const start = new Date(Math.max(cutoff, allPoints[0].date.getTime()));
+    const today = new Date();
+    const lastValues = {};
+    const series = [];
+    const cursor = new Date(start);
+    while (cursor <= today) {
+        const endOfDay = new Date(cursor); endOfDay.setHours(23, 59, 59, 999);
+        for (const p of allPoints) {
+            if (p.date <= endOfDay) lastValues[p.id] = p.value;
+        }
+        const total = Object.values(lastValues).reduce((s, v) => s + v, 0);
+        series.push({ date: new Date(cursor).getTime(), value: total });
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return series;
+}
+
+// ---------------------------------------------------------------------
+// PAPER TRADING v2 — Helpers pour le comparateur (Étape C)
+// ---------------------------------------------------------------------
+// Renvoie un objet de synthèse pour un scénario donné :
+//  { invested, value, pnl, pnlPct, positions, sharpe, vol, maxDD, meanAnnualized, scenario }
+function summarizePaperScenario(scenarioId) {
+    const s = paperScenarios.find(x => x.id === scenarioId);
+    if (!s) return null;
+    const list = assets.filter(a => isPaperAsset(a) && a.paperScenarioId === scenarioId);
+    const invested = list.reduce((sum, a) => sum + (a.invested || 0), 0);
+    const value    = list.reduce((sum, a) => sum + (a.value    || 0), 0);
+    const pnl      = value - invested;
+    const pnlPct   = invested > 0 ? (pnl / invested * 100) : 0;
+
+    let rm = null;
+    if (list.length >= 2) {
+        try { rm = computeRiskMetricsFromAssets(list); } catch (_) { rm = null; }
+    }
+    return {
+        scenario: s,
+        list,
+        positions: list.length,
+        invested,
+        value,
+        pnl,
+        pnlPct,
+        sharpe:       rm && Number.isFinite(rm.sharpe)      ? rm.sharpe      : null,
+        vol:          rm && Number.isFinite(rm.volatility)  ? rm.volatility  : null,
+        maxDD:        rm && Number.isFinite(rm.maxdrawdown) ? rm.maxdrawdown : null,
+        meanAnnual:   rm && Number.isFinite(rm.meanAnnualized) ? rm.meanAnnualized : null,
+        usedRealData: rm ? !!rm.usedRealReturns : false
+    };
+}
+
+// Delta formaté pour la table de comparaison
+function paperDelta(a, b, format = 'eur', lowerIsBetter = false) {
+    if (a === null || b === null || !Number.isFinite(a) || !Number.isFinite(b)) {
+        return { txt: '—', cls: 'text-gray-600' };
+    }
+    const d = a - b;
+    let txt, isWinA;
+    if (format === 'eur') {
+        txt = (d >= 0 ? '+' : '') + formatEUR(d);
+        isWinA = d >= 0;
+    } else if (format === 'pct') {
+        txt = (d >= 0 ? '+' : '') + d.toFixed(2) + ' pts';
+        isWinA = d >= 0;
+    } else if (format === 'ratio') {
+        txt = (d >= 0 ? '+' : '') + d.toFixed(2);
+        isWinA = d >= 0;
+    } else if (format === 'count') {
+        txt = (d >= 0 ? '+' : '') + d;
+        isWinA = d >= 0;
+    }
+    if (lowerIsBetter) isWinA = !isWinA;
+    return { txt, cls: isWinA ? 'text-emerald-400' : 'text-rose-400' };
+}
+
+// --- UI scénarios : menu déroulant attaché au bouton Paper -------------
+function renderPaperScenarioMenu() {
+    const list = document.getElementById('paper-scenario-list');
+    if (!list) return;
+    list.innerHTML = paperScenarios.map(s => {
+        const isCurrent = s.id === currentPaperScenarioId;
+        const count = assets.filter(a => isPaperAsset(a) && a.paperScenarioId === s.id).length;
+        return `<div class="flex items-center justify-between border-b border-gray-800/60 last:border-b-0 ${isCurrent ? 'bg-purple-950/30' : ''}">
+            <button onclick="setCurrentPaperScenario('${s.id}'); closePaperScenarioMenu();" class="flex-1 text-left min-w-0 flex items-center gap-2 p-2.5 hover:bg-gray-800/50 transition">
+                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background:${s.color};"></span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-xs font-medium ${isCurrent ? 'text-white' : 'text-gray-300'} truncate">${escapeHTML(s.name)}</span>
+                    <span class="block text-[10px] text-gray-500 font-mono">${count} position(s) · créé le ${new Date(s.createdAt).toLocaleDateString('fr-FR')}</span>
+                </span>
+                ${isCurrent ? '<i class="fa-solid fa-circle-check text-purple-400 text-[10px]"></i>' : ''}
+            </button>
+            <div class="flex gap-0.5 flex-shrink-0 pr-1.5">
+                <button onclick="event.stopPropagation(); renamePaperScenarioUI('${s.id}')" class="p-1.5 text-gray-500 hover:text-purple-400 transition" title="Renommer"><i class="fa-solid fa-pen text-[10px]"></i></button>
+                ${paperScenarios.length > 1 ? `<button onclick="event.stopPropagation(); deletePaperScenario('${s.id}')" class="p-1.5 text-gray-500 hover:text-rose-400 transition" title="Supprimer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renamePaperScenarioUI(id) {
+    const s = paperScenarios.find(x => x.id === id);
+    if (!s) return;
+    const name = prompt('Nouveau nom du scénario :', s.name);
+    if (!name || !name.trim() || name.trim() === s.name) return;
+    renamePaperScenario(id, name);
+    renderPaperScenarioMenu();
+}
+
+function togglePaperScenarioMenu(evt) {
+    if (evt) evt.stopPropagation();
+    const menu = document.getElementById('paper-scenario-menu');
+    if (!menu) return;
+    if (menu.classList.contains('hidden')) {
+        renderPaperScenarioMenu();
+        menu.classList.remove('hidden');
+    } else {
+        menu.classList.add('hidden');
+    }
+}
+
+function closePaperScenarioMenu() {
+    const menu = document.getElementById('paper-scenario-menu');
+    if (menu) menu.classList.add('hidden');
+}
+
+function createPaperScenarioUI() {
+    const name = prompt('Nom du nouveau scénario (ex : DCA BTC 2025, Rotation Asie…) :', 'Nouveau scénario');
+    if (!name || !name.trim()) return;
+    const id = createPaperScenario(name);
+    if (!id) return;
+    setCurrentPaperScenario(id);
+    if (typeof renderPaperScenarioMenu === 'function') renderPaperScenarioMenu();
+    // Active automatiquement le mode papier si pas déjà actif
+    if (!paperMode) togglePaperMode();
+}
+
 // Promotion d'une position papier en position réelle (retire le flag isPaper)
 function promotePaperAsset(id) {
     const a = assets.find(x => x.id === id);
     if (!a || !isPaperAsset(a)) return;
-    if (!confirm(`Promouvoir "${a.name}" du mode papier au portefeuille réel ?\n\nLa position sortira du mode fictif et sera incluse dans tous les calculs fiscaux (impôt, plus-values latentes, ratios de risque).`)) return;
+    const scenName = paperScenarioName(a.paperScenarioId);
+    if (!confirm(`Promouvoir "${a.name}" (scénario « ${scenName} ») du mode papier au portefeuille réel ?\n\nLa position sortira du mode fictif et sera incluse dans tous les calculs fiscaux (impôt, plus-values latentes, ratios de risque).`)) return;
     delete a.isPaper;
+    delete a.paperScenarioId;
     saveToStorage();
     if (typeof refreshAllUI === 'function') refreshAllUI();
 }
 
-// Purge en masse des positions papier (avec confirmation)
-function deleteAllPaperAssets() {
-    const n = countPaperAssets();
-    if (n === 0) { alert('Aucune position papier à supprimer.'); return; }
-    if (!confirm(`Supprimer définitivement les ${n} position(s) papier ?\n\nCette action est irréversible (mais vous pouvez Ctrl+Z juste après).`)) return;
+// Purge des positions papier.
+//   - sans argument : toutes les positions papier
+//   - avec scenarioId : seulement celles du scénario ciblé
+function deleteAllPaperAssets(scenarioId) {
+    const target = scenarioId || null;
+    const victims = assets.filter(a => isPaperAsset(a) && (!target || a.paperScenarioId === target));
+    if (!victims.length) {
+        alert('Aucune position papier à supprimer dans cette sélection.');
+        return;
+    }
+    const label = target ? `du scénario « ${paperScenarioName(target)} »` : 'de tous les scénarios';
+    if (!confirm(`Supprimer définitivement les ${victims.length} position(s) papier ${label} ?\n\nCette action est irréversible (mais vous pouvez Ctrl+Z juste après).`)) return;
     pushUndo('Purge des positions papier');
-    assets = assets.filter(a => !isPaperAsset(a));
+    const victimIds = new Set(victims.map(v => v.id));
+    assets = assets.filter(a => !victimIds.has(a.id));
     saveToStorage();
     if (typeof refreshAllUI === 'function') refreshAllUI();
 }
@@ -1342,8 +1708,6 @@ function syncAssetFromLots(asset) {
         // On ne touche pas à `value` : il sera recalculé par les flux de mise à jour de cours
     }
 }
-
-
 
 // =====================================================================
 // UPSERT POINT D'HISTORIQUE DU JOUR

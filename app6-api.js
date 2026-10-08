@@ -581,11 +581,29 @@ function refreshAllUI() {
 
     if (activeTab === 'tab-dashboard') initDashboardCharts();
     else if (activeTab === 'tab-gave') initGaveDonutChart();
+    else if (activeTab === 'tab-strategies' && typeof renderStrategiesTab === 'function') renderStrategiesTab();
+    else if (activeTab === 'tab-objectifs' && typeof renderGoalsTab === 'function') renderGoalsTab();
 
     if (compareActive) {
         if (compareSegmentA) renderComparePanel('A');
         if (compareSegmentB) renderComparePanel('B');
     }
+
+    // Maintient le compteur/badge/label du bouton Paper en cohérence
+    // (utile après un switch de portefeuille ou une promotion en réel).
+    if (typeof updatePaperToggleUI === 'function') updatePaperToggleUI();
+
+    // Évaluation des alertes personnalisées (Chantier F)
+    if (typeof evaluateAlerts === 'function') evaluateAlerts();
+
+    // Recalcul du TRI (Chantier G) — invalidate cache + KPI global
+    if (typeof refreshTIR === 'function') refreshTIR();
+
+    // Recalcul du scoring des actifs (Chantier H) — leaderboard + cache
+    if (typeof refreshScoring === 'function') refreshScoring();
+
+    // Suggestions intelligentes (Chantier L)
+    if (typeof renderSuggestions === 'function') renderSuggestions();
 }
 
 // =====================================================================
@@ -1127,3 +1145,113 @@ function handleManualGoldUpdate(e) {
 }
 
 // =====================================================================
+
+
+// =====================================================================
+// SAUVEGARDE AUTOMATIQUE GOOGLE DRIVE (Chantier M)
+// ---------------------------------------------------------------------
+// Déclenche un push silencieux si :
+//   • le dernier backup Drive date de plus de 24 h
+//   • l'utilisateur est déjà connecté à Drive (driveAccessToken présent)
+//   • une clé maîtresse est mémorisée sur cet appareil
+// Si l'une de ces conditions n'est pas remplie, on ne fait RIEN — pas de
+// popup OAuth surprise, pas de demande de mot de passe inopinée.
+// =====================================================================
+
+const AUTO_BACKUP_KEY = 'patriMonial_lastAutoDriveBackup';
+const AUTO_BACKUP_INTERVAL_MS = 24 * 3600 * 1000; // 24 h
+
+// Renvoie true si un push silencieux peut / doit être déclenché.
+async function shouldAutoBackupToDrive() {
+    // 1) Connecté à Drive ?
+    if (!driveAccessToken) return false;
+
+    // 2) Clé maîtresse mémorisée ?
+    try {
+        const has = await hasStoredMasterKey();
+        if (!has) return false;
+    } catch (_) { return false; }
+
+    // 3) Intervalle écoulé ?
+    const lastStr = localStorage.getItem(AUTO_BACKUP_KEY);
+    if (lastStr) {
+        const last = parseInt(lastStr, 10);
+        if (Number.isFinite(last) && (Date.now() - last) < AUTO_BACKUP_INTERVAL_MS) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Push silencieux — n'affiche aucune boîte de dialogue, ne demande rien.
+// Retourne true si succès, false sinon. Les erreurs sont loggées en console
+// uniquement (pas d'alerte).
+async function performSilentDriveBackup() {
+    try {
+        const envelope = await encryptPayload(currentDataSnapshot(), '__cached__');
+        const metadata = {
+            name: 'patrimonial-backup-auto-' + Date.now() + '.json',
+            parents: ['appDataFolder']
+        };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', new Blob([JSON.stringify(envelope)], { type: 'application/json' }));
+
+        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + driveAccessToken },
+            body: form
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        localStorage.setItem(AUTO_BACKUP_KEY, String(Date.now()));
+        console.info('[Auto-Backup] Sauvegarde silencieuse envoyée sur Drive.');
+        return true;
+    } catch (err) {
+        console.warn('[Auto-Backup] Échec du push silencieux :', err);
+        return false;
+    }
+}
+
+// Point d'entrée appelé au démarrage par app7-init.js. Vérifie l'opportunité
+// et déclenche le push en arrière-plan si possible.
+async function checkAndRunAutoDriveBackup() {
+    try {
+        const should = await shouldAutoBackupToDrive();
+        if (!should) return;
+
+        // Léger différé pour ne pas bloquer le premier rendu
+        setTimeout(async () => {
+            const ok = await performSilentDriveBackup();
+            if (ok && typeof showUndoToast === 'function') {
+                // Utilise le toast Undo existant (non intrusif, disparaît seul)
+                showUndoToast('Sauvegarde Drive automatique effectuée.', false);
+            }
+        }, 2500);
+    } catch (err) {
+        console.warn('[Auto-Backup] Erreur :', err);
+    }
+}
+
+// Force un backup manuel silencieux (bouton "Sauvegarder maintenant" depuis
+// le modal Drive, ou raccourci clavier).
+async function forceAutoDriveBackup() {
+    if (!driveAccessToken) {
+        alert('Connectez-vous d\'abord à Google Drive (bouton "Se connecter à Drive").');
+        return;
+    }
+    const has = await hasStoredMasterKey();
+    if (!has) {
+        alert('Aucune phrase secrète mémorisée. Faites au moins un envoi manuel avec une phrase pour activer la sauvegarde automatique.');
+        return;
+    }
+    const ok = await performSilentDriveBackup();
+    if (ok) {
+        if (typeof showUndoToast === 'function') {
+            showUndoToast('Sauvegarde Drive manuelle effectuée.', false);
+        }
+    } else {
+        alert('Échec de la sauvegarde silencieuse. Vérifiez votre connexion.');
+    }
+}

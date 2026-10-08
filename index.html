@@ -29,7 +29,8 @@
                    font-src 'self' https://fonts.gstatic.com
                             https://cdnjs.cloudflare.com;
                    frame-ancestors 'none';
-                   base-uri 'self';">
+                   base-uri 'self';
+                   worker-src 'self';">>
         <title>PatriMonial - Gestion & Suivi de Patrimoine</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
     <!-- Tailwind CSS -->
@@ -86,17 +87,40 @@
 
         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
 
+            <!-- CLOCHE ALERTES -->
+            <div class="relative flex-shrink-0">
+                <button onclick="openAlertsModal()" id="alerts-bell-btn" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center relative" title="Alertes personnalisées">
+                    <i class="fa-solid fa-bell text-[13px]"></i>
+                    <span id="alerts-badge" class="hidden absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border border-gray-900">0</span>
+                </button>
+            </div>
+
             <!-- TOGGLE THÈME CLAIR / SOMBRE -->
             <button onclick="toggleLightMode()" id="theme-toggle-btn" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0" title="Basculer thème clair / sombre">
                 <i id="theme-toggle-icon" class="fa-solid fa-sun"></i>
             </button>
 
-            <!-- TOGGLE PAPER TRADING -->
-            <button onclick="togglePaperMode()" id="paper-toggle-btn" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs text-gray-400 hover:text-white transition flex items-center gap-1.5 flex-shrink-0" title="Simuler des positions fictives en parallèle du portefeuille réel">
-                <i id="paper-toggle-icon" class="fa-solid fa-flask text-[11px]"></i>
-                <span class="hidden sm:inline">Paper</span>
-                <span id="paper-count-badge" class="hidden px-1.5 py-0.5 rounded bg-purple-950 border border-purple-800/60 text-purple-300 text-[9px] font-mono">0</span>
-            </button>
+            <!-- TOGGLE PAPER TRADING + SÉLECTEUR DE SCÉNARIO -->
+            <div class="relative flex-shrink-0">
+                <button onclick="togglePaperMode()" id="paper-toggle-btn" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs text-gray-400 hover:text-white transition flex items-center gap-1.5 max-w-[240px]" title="Simuler des positions fictives en parallèle du portefeuille réel">
+                    <i id="paper-toggle-icon" class="fa-solid fa-flask text-[11px]"></i>
+                    <span id="paper-toggle-label" class="hidden sm:inline max-w-[140px] truncate">Paper</span>
+                    <span id="paper-count-badge" class="hidden px-1.5 py-0.5 rounded bg-purple-950 border border-purple-800/60 text-purple-300 text-[9px] font-mono">0</span>
+                    <i class="fa-solid fa-chevron-down text-[8px] opacity-60 hover:opacity-100" onclick="event.stopPropagation(); togglePaperScenarioMenu(event)"></i>
+                </button>
+                <div id="paper-scenario-menu" class="hidden absolute right-0 top-full mt-2 w-72 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-[60]">
+                    <div class="p-2.5 border-b border-gray-800 bg-gray-950">
+                        <div class="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Scénarios de test</div>
+                        <div class="text-[10px] text-gray-600 mt-0.5">Chaque scénario a sa couleur et son jeu de positions fictives.</div>
+                    </div>
+                    <div id="paper-scenario-list" class="max-h-64 overflow-y-auto"></div>
+                    <div class="p-2 border-t border-gray-800">
+                        <button onclick="createPaperScenarioUI()" class="w-full px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-medium transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-plus"></i> Nouveau scénario
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <!-- SÉLECTEUR DE PORTEFEUILLE -->
             <div class="relative">
@@ -128,6 +152,9 @@
             <button onclick="openDriveSyncModal()" class="px-3 py-1.5 rounded-lg bg-blue-950/60 text-blue-300 border border-blue-700/50 hover:bg-blue-900/80 text-xs font-medium transition flex items-center gap-1.5 shadow" title="Sauvegardes locales et synchronisation Google Drive chiffrée">
                 <i class="fa-solid fa-cloud-arrow-up"></i> Synchronisation
             </button>
+            <button onclick="exportMonthlyReportPDF()" class="px-3 py-1.5 rounded-lg bg-indigo-950/60 text-indigo-300 border border-indigo-700/50 hover:bg-indigo-900/80 text-xs font-medium transition flex items-center gap-1.5 shadow" title="Générer un rapport PDF A4 complet (synthèse, allocation, portefeuille détaillé, fiscalité)">
+                <i class="fa-solid fa-file-pdf"></i> Rapport mensuel
+            </button>
             <button onclick="clearAllData()" class="px-3 py-1.5 rounded-lg bg-rose-950/40 text-rose-300 border border-rose-800/50 hover:bg-rose-900/60 text-xs font-medium transition flex items-center gap-1.5" title="Effacer tous les actifs pour recommencer à zéro">
                 <i class="fa-solid fa-trash-can"></i> Vider tout
             </button>
@@ -136,6 +163,9 @@
             </button>
             <button onclick="exportData()" class="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 text-xs font-medium transition flex items-center gap-1.5" title="Télécharger la sauvegarde JSON">
                 <i class="fa-solid fa-download"></i> Exporter
+            </button>
+            <button onclick="exportToExcel()" id="btn-export-excel" class="px-3 py-1.5 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-700/50 hover:bg-emerald-900/80 text-xs font-medium transition flex items-center gap-1.5 shadow" title="Exporter en Excel (.xlsx) — 5 feuilles : synthèse, actifs, lots, cessions, arbitrages">
+                <i class="fa-solid fa-file-excel"></i> Excel
             </button>
             <button onclick="document.getElementById('input-import-json').click()" class="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 text-xs font-medium transition flex items-center gap-1.5" title="Restaurer un fichier JSON PatriMonial">
                 <i class="fa-solid fa-file-import"></i> Importer
@@ -152,6 +182,9 @@
         </div>
     </header>
 
+    <!-- ZONE DE BANNIÈRES D'ALERTES (remplie dynamiquement par app9-alerts.js) -->
+    <div id="alerts-banner-zone" class="space-y-2 mb-4"></div>
+
     <!-- BANDEAU MODE PAPER TRADING (visible uniquement quand le mode est actif) -->
     <div id="paper-mode-banner" class="hidden mb-4 bg-purple-950/30 border border-purple-800/50 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div class="flex items-center gap-3 min-w-0">
@@ -159,17 +192,22 @@
                 <i class="fa-solid fa-flask"></i>
             </div>
             <div class="min-w-0">
-                <div class="text-sm font-bold text-purple-200">Mode Paper Trading actif</div>
-                <div class="text-[11px] text-gray-400">Les nouveaux actifs créés seront <b>fictifs</b> (badge <span class="text-purple-300 font-mono">📝 Papier</span>). Ils n'impactent pas vos calculs d'impôt tant qu'ils ne sont pas promus en réel.</div>
+                <div class="text-sm font-bold text-purple-200">
+                    Paper Trading actif — scénario <span id="paper-current-scenario-label" class="font-mono">—</span>
+                </div>
+                <div class="text-[11px] text-gray-400">
+                    Les nouveaux actifs créés seront <b>fictifs</b> et rattachés à ce scénario.
+                    Basculez entre scénarios depuis le menu <i class="fa-solid fa-chevron-down text-[9px] opacity-70"></i> du bouton <b>Paper</b>.
+                </div>
             </div>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
+        <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
             <label class="flex items-center gap-1.5 text-[11px] text-gray-400 cursor-pointer select-none">
                 <input type="checkbox" id="paper-include-stats" onchange="setPaperIncludeInStats(this.checked)" class="accent-purple-500">
                 Inclure dans les stats
             </label>
-            <button onclick="deleteAllPaperAssets()" class="px-3 py-1.5 rounded-lg bg-rose-950/60 border border-rose-800/50 text-rose-300 hover:bg-rose-900/70 text-[11px] font-medium transition flex items-center gap-1.5">
-                <i class="fa-solid fa-trash-can text-[10px]"></i> Purger les positions papier
+            <button onclick="deleteAllPaperAssets()" class="px-3 py-1.5 rounded-lg bg-rose-950/60 border border-rose-800/50 text-rose-300 hover:bg-rose-900/70 text-[11px] font-medium transition flex items-center gap-1.5" title="Supprimer toutes les positions papier (tous scénarios confondus)">
+                <i class="fa-solid fa-trash-can text-[10px]"></i> Purger tout
             </button>
         </div>
     </div>
@@ -228,7 +266,7 @@
     <!-- METRICS / KPI BANNER — Performance globale -->
     <div class="mb-6">
         <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">🎯 Performance globale</div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div class="bg-gray-900/80 border border-indigo-900/40 rounded-xl p-4 relative overflow-hidden">
                 <div class="text-xs font-medium text-gray-400 mb-1">Cessions Réalisées</div>
                 <div class="text-2xl font-bold text-white font-mono" id="stat-realized-gross">0,00 €</div>
@@ -241,6 +279,13 @@
                 <div class="text-2xl font-bold font-mono" id="stat-realized-pnl">0,00 €</div>
                 <div class="text-xs text-gray-500 mt-1 font-mono" id="stat-realized-pnl-pct">+0.00%</div>
                 <div class="absolute right-3 bottom-2 text-emerald-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-check-double"></i></div>
+            </div>
+
+            <div class="bg-gray-900/80 border border-cyan-900/40 rounded-xl p-4 relative overflow-hidden">
+                <div class="text-xs font-medium text-gray-400 mb-1">TRI Global (annualisé)</div>
+                <div class="text-2xl font-bold font-mono" id="stat-tir-global">—</div>
+                <div class="text-xs text-gray-500 mt-1" id="stat-tir-detail">pondéré par les flux</div>
+                <div class="absolute right-3 bottom-2 text-cyan-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-percent"></i></div>
             </div>
 
             <div class="bg-gray-900/80 border border-rose-900/40 rounded-xl p-4 relative overflow-hidden">
@@ -280,6 +325,12 @@
         </button>
         <button onclick="switchTab('tab-annee-n1')" id="btn-tab-annee-n1" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-amber-400 hover:text-amber-300">
             <i class="fa-solid fa-receipt text-amber-400"></i> Fiscalité & Cessions (Jetons / Or / Devises)
+        </button>
+        <button onclick="switchTab('tab-strategies')" id="btn-tab-strategies" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-purple-400 hover:text-purple-300">
+            <i class="fa-solid fa-flask text-purple-400"></i> Stratégies Paper
+        </button>
+        <button onclick="switchTab('tab-objectifs')" id="btn-tab-objectifs" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-cyan-400 hover:text-cyan-300">
+            <i class="fa-solid fa-bullseye text-cyan-400"></i> Objectifs &amp; Projections
         </button>
     </nav>
 
@@ -458,6 +509,51 @@
                 <p class="text-[10px] text-gray-500 mt-1">Volatilité, Sharpe, Sortino et Max Drawdown sont calculés à partir de l'historique réel de votre portefeuille (ou des cours réels quand disponibles, voir ci-dessus). Le benchmark (Bêta, Alpha, Tracking Error, Ratio d'Information, Treynor, décomposition du risque) utilise la moyenne et la volatilité <b>réelles</b> du MSCI World sur 2014-2024 (données historiques publiques indicatives) ; * la corrélation de 0,7 entre votre portefeuille et ce benchmark reste en revanche une <b>hypothèse</b>, faute de série de cours appariée.</p>
             </div>
 
+            <!-- SUGGESTIONS INTELLIGENTES (Chantier L) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-brain text-purple-400"></i> Suggestions intelligentes
+                        </h3>
+                        <p class="text-xs text-gray-400">Analyse automatique de votre portefeuille — aucun ordre n'est exécuté, ce sont des pistes à explorer.</p>
+                    </div>
+                    <button onclick="refreshSuggestions()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 flex items-center gap-1.5 whitespace-nowrap" title="Relancer l'analyse">
+                        <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Relancer
+                    </button>
+                </div>
+                <div id="suggestions-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+            </div>
+
+            <!-- LEADERBOARD — SCORING DES ACTIFS (Chantier H) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-trophy text-amber-400"></i> Leaderboard — Top &amp; Flop des actifs
+                        </h3>
+                        <p class="text-xs text-gray-400">Score 0-100 calculé sur 6 critères : TRI, Sharpe, frais, ancienneté, alpha vs MSCI World, concentration.</p>
+                    </div>
+                    <button onclick="openScoringMethodModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fa-solid fa-circle-question text-[10px]"></i> Méthode de notation
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-crown text-amber-400"></i> Top 5 — Meilleurs scores
+                        </div>
+                        <div id="scoring-top5" class="space-y-1.5"></div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] font-bold text-rose-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrow-trend-down"></i> Flop 5 — Scores les plus faibles
+                        </div>
+                        <div id="scoring-flop5" class="space-y-1.5"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- COMPARATEUR DE SEGMENTS -->
             <div id="compare-section" class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-2">
@@ -586,17 +682,19 @@
                     <table class="w-full text-left text-xs text-gray-300">
                         <thead class="bg-gray-950 text-gray-400 uppercase font-medium border-b border-gray-800">
                             <tr>
-                                <th class="p-3">Actif / Ticker</th>
-                                <th class="p-3">Catégories</th>
-                                <th class="p-3">Cadran(s) Gave</th>
+                                <th class="p-3" style="width:200px;min-width:180px;">Actif / Ticker</th>
+                                <th class="p-3 text-center" style="width:120px;">Catégories</th>
+                                <th class="p-3 text-center" style="width:120px;">Cadran(s) Gave</th>
                                 <th class="p-3 text-right">Quantité</th>
                                 <th class="p-3 text-right">PRU Unitaire</th>
                                 <th class="p-3 text-right">Valeur Unitaire</th>
                                 <th class="p-3 text-right">Frais Totaux</th>
                                 <th class="p-3 text-right">Total Investi</th>
                                 <th class="p-3 text-right">Valeur Actuelle</th>
-                                <th class="p-3 text-right">Tendance 30j</th>
                                 <th class="p-3 text-right">Plus / Moins-Value</th>
+                                <th class="p-3 text-right">Tendance 30j</th>
+                                <th class="p-3 text-right" title="Taux de Rendement Interne annualisé — intègre le moment de chaque versement">TRI estimé</th>
+                                <th class="p-3 text-center" title="Score 0-100 — synthèse TRI, Sharpe, frais, ancienneté, alpha, concentration">Score ★</th>
                                 <th class="p-3 text-right">Risque (Bêta réel)</th>
                                 <th class="p-3 text-center">Actions</th>
                             </tr>
@@ -651,6 +749,13 @@
                         <div class="flex gap-2">
                             <button onclick="connectDrive()" class="flex-1 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium">Se connecter à Drive</button>
                             <button onclick="pushToDrive()" class="flex-1 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-medium">Envoyer une sauvegarde</button>
+                        </div>
+                        <button onclick="forceAutoDriveBackup()" class="w-full px-3 py-2 rounded-lg bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 hover:bg-emerald-900/70 text-[11px] font-medium transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-bolt text-[10px]"></i> Sauvegarder maintenant en arrière-plan
+                        </button>
+                        <div class="text-[10px] text-gray-500 italic mt-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info"></i>
+                            Sauvegarde automatique quotidienne silencieuse activée dès que vous êtes connecté à Drive avec une phrase secrète mémorisée.
                         </div>
                         <button onclick="listDriveBackups()" class="w-full text-[11px] text-indigo-400 hover:text-indigo-300">Voir les sauvegardes Drive</button>
                         <div id="drive-backup-list" class="space-y-1.5 max-h-32 overflow-y-auto"></div>
@@ -709,9 +814,14 @@
                     </div>
                     <p class="text-xs text-gray-300">Protection contre Inflation, Déflation, Croissance et Chocs d'offre.</p>
                 </div>
-                <div class="text-right text-xs font-mono bg-gray-950/60 px-3 py-1.5 rounded-lg border border-gray-800">
-                    <span class="text-gray-400">Total Éligible :</span> 
-                    <span class="text-amber-400 font-bold text-sm ml-1" id="gave-total-val">0,00 €</span>
+                <div class="flex items-center gap-3">
+                    <button onclick="openRebalanceModal()" class="px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium flex items-center gap-1.5 shadow-lg shadow-amber-900/40 transition whitespace-nowrap">
+                        <i class="fa-solid fa-scale-balanced"></i> Rebalancing assisté
+                    </button>
+                    <div class="text-right text-xs font-mono bg-gray-950/60 px-3 py-1.5 rounded-lg border border-gray-800">
+                        <span class="text-gray-400">Total Éligible :</span> 
+                        <span class="text-amber-400 font-bold text-sm ml-1" id="gave-total-val">0,00 €</span>
+                    </div>
                 </div>
             </div>
 
@@ -735,6 +845,10 @@
                             <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden mb-2">
                                 <div id="bar-OR" class="bg-amber-500 h-full transition-all duration-500" style="width: 0%"></div>
                             </div>
+                            <div class="flex justify-between items-center text-[10px] mb-1.5">
+                                <span class="text-gray-500">TRI estimé :</span>
+                                <span id="tir-OR" class="font-mono font-bold text-gray-500">—</span>
+                            </div>
                             <div id="alert-OR" class="hidden text-[10px] font-medium items-center gap-1"></div>
                         </div>
                     </div>
@@ -750,6 +864,10 @@
                             <div class="text-xl font-bold font-mono text-white mb-2" id="val-MONNAIES">0,00 €</div>
                             <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden mb-2">
                                 <div id="bar-MONNAIES" class="bg-blue-500 h-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between items-center text-[10px] mb-1.5">
+                                <span class="text-gray-500">TRI estimé :</span>
+                                <span id="tir-MONNAIES" class="font-mono font-bold text-gray-500">—</span>
                             </div>
                             <div id="alert-MONNAIES" class="hidden text-[10px] font-medium items-center gap-1"></div>
                         </div>
@@ -767,6 +885,10 @@
                             <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden mb-2">
                                 <div id="bar-ASIE" class="bg-emerald-500 h-full transition-all duration-500" style="width: 0%"></div>
                             </div>
+                            <div class="flex justify-between items-center text-[10px] mb-1.5">
+                                <span class="text-gray-500">TRI estimé :</span>
+                                <span id="tir-ASIE" class="font-mono font-bold text-gray-500">—</span>
+                            </div>
                             <div id="alert-ASIE" class="hidden text-[10px] font-medium items-center gap-1"></div>
                         </div>
                     </div>
@@ -782,6 +904,10 @@
                             <div class="text-xl font-bold font-mono text-white mb-2" id="val-PETROLE">0,00 €</div>
                             <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden mb-2">
                                 <div id="bar-PETROLE" class="bg-rose-500 h-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between items-center text-[10px] mb-1.5">
+                                <span class="text-gray-500">TRI estimé :</span>
+                                <span id="tir-PETROLE" class="font-mono font-bold text-gray-500">—</span>
                             </div>
                             <div id="alert-PETROLE" class="hidden text-[10px] font-medium items-center gap-1"></div>
                         </div>
@@ -1347,6 +1473,387 @@
         </section>
     </main>
 
+    <!-- TAB 8 : STRATÉGIES PAPER (dashboard des scénarios) -->
+    <section id="tab-strategies" class="tab-content hidden space-y-6">
+
+        <!-- EN-TÊTE -->
+        <div class="bg-purple-950/20 border border-purple-800/40 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div>
+                <div class="flex items-center gap-2 text-purple-300 text-sm font-bold mb-1">
+                    <i class="fa-solid fa-flask"></i> Stratégies Paper Trading
+                </div>
+                <p class="text-xs text-gray-300">Vue consolidée de tous vos scénarios de test. Chaque carte agrège les positions fictives rattachées à son scénario.</p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <label class="flex items-center gap-1.5 text-[11px] text-gray-400 cursor-pointer select-none whitespace-nowrap">
+                    <input type="checkbox" id="strategies-show-archived" onchange="renderStrategiesTab()" class="accent-purple-500">
+                    Afficher les archivés
+                </label>
+                <button onclick="createPaperScenarioUI()" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus text-[10px]"></i> Nouveau scénario
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI GLOBAL -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="bg-gray-900/60 border border-purple-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Scénarios actifs</div>
+                <div class="text-lg font-bold font-mono text-purple-400" id="strat-stat-count">0</div>
+                <div class="text-[10px] text-gray-500" id="strat-stat-archived-count">0 archivé(s)</div>
+            </div>
+            <div class="bg-gray-900/60 border border-purple-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Capital fictif total</div>
+                <div class="text-lg font-bold font-mono text-white" id="strat-stat-invested">0,00 €</div>
+                <div class="text-[10px] text-gray-500">tous scénarios confondus</div>
+            </div>
+            <div class="bg-gray-900/60 border border-purple-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Valeur fictive totale</div>
+                <div class="text-lg font-bold font-mono text-white" id="strat-stat-value">0,00 €</div>
+                <div class="text-[10px] text-gray-500">simulation en cours</div>
+            </div>
+            <div class="bg-gray-900/60 border border-purple-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">P&amp;L cumulé</div>
+                <div class="text-lg font-bold font-mono" id="strat-stat-pnl">0,00 €</div>
+                <div class="text-[10px] font-mono" id="strat-stat-pnl-pct">+0.00%</div>
+            </div>
+        </div>
+
+        <!-- GRILLE DE CARTES DE SCÉNARIOS -->
+        <div id="strategies-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+
+        <!-- COMPARATEUR DE SCÉNARIOS CÔTE À CÔTE -->
+        <div id="paper-compare-section" class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-code-compare text-purple-400"></i> Comparateur de scénarios
+                    </h3>
+                    <p class="text-xs text-gray-400">Comparez deux scénarios papier côte à côte — KPIs, courbes superposées et table de delta.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <div>
+                    <label class="block text-gray-400 mb-1 text-xs">Scénario A</label>
+                    <select id="paper-compare-select-a" onchange="setPaperCompareScenario('A', this.value)" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-purple-500"></select>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1 text-xs">Scénario B</label>
+                    <select id="paper-compare-select-b" onchange="setPaperCompareScenario('B', this.value)" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-purple-500"></select>
+                </div>
+            </div>
+
+            <div id="paper-compare-panels" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div id="paper-compare-panel-A" class="bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3 min-h-[180px]"></div>
+                <div id="paper-compare-panel-B" class="bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3 min-h-[180px]"></div>
+            </div>
+
+            <div id="paper-compare-history-wrap" class="hidden mt-4">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-[10px] text-gray-500 uppercase tracking-wider">Courbes superposées (12 derniers mois)</span>
+                    <span class="text-[10px] text-gray-500">
+                        <span class="inline-block w-2 h-2 rounded-full mr-1" style="background:#a855f7;"></span>Scénario A
+                        <span class="inline-block w-2 h-2 rounded-full ml-2 mr-1" style="background:#06b6d4;"></span>Scénario B
+                    </span>
+                </div>
+                <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 h-64">
+                    <canvas id="paperCompareHistoryChart"></canvas>
+                </div>
+            </div>
+
+            <div id="paper-compare-delta-wrap" class="hidden mt-4"></div>
+        </div>
+
+    </section>
+
+    <!-- TAB 9 : OBJECTIFS & PROJECTIONS DE PATRIMOINE -->
+    <section id="tab-objectifs" class="tab-content hidden space-y-6">
+
+        <!-- EN-TÊTE -->
+        <div class="bg-cyan-950/20 border border-cyan-800/40 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div>
+                <div class="flex items-center gap-2 text-cyan-300 text-sm font-bold mb-1">
+                    <i class="fa-solid fa-bullseye"></i> Objectifs &amp; Projections de Patrimoine
+                </div>
+                <p class="text-xs text-gray-300">Définissez vos objectifs chiffrés, suivez votre progression et simulez le chemin restant (Monte-Carlo sur la volatilité réelle).</p>
+            </div>
+            <button onclick="openAddGoalModal()" class="px-3.5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium flex items-center gap-1.5 shadow-lg shadow-cyan-900/40 transition whitespace-nowrap">
+                <i class="fa-solid fa-plus text-[10px]"></i> Nouvel objectif
+            </button>
+        </div>
+
+        <!-- KPIs globaux objectifs -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Objectifs actifs</div>
+                <div class="text-lg font-bold font-mono text-cyan-400" id="goal-stat-count">0</div>
+                <div class="text-[10px] text-gray-500" id="goal-stat-atteints">0 atteint(s)</div>
+            </div>
+            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Patrimoine actuel</div>
+                <div class="text-lg font-bold font-mono text-white" id="goal-stat-current">0,00 €</div>
+                <div class="text-[10px] text-gray-500">total hors positions papier</div>
+            </div>
+            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Épargne mensuelle de référence</div>
+                <div class="text-lg font-bold font-mono text-emerald-400" id="goal-stat-monthly">0,00 €</div>
+                <div class="text-[10px] text-gray-500">paramétrable par objectif</div>
+            </div>
+            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Probabilité de succès moyenne</div>
+                <div class="text-lg font-bold font-mono text-amber-400" id="goal-stat-success">—</div>
+                <div class="text-[10px] text-gray-500">Monte-Carlo, 5 000 tirages</div>
+            </div>
+        </div>
+
+        <!-- Grille des objectifs -->
+        <div id="goals-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+        <!-- Détail d'un objectif (rendu à la volée) -->
+        <div id="goal-detail-wrap" class="hidden"></div>
+    </section>
+
+    <!-- MODAL : AJOUTER / ÉDITER UN OBJECTIF -->
+    <div id="modal-add-goal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 id="modal-add-goal-title" class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-bullseye text-cyan-400"></i> Nouvel objectif
+                </h3>
+                <button onclick="closeModal('modal-add-goal')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleAddGoal(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
+                <input type="hidden" id="goal-edit-id">
+                <div>
+                    <label class="block text-gray-400 mb-1">Nom de l'objectif *</label>
+                    <input type="text" id="goal-name" required placeholder="ex: 100 000 € de patrimoine net, Apport immobilier…" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Montant cible (€) *</label>
+                        <input type="number" step="any" id="goal-target" required placeholder="100000" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Date cible *</label>
+                        <input type="date" id="goal-date" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Épargne mensuelle (€)</label>
+                        <input type="number" step="any" id="goal-monthly" value="0" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Rendement attendu (%/an)</label>
+                        <input type="number" step="any" id="goal-return" value="5" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+                <div class="bg-gray-950/60 border border-gray-800 rounded-lg p-2.5 text-[10px] text-gray-400 leading-relaxed">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    Le <b>rendement attendu</b> est utilisé pour la projection déterministe. Pour la simulation Monte-Carlo, la <b>volatilité réelle</b> de votre portefeuille est récupérée automatiquement.
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1">Notes (optionnel)</label>
+                    <textarea id="goal-notes" rows="2" placeholder="ex: apport maison, retraite…" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500"></textarea>
+                </div>
+                <div class="pt-2 flex justify-end gap-2 border-t border-gray-800">
+                    <button type="button" onclick="closeModal('modal-add-goal')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL : GESTION DES ALERTES -->
+    <div id="modal-alerts" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <div>
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-bell text-rose-400"></i> Alertes personnalisées
+                    </h3>
+                    <p class="text-[11px] text-gray-500 mt-0.5">Vérifiées à chaque rafraîchissement de l'app. Cooldown pour éviter le spam.</p>
+                </div>
+                <button onclick="closeModal('modal-alerts')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 space-y-4 overflow-y-auto text-xs">
+
+                <!-- Panneau de gestion des notifications système natives -->
+                <div id="native-notif-panel" class="bg-gray-950 border border-gray-800 rounded-xl p-3 space-y-2">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-start gap-2 min-w-0">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-indigo-950 border border-indigo-800/60 flex items-center justify-center text-indigo-300">
+                                <i class="fa-solid fa-bell-on"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-[11px] font-bold text-white">Notifications système</div>
+                                <div id="native-notif-status" class="text-[10px] text-gray-500 mt-0.5">État inconnu</div>
+                            </div>
+                        </div>
+                        <button id="native-notif-toggle-btn" onclick="toggleNativeNotifications()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-medium whitespace-nowrap flex-shrink-0">
+                            Activer
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                        <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                            <input type="checkbox" id="native-notif-global-toggle" onchange="setNativeNotificationsEnabled(this.checked)" class="accent-indigo-500">
+                            Activer globalement sur les alertes qui le permettent
+                        </label>
+                    </div>
+                </div>
+
+                <button onclick="openAddAlertModal()" class="w-full px-4 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-plus text-[10px]"></i> Créer une nouvelle alerte
+                </button>
+                <div id="alerts-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : AJOUTER / ÉDITER UNE ALERTE -->
+    <div id="modal-add-alert" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 id="modal-add-alert-title" class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle text-rose-400"></i> Nouvelle alerte
+                </h3>
+                <button onclick="closeModal('modal-add-alert')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleAddAlert(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
+                <input type="hidden" id="alert-edit-id">
+                <div>
+                    <label class="block text-gray-400 mb-1">Nom de l'alerte *</label>
+                    <input type="text" id="alert-name" required placeholder="ex: Vendre TTE si > 75 €, Alerte BTC…" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-rose-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1">Type de déclencheur *</label>
+                    <select id="alert-type" onchange="onAlertTypeChange()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-rose-500"></select>
+                </div>
+
+                <!-- Champ actif (select) -->
+                <div id="alert-asset-wrap" class="hidden">
+                    <label class="block text-gray-400 mb-1">Actif concerné *</label>
+                    <select id="alert-asset-id" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-rose-500"></select>
+                </div>
+
+                <!-- Champ seuil -->
+                <div id="alert-threshold-wrap" class="hidden">
+                    <label class="block text-gray-400 mb-1"><span id="alert-threshold-label">Seuil</span> *</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" step="any" id="alert-threshold" class="flex-1 bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-rose-500">
+                        <span id="alert-threshold-unit" class="text-gray-400 text-sm font-mono"></span>
+                    </div>
+                    <p id="alert-threshold-hint" class="text-[10px] text-gray-500 mt-1"></p>
+                </div>
+
+                <!-- Champ jour du mois -->
+                <div id="alert-dayofmonth-wrap" class="hidden">
+                    <label class="block text-gray-400 mb-1">Jour du mois *</label>
+                    <input type="number" min="1" max="28" id="alert-dayofmonth" value="1" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-rose-500">
+                </div>
+
+                <!-- Cooldown -->
+                <div>
+                    <label class="block text-gray-400 mb-1">Délai minimum entre deux déclenchements</label>
+                    <select id="alert-cooldown" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-rose-500">
+                        <option value="1">1 heure</option>
+                        <option value="4">4 heures</option>
+                        <option value="24" selected>24 heures</option>
+                        <option value="168">1 semaine</option>
+                        <option value="0">Aucun (chaque refresh)</option>
+                    </select>
+                </div>
+
+                <!-- Message custom -->
+                <div>
+                    <label class="block text-gray-400 mb-1">Message personnalisé (optionnel)</label>
+                    <input type="text" id="alert-custom-message" placeholder="ex: Pensez à passer l'ordre chez Boursorama" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-rose-500">
+                </div>
+
+                <div class="bg-gray-950/60 border border-gray-800 rounded-lg p-2.5 space-y-2">
+                    <label class="flex items-center gap-2 text-gray-300">
+                        <input type="checkbox" id="alert-active" checked class="accent-rose-500">
+                        <span>Alerte active</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-gray-300">
+                        <input type="checkbox" id="alert-native-notif" checked class="accent-indigo-500">
+                        <span>Envoyer une notification système quand elle se déclenche</span>
+                    </label>
+                    <p class="text-[10px] text-gray-500 ml-6">Nécessite d'avoir activé les notifications depuis le panneau en haut du modal.</p>
+                </div>
+
+                <div class="pt-2 flex justify-between gap-2 border-t border-gray-800">
+                    <button type="button" onclick="testCurrentAlertForm()" class="px-3 py-2 rounded-lg bg-amber-950/60 text-amber-300 border border-amber-800/50 hover:bg-amber-900/70 text-[11px] font-medium">
+                        <i class="fa-solid fa-vial text-[10px]"></i> Tester
+                    </button>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="closeModal('modal-add-alert')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                        <button type="submit" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium">Enregistrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL : DÉTAIL D'UN SCORE D'ACTIF -->
+    <div id="modal-scoring-detail" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 id="scoring-modal-title" class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-star text-amber-400"></i> Détail du score
+                </h3>
+                <button onclick="closeModal('modal-scoring-detail')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="scoring-modal-body" class="p-5 space-y-4 overflow-y-auto text-xs"></div>
+        </div>
+    </div>
+
+    <!-- MODAL : MÉTHODE DE NOTATION (explications générales) -->
+    <div id="modal-scoring-method" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-circle-question text-amber-400"></i> Méthode de notation
+                </h3>
+                <button onclick="closeModal('modal-scoring-method')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-4 overflow-y-auto text-xs text-gray-300">
+                <p class="leading-relaxed">Chaque actif reçoit un <b>score 0-100</b> combinant 6 critères pondérés. Le score permet d'identifier les <b>meilleurs contributeurs</b> à votre performance et les <b>candidats à la vente</b> ou à la révision.</p>
+                <div class="space-y-2">
+                    <div class="flex items-start gap-3 p-2.5 bg-gray-950 border border-gray-800 rounded-lg">
+                        <span class="w-8 h-8 rounded-lg bg-cyan-950 border border-cyan-700/50 flex items-center justify-center text-cyan-400 font-bold text-xs flex-shrink-0">30</span>
+                        <div><div class="font-bold text-white">TRI annualisé</div><div class="text-[11px] text-gray-400">Compare le TRI de l'actif au rendement réel du MSCI World sur 2014-2024 (~11 %/an). Un TRI supérieur au benchmark donne un score maximal.</div></div>
+                    </div>
+                    <div class="flex items-start gap-3 p-2.5 bg-gray-950 border border-gray-800 rounded-lg">
+                        <span class="w-8 h-8 rounded-lg bg-emerald-950 border border-emerald-700/50 flex items-center justify-center text-emerald-400 font-bold text-xs flex-shrink-0">20</span>
+                        <div><div class="font-bold text-white">Sharpe de l'actif</div><div class="text-[11px] text-gray-400">Performance ajustée du risque. Basé sur la volatilité réelle (cours CoinGecko/Frankfurter/Twelve Data si disponibles).</div></div>
+                    </div>
+                    <div class="flex items-start gap-3 p-2.5 bg-gray-950 border border-gray-800 rounded-lg">
+                        <span class="w-8 h-8 rounded-lg bg-rose-950 border border-rose-700/50 flex items-center justify-center text-rose-400 font-bold text-xs flex-shrink-0">15</span>
+                        <div><div class="font-bold text-white">Frais relatifs</div><div class="text-[11px] text-gray-400">Ratio frais / investi. Pénalise les frais élevés (typiquement > 2 % = score nul sur ce critère).</div></div>
+                    </div>
+                    <div class="flex items-start gap-3 p-2.5 bg-gray-950 border border-gray-800 rounded-lg">
+                        <span class="w-8 h-8 rounded-lg bg-blue-950 border border-blue-700/50 flex items-center justify-center text-blue-400 font-bold text-xs flex-shrink-0">15</span>
+                        <div><div class="font-bold text-white">Alpha vs MSCI World</div><div class="text-[11px] text-gray-400">Compare le TRI de l'actif au benchmark sur la même période de détention. Un actif qui fait mieux que l'indice est récompensé.</div></div>
+                    </div>
+                    <div class="flex items-start gap-3 p-2.5 bg-gray-950 border border-gray-800 rounded-lg">
+                        <span class="w-8 h-8 rounded-lg bg-purple-950 border border-purple-700/50 flex items-center justify-center text-purple-400 font-bold text-xs flex-shrink-0">10</span>
+                        <div><div class="font-bold text-white">Ancienneté</div><div class="text-[11px] text-gray-400">Récompense la fidélité : un actif détenu depuis longtemps (peu de frais d'entrée amortis, fiscalité avantageuse) gagne des points.</div></div>
+                    </div>
+                    <div class="flex items-start gap-3 p-2.5 bg-gray-950 border border-gray-800 rounded-lg">
+                        <span class="w-8 h-8 rounded-lg bg-amber-950 border border-amber-700/50 flex items-center justify-center text-amber-400 font-bold text-xs flex-shrink-0">10</span>
+                        <div><div class="font-bold text-white">Pénalité de concentration</div><div class="text-[11px] text-gray-400">Un actif qui pèse plus de 25 % du portefeuille perd des points (risque spécifique). Aucun actif ne devrait dépasser le seuil de diversification.</div></div>
+                    </div>
+                </div>
+                <p class="text-[10px] text-gray-500 leading-relaxed">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    Un score ≥ 75 est excellent, 50-74 correct, 25-49 médiocre, &lt; 25 à réévaluer. Les actifs sans historique suffisant (moins de 30 jours ou moins de 2 flux) n'obtiennent pas tous les critères et leur score peut être incomplet.
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL : AJOUTER / ÉDITER UNE CESSION -->
     <!-- MODAL : MISE À JOUR MANUELLE GROUPÉE (actifs sans cours automatique : Actions, ETF, Or physique, Obligations...) -->
     <div id="modal-manual-refresh" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
@@ -1675,6 +2182,70 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : REBALANCING ASSISTÉ DES 4 CADRANS DE GAVE -->
+    <div id="modal-rebalance" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <div>
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-scale-balanced text-amber-400"></i> Rebalancing assisté — 4 Cadrans de Gave
+                    </h3>
+                    <p class="text-[11px] text-gray-500 mt-0.5">Cible d'équilibre : 25 % par cadran. Simulation pure — aucune modification enregistrée avant validation.</p>
+                </div>
+                <button onclick="closeModal('modal-rebalance')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-5 space-y-4 overflow-y-auto text-xs">
+
+                <!-- Configuration -->
+                <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <label class="flex items-center gap-2 cursor-pointer select-none text-gray-300">
+                        <input type="checkbox" id="rebalance-nosell" onchange="renderRebalanceModal()" class="accent-amber-500">
+                        <span>
+                            <span class="font-bold">Mode « sans vente »</span>
+                            <span class="block text-[10px] text-gray-500">Suggère uniquement où diriger la prochaine épargne, sans vendre d'actifs existants.</span>
+                        </span>
+                    </label>
+                    <div id="rebalance-savings-wrap" class="hidden flex items-center gap-2">
+                        <label class="text-[11px] text-gray-400 whitespace-nowrap">Épargne à placer :</label>
+                        <input type="number" id="rebalance-savings" step="any" value="1000" oninput="renderRebalanceModal()" class="w-28 bg-gray-900 border border-gray-800 rounded-lg p-1.5 text-white font-mono text-right text-xs focus:outline-none focus:border-amber-500">
+                        <span class="text-[11px] text-gray-500">€</span>
+                    </div>
+                </div>
+
+                <!-- Écarts vs cible -->
+                <div>
+                    <div class="text-[11px] font-bold text-gray-400 uppercase mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-simple text-amber-400"></i> Allocation actuelle vs cible 25 %
+                    </div>
+                    <div id="rebalance-gaps-table"></div>
+                </div>
+
+                <!-- Opérations suggérées -->
+                <div>
+                    <div class="text-[11px] font-bold text-gray-400 uppercase mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrow-right-arrow-left text-emerald-400"></i>
+                        <span id="rebalance-ops-title">Opérations suggérées</span>
+                    </div>
+                    <div id="rebalance-ops"></div>
+                </div>
+
+                <!-- Note fiscale -->
+                <div class="text-[10px] text-gray-500 leading-relaxed bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    La fiscalité de chaque vente est estimée en réutilisant la logique fiscale de l'app (PFU/Barème, enveloppes PEA/AV/PER, régime Métaux, abattement durée). Les montants sont <b>indicatifs</b> : la répartition exacte peut différer selon le lot vendu (FIFO vs nominatif). Vous pourrez ajuster chaque opération au moment de l'enregistrer comme arbitrage.
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-800 flex justify-end gap-2">
+                <button onclick="closeModal('modal-rebalance')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs">Fermer</button>
+                <button onclick="convertRebalanceAll()" id="rebalance-all-btn" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check text-[10px]"></i> Convertir toutes en arbitrages
+                </button>
             </div>
         </div>
     </div>
@@ -2191,6 +2762,14 @@
     <script src="app4-forms.js"></script>
     <script src="app5-fiscal.js"></script>
     <script src="app6-api.js"></script>
+    <script src="app8-goals.js"></script>
+    <script src="app9-alerts.js"></script>
+    <script src="app10-tir.js"></script>
+    <script src="app11-scoring.js"></script>
+    <script src="app12-reports.js"></script>
+    <script src="app13-excel-export.js"></script>
+    <script src="app14-suggestions.js"></script>
+    <script src="app15-notifications.js"></script>
     <script src="app7-init.js"></script>
 </body>
 </html>

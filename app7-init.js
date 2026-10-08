@@ -137,14 +137,6 @@ window.addEventListener('DOMContentLoaded', () => {
             return original.apply(this, args);
         };
     });
-        // 12. Initialisation du sélecteur multi-portefeuille
-        updatePortfolioLabel();
-        document.addEventListener('click', (e) => {
-            const menu = document.getElementById('portfolio-menu');
-            if (!menu || menu.classList.contains('hidden')) return;
-            const wrap = menu.parentElement;
-            if (wrap && !wrap.contains(e.target)) closePortfolioMenu();
-        });
     // 12. Initialisation du sélecteur multi-portefeuille
     updatePortfolioLabel();
     document.addEventListener('click', (e) => {
@@ -179,4 +171,115 @@ window.addEventListener('DOMContentLoaded', () => {
             return r;
         };
     }
+
+    // 16. Menu scénarios Paper Trading :
+    //     - fermeture au clic extérieur
+    //     - rendu initial
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('paper-scenario-menu');
+        if (!menu || menu.classList.contains('hidden')) return;
+        const wrap = menu.parentElement;
+        if (wrap && !wrap.contains(e.target)) closePaperScenarioMenu();
+    });
+    renderPaperScenarioMenu();
+
+    // 17. RAFFINEMENTS GRAPHIQUES — animations d'entrée au scroll
+    // On observe les sections principales (tab-content) : à chaque fois
+    // qu'une section devient visible (changement d'onglet, scroll), on
+    // applique une animation d'apparition douce.
+    const _revealSections = document.querySelectorAll(
+        '#tab-dashboard > div, #tab-inventaire > div, #tab-gave > div, ' +
+        '#tab-crypto > div, #tab-hors-gave > div, #tab-piliers > div, ' +
+        '#tab-annee-n1 > div, #tab-strategies > div, #tab-objectifs > div'
+    );
+    _revealSections.forEach(el => el.classList.add('pm-reveal'));
+
+    const _revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('pm-revealed');
+                _revealObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.05, rootMargin: '0px 0px -30px 0px' });
+
+    _revealSections.forEach(el => _revealObserver.observe(el));
+
+    // Ré-observe quand on change d'onglet (les sections cachées ne sont
+    // pas observées tant qu'elles restent à display:none par Tailwind).
+    const _origSwitchTab = window.switchTab;
+    if (typeof _origSwitchTab === 'function') {
+        window.switchTab = function (tabId) {
+            const r = _origSwitchTab.apply(this, arguments);
+            setTimeout(() => {
+                document.querySelectorAll('#' + tabId + ' > div').forEach(el => {
+                    if (!el.classList.contains('pm-revealed')) {
+                        el.classList.add('pm-reveal');
+                        _revealObserver.observe(el);
+                    }
+                });
+            }, 40);
+            return r;
+        };
+    }
+
+    // Pulse discret sur les KPI quand leur valeur change
+    // On observe les éléments avec id="stat-*" via MutationObserver.
+    const _kpiObserver = new MutationObserver((mutations) => {
+        mutations.forEach(m => {
+            const el = m.target;
+            if (!el || el._pmPulsing) return;
+            el._pmPulsing = true;
+            el.classList.add('pm-pulse');
+            setTimeout(() => {
+                el.classList.remove('pm-pulse');
+                el._pmPulsing = false;
+            }, 560);
+        });
+    });
+    document.querySelectorAll('[id^="stat-"]').forEach(el => {
+        _kpiObserver.observe(el, { characterData: true, childList: true, subtree: true });
+    });
+
+    // 18. SAUVEGARDE AUTOMATIQUE DRIVE
+    // Vérifie si un push silencieux est opportun (dernière sauvegarde > 24 h,
+    // connexion Drive active, clé maîtresse mémorisée). Ne fait rien si l'une
+    // des conditions n'est pas remplie — pas de popup surprise.
+    if (typeof checkAndRunAutoDriveBackup === 'function') {
+        checkAndRunAutoDriveBackup();
+    }
+
+    // 19. NOTIFICATIONS SYSTÈME — initialisation
+    // a) Enregistre le Service Worker (nécessaire pour que sw.js soit actif)
+    if (typeof registerServiceWorker === 'function') {
+        registerServiceWorker();
+    }
+    // b) Synchronise l'UI du panneau dans le modal Alertes (état de la permission)
+    if (typeof updateNativeNotifUI === 'function') {
+        updateNativeNotifUI();
+    }
+
+    // Écoute les messages du Service Worker (clic sur une notification système)
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            const data = event.data || {};
+            if (data.type === 'NOTIFICATION_CLICKED') {
+                // Focus sur le dashboard + scroll vers les alertes
+                if (typeof switchTab === 'function') switchTab('tab-dashboard');
+                setTimeout(() => {
+                    const zone = document.getElementById('alerts-banner-zone');
+                    if (zone) zone.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 150);
+                if (typeof showUndoToast === 'function') {
+                    showUndoToast('Retour depuis une notification système.', false);
+                }
+            }
+        });
+    }
+
+    // Certains navigateurs mettent à jour la permission sans événement —
+    // on revérifie périodiquement (léger, toutes les 30 s) pour rafraîchir l'UI.
+    setInterval(() => {
+        if (typeof updateNativeNotifUI === 'function') updateNativeNotifUI();
+    }, 30000);
 });
