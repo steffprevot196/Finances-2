@@ -784,16 +784,32 @@ function renderSearchResults(results) {
         const div = document.createElement('div');
         div.className = 'p-2.5 hover:bg-gray-800/80 cursor-pointer transition flex items-center justify-between text-xs';
         div.onclick = () => selectSearchResult(item);
+
+        // ── SECURITY (audit B3) ──
+        // `item.badgeColor` est interpolé dans un attribut `class`.
+        // Aujourd'hui il provient de catalogues statiques, mais la fonction
+        // est aussi alimentée par `searchFinnhubSymbol()` (réponse API
+        // distante) : une réponse compromise pourrait injecter des
+        // attributs via des guillemets. On échappe par défense en profondeur.
+        // Note : les autres champs (`name`, `badge`, `ticker`, `category`)
+        // sont déjà échappés — le seul trou était `badgeColor`.
+        const safeBadgeColor = escapeHTML(item.badgeColor || '');
+        const safeName       = escapeHTML(item.name);
+        const safeBadge      = escapeHTML(item.badge || '');
+        const safeTicker     = escapeHTML(item.ticker || '');
+        const safeCategory   = escapeHTML(item.category || '');
+        const safePrice      = formatEUR(item.priceEUR);
+
         div.innerHTML = `
             <div>
                 <div class="font-bold text-white flex items-center gap-2">
-                    ${escapeHTML(item.name)}
-                    <span class="text-[9px] px-1.5 py-0.5 rounded border font-mono ${item.badgeColor}">${escapeHTML(item.badge)}</span>
+                    ${safeName}
+                    <span class="text-[9px] px-1.5 py-0.5 rounded border font-mono ${safeBadgeColor}">${safeBadge}</span>
                 </div>
-                <div class="text-[10px] text-gray-400 font-mono">${escapeHTML(item.ticker)} • ${escapeHTML(item.category || '')}</div>
+                <div class="text-[10px] text-gray-400 font-mono">${safeTicker} • ${safeCategory}</div>
             </div>
             <div class="text-right font-mono font-bold text-emerald-400">
-                ${formatEUR(item.priceEUR)}
+                ${safePrice}
             </div>
         `;
         container.appendChild(div);

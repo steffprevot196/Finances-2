@@ -54,43 +54,60 @@ const BINANCE_ASSET_MAP = {
 };
 
 // ---------------------------------------------------------------------
-// STOCKAGE DES CLÉS API (localStorage, séparées par broker)
+// STOCKAGE DES CLÉS API — SESSION-ONLY (correctif audit 2026)
 // ---------------------------------------------------------------------
-function loadBrokerKeys() {
+// ⚠ DÉCISION DE SÉCURITÉ :
+// Les clés API broker NE SONT PLUS persistées dans localStorage.
+// Raisons :
+//   • localStorage est lisible par tout script de même origine (XSS) et
+//     par toute extension navigateur avec permission `storage`.
+//   • Un simple `localStorage.getItem('patriMonial_brokerKeys')` en
+//     console suffisait à extraire les credentials en clair.
+//   • L'utilisateur ne fait un import broker qu'occasionnellement :
+//     ressaisir la clé à chaque session est un coût acceptable.
+//
+// Les clés vivent donc uniquement dans la variable module `_brokerKeysMemory`
+// ci-dessous. Elles sont perdues au rechargement de la page — c'est VOULU.
+//
+// Une ancienne clé localStorage (`patriMonial_brokerKeys`) peut subsister
+// chez les utilisateurs existants : elle est purgée au boot (voir
+// initBrokerImportModule en fin de fichier).
+
+// Cache mémoire par broker : { binance: { key, secret }, kraken: {...} }
+const _brokerKeysMemory = {};
+
+// Conservé pour la purge de migration : détecte l'ancienne clé localStorage
+function _purgeLegacyBrokerKeysStorage() {
     try {
-        const raw = localStorage.getItem(BROKER_KEYS_STORAGE);
-        if (raw) return JSON.parse(raw);
-    } catch (_) {}
-    return {};
+        if (localStorage.getItem(BROKER_KEYS_STORAGE) !== null) {
+            localStorage.removeItem(BROKER_KEYS_STORAGE);
+            console.info('[Broker] Anciennes clés localStorage purgées (migration sécurité).');
+        }
+    } catch (_) { /* silencieux */ }
 }
 
-function saveBrokerKeys(keys) {
-    try {
-        localStorage.setItem(BROKER_KEYS_STORAGE, JSON.stringify(keys || {}));
-    } catch (err) {
-        console.warn('[Broker] Sauvegarde clés impossible :', err);
-    }
-}
-
+// Récupère les clés d'un broker depuis la mémoire volatile.
+// Retourne { key, secret } ou null si absentes.
 function getBrokerKeys(broker) {
-    const all = loadBrokerKeys();
-    return all[broker] || null;
+    const entry = _brokerKeysMemory[broker];
+    if (!entry || !entry.key || !entry.secret) return null;
+    return { key: entry.key, secret: entry.secret };
 }
 
-function setBrokerKeys(broker, key, secret, extra = {}) {
-    const all = loadBrokerKeys();
-    all[broker] = { key, secret, ...extra, savedAt: Date.now() };
-    saveBrokerKeys(all);
+// Stocke les clés d'un broker en mémoire volatile uniquement.
+// ⚠ Ne JAMAIS écrire dans localStorage — voir la note de sécurité ci-dessus.
+function setBrokerKeys(broker, key, secret) {
+    if (!broker || !key || !secret) return;
+    _brokerKeysMemory[broker] = { key, secret, savedAt: Date.now() };
 }
 
+// Efface les clés d'un broker (ou toutes si `broker` est omis) de la mémoire.
 function clearBrokerKeys(broker) {
-    const all = loadBrokerKeys();
     if (broker) {
-        delete all[broker];
+        delete _brokerKeysMemory[broker];
     } else {
-        Object.keys(all).forEach(k => delete all[k]);
+        Object.keys(_brokerKeysMemory).forEach(k => delete _brokerKeysMemory[k]);
     }
-    saveBrokerKeys(all);
 }
 
 // ---------------------------------------------------------------------
@@ -434,9 +451,13 @@ async function fetchBrokerPositions(brokerId) {
 // INITIALISATION
 // ---------------------------------------------------------------------
 function initBrokerImportModule() {
-    // Rien de spécifique à faire au boot — tout est déclenché par le modal.
-    // On expose juste les helpers globalement (déjà fait en bas du fichier).
+    // ── Correctif audit M3 ──
+    // Purge les anciennes clés broker stockées en clair par les versions
+    // précédentes de l'app (localStorage `patriMonial_brokerKeys`).
+    _purgeLegacyBrokerKeysStorage();
+
     console.info('[BrokerImport] Module chargé — 3 brokers supportés (binance, coinbase, kraken).');
+    console.info('[BrokerImport] Clés API : session-only (aucune persistance disque).');
 }
 
 // =====================================================================
@@ -651,14 +672,16 @@ function _renderBrokerStep1() {
                 <input type="password" id="broker-secret-input" placeholder="${escapeHTML(meta.placeholder.secret)}" value="${escapeHTML(brokerImportState.keys.secret)}" autocomplete="off" class="w-full bg-gray-900 border border-gray-800 rounded-lg p-2 text-white font-mono text-[11px] focus:outline-none focus:border-purple-500">
             </div>
 
-            <label class="flex items-center gap-2 cursor-pointer select-none text-[11px] text-gray-300">
-                <input type="checkbox" id="broker-save-keys" class="accent-purple-500">
-                <span>Mémoriser ces clés dans ce navigateur (localStorage)</span>
-            </label>
+            <div class="bg-blue-950/20 border border-blue-800/40 rounded-lg p-2.5 text-[10px] text-blue-200 leading-relaxed">
+                <i class="fa-solid fa-shield-halved text-blue-400 mr-1"></i>
+                <b>Sécurité :</b> vos clés ne sont <b>jamais écrites sur disque</b>. Elles vivent
+                uniquement en mémoire volatile et disparaissent au rechargement de la page.
+                Vous devrez les ressaisir à la prochaine session.
+            </div>
 
             ${brokerImportState.keys.key ? `
                 <button type="button" onclick="clearBrokerKeysAndRefresh()" class="text-[10px] text-rose-400 hover:text-rose-300 underline">
-                    <i class="fa-solid fa-trash text-[9px] mr-1"></i> Effacer les clés mémorisées pour ${escapeHTML(meta.label)}
+                    <i class="fa-solid fa-trash text-[9px] mr-1"></i> Effacer les clés de la session pour ${escapeHTML(meta.label)}
                 </button>
             ` : ''}
         </div>
@@ -690,10 +713,11 @@ function _renderBrokerStep1() {
 function selectBroker(brokerId) {
     brokerImportState.broker = brokerId;
 
-    // Pré-remplit avec les clés déjà mémorisées pour ce broker
-    const saved = getBrokerKeys(brokerId);
-    if (saved && saved.key && saved.secret) {
-        brokerImportState.keys = { key: saved.key, secret: saved.secret };
+    // Pré-remplit avec les clés déjà saisies dans CETTE session (mémoire
+    // volatile uniquement — jamais depuis localStorage, cf. correctif M3).
+    const inSession = getBrokerKeys(brokerId);
+    if (inSession) {
+        brokerImportState.keys = { key: inSession.key, secret: inSession.secret };
     } else {
         brokerImportState.keys = { key: '', secret: '' };
     }
@@ -701,15 +725,15 @@ function selectBroker(brokerId) {
     renderBrokerImportStep();
 }
 
-// Efface les clés mémorisées pour le broker courant
+// Efface les clés stockées en mémoire de session pour le broker courant
 function clearBrokerKeysAndRefresh() {
     if (!brokerImportState.broker) return;
-    if (!confirm(`Effacer les clés API mémorisées pour ${BROKER_META[brokerImportState.broker].label} ?`)) return;
+    if (!confirm(`Effacer les clés API de la session pour ${BROKER_META[brokerImportState.broker].label} ?`)) return;
     clearBrokerKeys(brokerImportState.broker);
     brokerImportState.keys = { key: '', secret: '' };
     renderBrokerImportStep();
     if (typeof toastInfo === 'function') {
-        toastInfo('Clés effacées', 'Les identifiants ont été supprimés de ce navigateur.');
+        toastInfo('Clés effacées', 'Les identifiants ont été retirés de la mémoire de session.');
     }
 }
 
@@ -827,11 +851,9 @@ async function testBrokerConnection() {
     // Sélectionne par défaut TOUTES les positions
     brokerImportState.selected = new Set(result.positions.map(p => p.ticker));
 
-    // Mémorise les clés si la case était cochée
-    const saveCb = document.getElementById('broker-save-keys');
-    if (saveCb && saveCb.checked) {
-        setBrokerKeys(brokerId, brokerImportState.keys.key, brokerImportState.keys.secret);
-    }
+    // Conserve les clés en mémoire volatile pour la session courante.
+    // Aucune persistance localStorage (cf. correctif audit M3).
+    setBrokerKeys(brokerId, brokerImportState.keys.key, brokerImportState.keys.secret);
 
     // Toasts informatifs
     if (typeof toastSuccess === 'function' && result.positions.length > 0) {

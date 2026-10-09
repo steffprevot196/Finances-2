@@ -847,7 +847,45 @@ function isSecurityAsset(a) {
 // =====================================================================
 // NORMALISATION / MIGRATION D'UN ACTIF
 // =====================================================================
+
+// ---------------------------------------------------------------------
+// SECURITY — Coercition d'un identifiant en nombre (protection XSS stocké)
+// ---------------------------------------------------------------------
+// Les IDs sont interpolés dans des handlers inline :
+//   onclick="fn(${asset.id})"   (app2-ui.js, app3-charts.js, app5-fiscal.js…)
+// Un JSON importé contenant un `id` de type chaîne casserait la quote et
+// permettrait d'injecter du code exécutable. On force systématiquement
+// un nombre fini strictement positif, sinon on génère un nouvel ID.
+function _safeId(v, fallback) {
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0) return v;
+    if (typeof v === 'string' && /^\d+$/.test(v)) {
+        const n = Number(v);
+        if (Number.isFinite(n) && n > 0) return n;
+    }
+    return (fallback !== undefined)
+        ? fallback
+        : (Date.now() + Math.floor(Math.random() * 100000));
+}
+
+// ---------------------------------------------------------------------
+// NORMALISATION D'UN ARBITRAGE
+// ---------------------------------------------------------------------
+// Les arbitrages ne passent pas par migrateAssetToV2 : on leur applique
+// juste la coercition d'ID (même menace que pour les actifs / cessions).
+function normalizeArbitrage(arb) {
+    if (!arb || typeof arb !== 'object') return arb;
+    arb.id      = _safeId(arb.id);
+    arb.date    = arb.date || '';
+    arb.source  = String(arb.source || '');
+    arb.destination = String(arb.destination || '');
+    arb.montant = Number(arb.montant) || 0;
+    arb.motif   = String(arb.motif || '');
+    return arb;
+}
+
 function normalizeAsset(a) {
+    // ── SECURITY ── Coercition de l'ID racine AVANT tout traitement
+    a.id = _safeId(a.id);
     // Tags (categories)
     if (!Array.isArray(a.categories) || a.categories.length === 0) {
         a.categories = tagsFromLegacy(a.category, a.isETF === true, a.name);
@@ -902,7 +940,7 @@ a.cadran = a.cadrans.primary;
     a.dividends = a.dividends
         .filter(d => d && d.date && Number.isFinite(Number(d.amount)))
         .map(d => ({
-            id:          d.id || (Date.now() + Math.floor(Math.random() * 100000)),
+            id:          _safeId(d.id),
             date:        d.date,
             amount:      Number(d.amount) || 0,
             currency:    (d.currency || 'EUR').toUpperCase(),
@@ -955,7 +993,7 @@ a.cadran = a.cadrans.primary;
     a.splits = a.splits
         .filter(s => s && s.date && Number.isFinite(Number(s.ratio)) && Number(s.ratio) > 0)
         .map(s => ({
-            id:        s.id || (Date.now() + Math.floor(Math.random() * 100000)),
+            id:        _safeId(s.id),
             date:      s.date,
             ratio:     Number(s.ratio),
             note:      s.note || '',
@@ -986,8 +1024,9 @@ a.cadran = a.cadrans.primary;
             )];
         }
     } else {
-        // Nettoyage : s'assurer que chaque lot a `reference`, `qty` et `qtyRemaining`
+        // Nettoyage : ID numérique + champs obligatoires présents
         a.lots.forEach(l => {
+            l.id = _safeId(l.id);                              // ── SECURITY ──
             if (l.reference === undefined) l.reference = '';
             if (l.qty === undefined)       l.qty = l.qtyRemaining || 0;
             if (l.qtyRemaining === undefined) l.qtyRemaining = l.qty || 0;
@@ -1013,6 +1052,9 @@ function migrateAssetToV2(a) {
 }
 
 function normalizeCession(c) {
+    // ── SECURITY ── Coercition de l'ID avant tout traitement
+    c.id = _safeId(c.id);
+
     if (c.enveloppe !== undefined) {
         c.envelope = c.envelope || LEGACY_ENVELOPE_MAP[c.enveloppe] || c.enveloppe;
         delete c.enveloppe;
@@ -2260,8 +2302,10 @@ function handleImportJSON(e) {
             taxTMI = newTaxTMI;
 
             // Migration v1 -> v2 si nécessaire (ajoute lots, reference, cadran, etc.)
+            // + coercition des IDs (protection XSS stocké via handlers inline)
             assets.forEach(a => migrateAssetToV2(a));
             cessions.forEach(normalizeCession);
+            arbitrages.forEach(normalizeArbitrage);
 
             // Persistance
             saveToStorage(); saveCessions(); saveArbitrages(); saveTaxSettings();

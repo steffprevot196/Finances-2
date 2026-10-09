@@ -186,6 +186,29 @@ window.addEventListener('DOMContentLoaded', () => {
         initCspAuditModule();
     }
 
+    // 8n-bis-2. Activation PERMANENTE du délégateur CSP.
+    //          ⚠ INDISPENSABLE depuis le retrait de 'unsafe-inline' de la CSP
+    //          (index.html). Sans cet appel, TOUS les attributs onclick=,
+    //          onchange=, oninput=, onsubmit=… présents dans le HTML et dans
+    //          les chaînes innerHTML générées dynamiquement sont bloqués par
+    //          le navigateur → app inutilisable.
+    //
+    //          Le délégateur (app28-csp-audit.js) rejoue ces handlers sans
+    //          recourir à eval/Function (interdits par CSP). Couverture
+    //          contrôlable via reportCspReadiness() en console.
+    //
+    //          Un try/catch défensif évite qu'une erreur inattendue dans le
+    //          module CSP ne bloque tout le démarrage de l'application.
+    if (typeof enableCspFallbackDelegator === 'function') {
+        try {
+            enableCspFallbackDelegator();
+        } catch (err) {
+            console.error('[Boot] Activation du délégateur CSP échouée :', err);
+            // L'app reste fonctionnelle en mode dégradé : les handlers
+            // inline échoueront, mais le reste du boot continue.
+        }
+    }
+
     // 8n-ter. Chantier §3 — initialisation du comparateur CW8
     //         Le rendu est déclenché par renderCw8Comparison() depuis
     //         refreshAllUI sur l'onglet dashboard. On installe un hook

@@ -15,7 +15,7 @@
 // « fantômes » impossibles à reproduire en DevTools.
 // =====================================================================
 
-const SW_VERSION = 'v1.0.4';                    // ← Bumper à chaque deploy
+const SW_VERSION = 'v1.0.2';                    // ← Bumper à chaque deploy
 const CACHE_PREFIX = 'patrimonial';
 const CACHE_STATIC = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const CACHE_CDN    = `${CACHE_PREFIX}-cdn-${SW_VERSION}`;
@@ -33,9 +33,6 @@ const APP_SHELL = [
     './style.css',
     './manifest.json',
     './icon.svg',
-    './js/tailwind-config.js',
-    './js/crypto-storage.js',
-    './js/sanitizer.js',
 
     // Modules applicatifs (ordre de chargement dans index.html)
     './app1-core.js',
@@ -90,7 +87,7 @@ const APP_SHELL = [
 const CDN_PRECACHE = [
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/chart.js',
     'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap'
 ];

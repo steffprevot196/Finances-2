@@ -39,25 +39,58 @@ const CSP_AUDITED_ATTRS = [
     'onfocus', 'onblur', 'onmouseover', 'onmouseout', 'onload', 'onerror'
 ];
 
-// Catégorise un handler inline
+// Catégorise un handler inline.
+//
+// Retourne :
+//   'simple'   → un seul appel de fonction fn() / fn(args)
+//   'assign'   → une assignation simple this.xxx = value
+//   'multi'    → plusieurs instructions ;-séparées, toutes simples/assign
+//   'complex'  → ternaire, if, &&, ||, return → nécessite conversion manuelle
+//   'other'    → non reconnu
 function _classifyInlineHandler(code) {
     const c = String(code || '').trim();
+    const withoutTrailing = c.replace(/;\s*$/, '');
 
-    // Cas complexe : contient des opérateurs de contrôle
-    if (c.includes('?') || c.includes('&&') || c.includes('||') ||
-        /\bif\s*\(/.test(c) || /\breturn\b/.test(c)) {
+    // ── Cas complexes : à convertir manuellement en addEventListener ──
+    //  - ternaires (cond ? a : b)
+    //  - opérateurs logiques (a && b, a || b)
+    //  - if/return explicites
+    //  - arrow functions inline `x => ...`
+    //  ⚠ On teste ces marqueurs UNIQUEMENT hors chaînes littérales pour
+    //    éviter les faux positifs sur `title="Cliquez ?"` par exemple.
+    const strippedStrings = withoutTrailing
+        .replace(/'[^']*'/g, "''")
+        .replace(/"[^"]*"/g, '""');
+    if (/\bif\s*\(/.test(strippedStrings) ||
+        /\breturn\b/.test(strippedStrings) ||
+        /&&|\|\|/.test(strippedStrings) ||
+        /\?[^.]/.test(strippedStrings) ||
+        /=>/.test(strippedStrings)) {
         return 'complex';
     }
 
-    // Multi-instructions (séparées par ;)
-    // Sauf un seul point-virgule terminal
-    const withoutTrailing = c.replace(/;\s*$/, '');
-    if (withoutTrailing.includes(';')) return 'multi';
+    // ── Multi-instructions ──
+    if (withoutTrailing.includes(';')) {
+        // Vérifie que CHAQUE instruction est simple ou assign
+        const parts = withoutTrailing.split(';').map(s => s.trim()).filter(Boolean);
+        const allSimple = parts.every(p =>
+            /^[a-zA-Z_$][a-zA-Z0-9_$.]*(?:\?\.)?\s*\([^()]*\)$/.test(p) ||
+            /^this(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*\s*=\s*.+$/.test(p) ||
+            /^event\.(stopPropagation|preventDefault)\(\)$/.test(p)
+        );
+        return allSimple ? 'multi' : 'other';
+    }
 
-    // Simple : fn() ou fn(args) ou this.value ou event.xxx
-    if (/^[a-zA-Z_$][a-zA-Z0-9_$.]*\s*\([^()]*\)$/.test(withoutTrailing)) return 'simple';
+    // ── Appel de fonction simple ──
+    if (/^[a-zA-Z_$][a-zA-Z0-9_$.]*(?:\?\.)?\s*\([^()]*\)$/.test(withoutTrailing)) {
+        return 'simple';
+    }
 
-    // Autres cas (assignations directes, etc.)
+    // ── Assignation this.xxx = value ──
+    if (/^this(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*\s*=\s*.+$/.test(withoutTrailing)) {
+        return 'assign';
+    }
+
     return 'other';
 }
 
@@ -165,76 +198,197 @@ function runCspAudit() {
 let _cspDelegatorActive = false;
 const _cspDelegatorListeners = [];
 
-// Parse la valeur d'un argument littéral (string, number, bool, this.xxx)
+// Parse la valeur d'un argument littéral : string, number, bool, null,
+// undefined, this.xxx, event, tableau [a, b] ou objet {a: 1}.
+// Ne fait AUCUN appel à eval/Function (interdits CSP).
 function _parseArgValue(raw, el, event) {
     const s = String(raw || '').trim();
     if (!s) return undefined;
 
-    // Chaîne : 'text' ou "text"
+    // ── Chaîne littérale 'text' ou "text" ──
     if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
-        return s.slice(1, -1);
+        // Déséchappe les séquences courantes
+        const inner = s.slice(1, -1);
+        return inner.replace(/\\(['"\\nrt])/g, (_, c) => ({
+            "'": "'", '"': '"', '\\': '\\',
+            'n': '\n', 'r': '\r', 't': '\t'
+        }[c] || c));
     }
-    // Nombre
-    if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
-    // Booléens
-    if (s === 'true') return true;
-    if (s === 'false') return false;
-    if (s === 'null') return null;
+
+    // ── Nombre (avec signe, décimales, notation exponentielle) ──
+    if (/^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(s)) return Number(s);
+
+    // ── Littéraux spéciaux ──
+    if (s === 'true')      return true;
+    if (s === 'false')     return false;
+    if (s === 'null')      return null;
     if (s === 'undefined') return undefined;
-    // this.value, this.checked, etc.
+    if (s === 'NaN')       return NaN;
+    if (s === 'Infinity')  return Infinity;
+
+    // ── this.xxx ──
     if (s === 'this.value')   return el.value;
     if (s === 'this.checked') return el.checked;
     if (s === 'this.id')      return el.id;
+    if (s === 'this.tagName') return el.tagName;
     if (s === 'this.dataset') return el.dataset;
+
     // this.dataset.xxx
-    const datasetMatch = s.match(/^this\.dataset\.([a-zA-Z0-9_]+)$/);
-    if (datasetMatch) return el.dataset[datasetMatch[1]];
-    // event
+    const dsMatch = s.match(/^this\.dataset\.([a-zA-Z_$][a-zA-Z0-9_$]*)$/);
+    if (dsMatch) return el.dataset[dsMatch[1]];
+
+    // this.xxx (propriété DOM générique lisible)
+    const thisPropMatch = s.match(/^this\.([a-zA-Z_$][a-zA-Z0-9_$]*)$/);
+    if (thisPropMatch) return el[thisPropMatch[1]];
+
+    // ── event ──
     if (s === 'event') return event;
 
-    // Non supporté → undefined (l'appelant loguera)
+    // ── Tableau littéral [a, b, c] ──
+    if (s.startsWith('[') && s.endsWith(']')) {
+        const inner = s.slice(1, -1).trim();
+        if (!inner) return [];
+        return inner.split(',').map(part => _parseArgValue(part, el, event));
+    }
+
+    // ── Objet littéral simple {k: v, k2: v2} (une seule profondeur) ──
+    if (s.startsWith('{') && s.endsWith('}')) {
+        const inner = s.slice(1, -1).trim();
+        if (!inner) return {};
+        const obj = {};
+        // Découpe naïve sur les virgules (ne gère pas les objets imbriqués)
+        inner.split(',').forEach(pair => {
+            const [k, v] = pair.split(':').map(x => x.trim());
+            if (!k) return;
+            const cleanKey = k.replace(/^['"]|['"]$/g, '');
+            obj[cleanKey] = _parseArgValue(v, el, event);
+        });
+        return obj;
+    }
+
+    // ── Non supporté ──
     return undefined;
 }
 
-// Exécute une instruction unique du handler
+// Découpe une liste d'arguments en respectant les profondeurs de
+// parenthèses/crochets/accolades ET les chaînes littérales.
+// Nécessaire pour parser correctement `fn(['a', 'b'], {x: 1})`.
+function _splitArgsTopLevel(argsRaw) {
+    const parts = [];
+    let depth = 0;
+    let inString = null;   // ' ou "
+    let current = '';
+
+    for (let i = 0; i < argsRaw.length; i++) {
+        const ch = argsRaw[i];
+        const prev = i > 0 ? argsRaw[i - 1] : '';
+
+        // Gestion des chaînes
+        if (inString) {
+            current += ch;
+            if (ch === inString && prev !== '\\') inString = null;
+            continue;
+        }
+        if (ch === "'" || ch === '"') {
+            inString = ch;
+            current += ch;
+            continue;
+        }
+
+        // Gestion des profondeurs
+        if (ch === '(' || ch === '[' || ch === '{') { depth++; current += ch; continue; }
+        if (ch === ')' || ch === ']' || ch === '}') { depth--; current += ch; continue; }
+
+        // Virgule de séparation au niveau 0
+        if (ch === ',' && depth === 0) {
+            parts.push(current.trim());
+            current = '';
+            continue;
+        }
+        current += ch;
+    }
+    if (current.trim()) parts.push(current.trim());
+    return parts;
+}
+
+// Exécute une instruction unique du handler (sans eval/Function).
+// Supporte :
+//   • fn() / fn(args) où args peut contenir strings, numbers, bool,
+//     this.xxx, event, tableaux [a, b], objets {a: 1}
+//   • this.xxx = value             (assignation propriété DOM)
+//   • this.style.prop = value      (assignation style inline)
+//   • this.dataset.xxx = value     (assignation dataset)
+//   • event.stopPropagation() / event.preventDefault()
 function _execCspStatement(stmt, el, event) {
     const s = String(stmt || '').trim().replace(/;\s*$/, '');
     if (!s) return true;
 
-    // Cas spécial : event.stopPropagation()
+    // ── Événement : stopPropagation / preventDefault ──
     if (s === 'event.stopPropagation()') { event.stopPropagation(); return true; }
-    if (s === 'event.preventDefault()')  { event.preventDefault(); return true; }
+    if (s === 'event.preventDefault()')  { event.preventDefault();  return true; }
 
-    // Cas fn(...)
-    const m = s.match(/^([a-zA-Z_$][a-zA-Z0-9_$.]*)\s*\(([^()]*)\)$/);
-    if (!m) {
-        console.warn('[CSP Delegator] Instruction non supportée :', s.slice(0, 80));
-        return false;
+    // ── Appel de fonction fn(args) ──
+    const callMatch = s.match(/^([a-zA-Z_$][a-zA-Z0-9_$.]*(?:\?\.)?)\s*\(([\s\S]*)\)$/);
+    if (callMatch) {
+        const fnPath = callMatch[1].replace(/\?\./g, '.');   // ?. → .
+        const argsRaw = callMatch[2].trim();
+
+        const fn = fnPath.split('.').reduce((obj, key) => (obj ? obj[key] : undefined), window);
+        if (typeof fn !== 'function') {
+            console.warn('[CSP Delegator] Fonction introuvable :', fnPath);
+            return false;
+        }
+
+        let args = [];
+        if (argsRaw) {
+            args = _splitArgsTopLevel(argsRaw).map(a => _parseArgValue(a, el, event));
+        }
+
+        try {
+            fn.apply(el, args);
+            return true;
+        } catch (err) {
+            console.error('[CSP Delegator] Erreur dans', fnPath, ':', err);
+            return false;
+        }
     }
 
-    const fnPath = m[1];
-    const argsRaw = m[2].trim();
+    // ── Assignation this.xxx = value ──
+    // Découpe sur le PREMIER = (pour éviter de matcher == ou ===)
+    const assignMatch = s.match(/^(this(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)+)\s*=\s*([\s\S]+)$/);
+    if (assignMatch && !s.includes('==')) {
+        const path = assignMatch[1];                  // this.style.filter
+        const valRaw = assignMatch[2].trim();
+        const value = _parseArgValue(valRaw, el, event);
 
-    // Résout la fonction dans window (avec support de la notation pointée)
-    const fn = fnPath.split('.').reduce((obj, key) => (obj ? obj[key] : undefined), window);
-    if (typeof fn !== 'function') {
-        console.warn('[CSP Delegator] Fonction introuvable :', fnPath);
-        return false;
+        // Découpe la cible en segments : ['this', 'style', 'filter']
+        const segments = path.split('.').slice(1);    // retire 'this'
+        if (!segments.length) return false;
+
+        // Navigue jusqu'au parent de la propriété
+        let target = el;
+        for (let i = 0; i < segments.length - 1; i++) {
+            target = target[segments[i]];
+            if (target === undefined || target === null) {
+                console.warn('[CSP Delegator] Chemin introuvable :', path);
+                return false;
+            }
+        }
+        const lastKey = segments[segments.length - 1];
+
+        try {
+            target[lastKey] = value;
+            return true;
+        } catch (err) {
+            // Certaines propriétés DOM sont en lecture seule (el.offsetWidth…)
+            console.warn('[CSP Delegator] Assignation refusée :', path, '=', value, '—', err.message);
+            return false;
+        }
     }
 
-    // Parse les arguments
-    let args = [];
-    if (argsRaw) {
-        args = argsRaw.split(',').map(a => _parseArgValue(a, el, event));
-    }
-
-    try {
-        fn.apply(el, args);
-        return true;
-    } catch (err) {
-        console.error('[CSP Delegator] Erreur dans', fnPath, ':', err);
-        return false;
-    }
+    // ── Non supporté : log explicite pour faciliter la conversion manuelle ──
+    console.warn('[CSP Delegator] Instruction non supportée :', s.slice(0, 120));
+    return false;
 }
 
 // Exécute le code complet d'un handler inline
@@ -325,16 +479,91 @@ function isCspFallbackDelegatorActive() {
 }
 
 // ---------------------------------------------------------------------
+// RAPPORT DE PRÉPARATION AU RETRAIT DE 'unsafe-inline'
+// ---------------------------------------------------------------------
+// Analyse chaque handler inline du DOM et indique lesquels sont couverts
+// par le délégateur, lesquels nécessitent une conversion manuelle.
+// Retourne { total, delegated, manual, unknown, manualSamples }.
+//
+// Usage : taper `reportCspReadiness()` en console avant de basculer la CSP.
+function reportCspReadiness() {
+    const audit = runCspAudit();
+    const delegated = { simple: 0, assign: 0, multi: 0 };
+    const manual = [];
+    const unknown = [];
+
+    audit.handlers.forEach(h => {
+        if (h.category === 'simple' || h.category === 'assign' || h.category === 'multi') {
+            delegated[h.category]++;
+        } else if (h.category === 'complex') {
+            manual.push(h);
+        } else {
+            unknown.push(h);
+        }
+    });
+
+    const totalDelegated = delegated.simple + delegated.assign + delegated.multi;
+    const ready = (manual.length === 0 && unknown.length === 0);
+
+    console.log('%c=== PRÉPARATION RETRAIT unsafe-inline ===',
+        'color:#8b5cf6; font-weight:bold; font-size:13px;');
+    console.log(`Total handlers inline    : ${audit.total}`);
+    console.log(`✅ Couverts par le délégateur : ${totalDelegated}  (simple: ${delegated.simple}, assign: ${delegated.assign}, multi: ${delegated.multi})`);
+    console.log(`⚠️ À convertir manuellement   : ${manual.length}`);
+    console.log(`❓ Non reconnus               : ${unknown.length}`);
+    console.log('');
+
+    if (ready) {
+        console.log('%c✅ PRÊT : aucun handler non couvert. Vous pouvez retirer \'unsafe-inline\' de la CSP après avoir activé le délégateur.',
+            'color:#10b981; font-weight:bold;');
+    } else {
+        console.log('%c⏳ NON PRÊT : certains handlers ne sont pas couverts par le délégateur.',
+            'color:#f59e0b; font-weight:bold;');
+        if (manual.length) {
+            console.log(`Handlers complexes (${manual.length}) — 20 premiers :`);
+            console.table(manual.slice(0, 20).map(h => ({
+                Élément: h.element,
+                Attribut: h.attr,
+                Code: h.code.slice(0, 80)
+            })));
+        }
+        if (unknown.length) {
+            console.log(`Handlers non reconnus (${unknown.length}) — 20 premiers :`);
+            console.table(unknown.slice(0, 20).map(h => ({
+                Élément: h.element,
+                Attribut: h.attr,
+                Code: h.code.slice(0, 80)
+            })));
+        }
+    }
+
+    return {
+        total: audit.total,
+        delegated: totalDelegated,
+        manual: manual.length,
+        unknown: unknown.length,
+        ready,
+        manualSamples: manual.slice(0, 20),
+        unknownSamples: unknown.slice(0, 20)
+    };
+}
+
+// ---------------------------------------------------------------------
 // INITIALISATION
 // ---------------------------------------------------------------------
 function initCspAuditModule() {
     // Rien à faire au boot : le module est purement à la demande.
-    // L'audit est disponible via Ctrl+K ou runCspAudit() dans la console.
-    console.info('[CSP Audit] Module chargé — lancez runCspAudit() pour auditer les handlers inline.');
+    // Commandes disponibles (console ou palette Ctrl+K) :
+    //   • runCspAudit()              → audit brut des handlers inline
+    //   • reportCspReadiness()       → rapport de couverture délégateur
+    //   • enableCspFallbackDelegator()  → active le délégateur (à tester)
+    //   • disableCspFallbackDelegator() → désactive le délégateur
+    console.info('[CSP Audit] Module chargé — taper reportCspReadiness() pour connaître la couverture du délégateur.');
 }
 
 // Expose l'API globalement
 window.runCspAudit = runCspAudit;
+window.reportCspReadiness = reportCspReadiness;
 window.enableCspFallbackDelegator = enableCspFallbackDelegator;
 window.disableCspFallbackDelegator = disableCspFallbackDelegator;
 window.isCspFallbackDelegatorActive = isCspFallbackDelegatorActive;

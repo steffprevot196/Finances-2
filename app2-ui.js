@@ -1683,9 +1683,10 @@ function switchPortfolio(id) {
     arbitrages  = readPortfolioArbitrages() || [];
     cadranNames = Object.assign({}, CADRAN_DEFAULT_NAMES, readPortfolioCadranNames() || {});
 
-    // Migration/normalisation
+    // Migration/normalisation + coercition des IDs (protection XSS stocké)
     assets.forEach(a => migrateAssetToV2(a));
     cessions.forEach(normalizeCession);
+    arbitrages.forEach(normalizeArbitrage);
 
     // Vide la pile d'undo (les snapshots référencent l'ancien portefeuille)
     undoStack = [];
