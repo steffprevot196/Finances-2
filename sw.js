@@ -15,7 +15,7 @@
 // « fantômes » impossibles à reproduire en DevTools.
 // =====================================================================
 
-const SW_VERSION = 'v1.0.1';                    // ← Bumper à chaque deploy
+const SW_VERSION = 'v1.0.4';                    // ← Bumper à chaque deploy
 const CACHE_PREFIX = 'patrimonial';
 const CACHE_STATIC = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const CACHE_CDN    = `${CACHE_PREFIX}-cdn-${SW_VERSION}`;
@@ -33,6 +33,9 @@ const APP_SHELL = [
     './style.css',
     './manifest.json',
     './icon.svg',
+    './js/tailwind-config.js',
+    './js/crypto-storage.js',
+    './js/sanitizer.js',
 
     // Modules applicatifs (ordre de chargement dans index.html)
     './app1-core.js',
@@ -87,7 +90,7 @@ const APP_SHELL = [
 const CDN_PRECACHE = [
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://cdn.jsdelivr.net/npm/chart.js',
+    'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
     'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap'
 ];
@@ -256,21 +259,23 @@ self.addEventListener('fetch', (event) => {
 // ---------------------------------------------------------------------
 
 // Cache-first : renvoie le cache s'il existe, sinon fetch + cache.
-// En parallèle, relance un fetch silencieux pour rafraîchir le cache
-// (utile pour les apps mises à jour sans bump SW_VERSION — outil de
-// secours, la bonne pratique reste de bumper SW_VERSION).
+// La revalidation silencieuse se fait en fire-and-forget : pas besoin de
+// waitUntil pour une opération d'arrière-plan dont l'échec est bénin.
 async function cacheFirstSWR(request) {
     const cache = await caches.open(CACHE_STATIC);
     const cached = await cache.match(request, { ignoreSearch: true });
 
     if (cached) {
-        // Revalidation silencieuse en arrière-plan (n'attend pas)
-        event.waitUntilSafe(async () => {
-            try {
-                const fresh = await fetch(request);
-                if (fresh.ok) await cache.put(request, fresh.clone());
-            } catch (_) { /* offline : rien à faire */ }
-        });
+        // Revalidation silencieuse en arrière-plan (fire-and-forget) :
+        // on n'attend pas la réponse, l'utilisateur a déjà le cache servi.
+        fetch(request)
+            .then(async (response) => {
+                if (response && response.ok) {
+                    try { await cache.put(request, response.clone()); } catch (_) {}
+                }
+            })
+            .catch(() => { /* offline : rien à faire */ });
+
         return cached;
     }
 
@@ -325,16 +330,9 @@ async function networkFirstFallback(request) {
     }
 }
 
-// Petit utilitaire pour lancer une tâche asynchrone sans bloquer la
-// réponse, MAIS en la rattachant à l'event.waitUntil du SW (sinon le
-// navigateur peut tuer le SW avant la fin de la promesse).
-// On contourne ici le fait que les fonctions de stratégie n'ont pas accès
-// directement à l'event — on utilise self.__currentEvent si nécessaire.
-// Simplification pragmatique : on laisse la tâche s'exécuter, elle sera
-// annulée au pire. Acceptable pour une revalidation silencieuse.
-Event.prototype.waitUntilSafe = function (fn) {
-    try { this.waitUntil(fn()); } catch (_) { /* déjà dispatched */ }
-};
+// (Bloc supprimé — le hack Event.prototype.waitUntilSafe n'est plus
+//  nécessaire : la revalidation silencieuse de cacheFirstSWR utilise
+//  désormais un fire-and-forget natif.)
 
 // ---------------------------------------------------------------------
 // 8) MESSAGE — Pour commander skipWaiting() depuis la page

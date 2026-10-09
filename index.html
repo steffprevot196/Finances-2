@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=()">
                 <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
-                   script-src 'self' 'unsafe-inline'
+                   script-src 'self'
                               https://cdn.tailwindcss.com
                               https://cdn.jsdelivr.net
                               https://cdnjs.cloudflare.com
@@ -54,33 +57,19 @@
     <!-- Fallback universel : titre court utilisé par les launchers d'apps -->
     <meta name="application-name" content="PatriMonial">
 
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS & Config -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        darkBg: '#0b0f19',
-                        cardBg: '#111827',
-                        cardBorder: '#1f2937',
-                        accentGreen: '#10b981',
-                        accentBlue: '#3b82f6',
-                        accentPurple: '#8b5cf6',
-                        accentAmber: '#f59e0b',
-                        accentRed: '#ef4444'
-                    }
-                }
-            }
-        }
-    </script>
+    <script src="js/tailwind-config.js"></script>
+
+    <!-- Crypto Storage Utility & Sanitizer -->
+    <script src="js/crypto-storage.js"></script>
+    <script src="js/sanitizer.js"></script>
     <!-- FontAwesome icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <!-- Chart.js (version verrouillée avec SRI) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha256-9lhH9C5j2+2nU8n3xT6R0C2G+T4U7M8e+x1Jz8L8k3E=" crossorigin="anonymous"></script>
     <!-- SheetJS (pour parser les fichiers Excel .xlsx AuCoffre) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" integrity="sha256-121k3k4+uR/8R5xJpXw+l8lJ/N3s194u3Nf72o1u6v0=" crossorigin="anonymous"></script>
 
 
     <link rel="stylesheet" href="style.css">
@@ -4983,5 +4972,55 @@
     <script src="app43-mc-worker.js"></script>
     <script src="tests.js"></script>
     <script src="app7-init.js"></script>
+<!-- Chargement des scripts applicatifs mis en cache par le SW -->
+    <script src="./app1-core.js"></script>
+    <script src="./app41-pwa.js"></script>
+    <!-- Ajoutez ici les autres scripts appX-*.js si nécessaire -->
+<!-- Modules applicatifs (Ordre exact basé sur le Service Worker) -->
+    <script src="./app1-core.js"></script>
+    <script src="./app2-ui.js"></script>
+    <script src="./app3-charts.js"></script>
+    <script src="./app4-forms.js"></script>
+    <script src="./app5-fiscal.js"></script>
+    <script src="./app6-api.js"></script>
+    <script src="./app8-goals.js"></script>
+    <script src="./app9-alerts.js"></script>
+    <script src="./app10-tir.js"></script>
+    <script src="./app11-scoring.js"></script>
+    <script src="./app12-reports.js"></script>
+    <script src="./app13-excel-export.js"></script>
+    <script src="./app14-suggestions.js"></script>
+    <script src="./app15-notifications.js"></script>
+    <script src="./app16-watchlist.js"></script>
+    <script src="./app17-tax-optimizer.js"></script>
+    <script src="./app18-ledger.js"></script>
+    <script src="./app19-fire.js"></script>
+    <script src="./app20-chart-export.js"></script>
+    <script src="./app21-haptics.js"></script>
+    <script src="./app22-toasts.js"></script>
+    <script src="./app23-session-badges.js"></script>
+    <script src="./app24-onboarding.js"></script>
+    <script src="./app25-mobile-nav.js"></script>
+    <script src="./app26-sidebar.js"></script>
+    <script src="./app27-broker-import.js"></script>
+    <script src="./app28-csp-audit.js"></script>
+    <script src="./app29-benchmark-compare.js"></script>
+    <script src="./app30-timeline.js"></script>
+    <script src="./app31-esg.js"></script>
+    <script src="./app32-per.js"></script>
+    <script src="./app33-monthly-snapshots.js"></script>
+    <script src="./app34-correlation.js"></script>
+    <script src="./app35-dca.js"></script>
+    <script src="./app36-waterfall.js"></script>
+    <script src="./app37-slide-panel.js"></script>
+    <script src="./app38-filters.js"></script>
+    <script src="./app39-thesis.js"></script>
+    <script src="./app40-withdrawal.js"></script>
+    <script src="./app41-pwa.js"></script>
+    <script src="./app42-dead-lines.js"></script>
+    <script src="./tests.js"></script>
+    
+    <!-- L'initialisation doit se faire en dernier -->
+    <script src="./app7-init.js"></script>
 </body>
 </html>
