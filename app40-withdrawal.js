@@ -184,7 +184,9 @@ function runWithdrawalMonteCarlo(numPaths = 5000) {
     };
 }
 
-// Wrapper avec cache
+// Wrapper synchrone historique — conservé pour usage direct (tests,
+// contexte non-async). Le rendu du panneau utilise désormais la version
+// async ci-dessous (Chantier #13).
 function getWithdrawalResult(force = false) {
     if (force || !_withdrawalMcResult) {
         _withdrawalMcResult = runWithdrawalMonteCarlo(5000);
@@ -197,8 +199,82 @@ function invalidateWithdrawalCache() {
 }
 
 // ---------------------------------------------------------------------
-// RENDU — Panneau
+// VERSION ASYNCHRONE — Worker (Chantier #13)
 // ---------------------------------------------------------------------
+// Token incrémental : invalide les rendus async obsolètes quand un
+// nouveau rendu démarre avant que le précédent ne se termine.
+let _withdrawalCalcToken = 0;
+
+// Version async : calcule les paramètres mensuels (Fisher + vol) en
+// amont, délègue la boucle stochastique au Worker si disponible, puis
+// enrichit le résultat avec les métadonnées non-stochastiques.
+//
+// Si le Worker n'est pas disponible (file://, vieux navigateur), le
+// wrapper `runMCWithdrawalAsync` retombe automatiquement sur le calcul
+// synchrone — l'appelant ne voit aucune différence.
+async function getWithdrawalResultAsync(force = false) {
+    // Cache chaud : retour immédiat
+    if (!force && _withdrawalMcResult) return _withdrawalMcResult;
+
+    // --- 1) Paramètres 100 % synchrones ---
+    const realAssets = assets.filter(a => !isPaperAsset(a));
+    const current = realAssets.reduce((s, a) => s + (a.value || 0), 0);
+    if (current <= 0) return null;
+
+    const monthlyAmount = Math.max(0, Number(withdrawalConfig.monthlyAmount) || 0);
+    const years = Math.max(1, Math.min(60, Number(withdrawalConfig.years) || 30));
+    const months = years * 12;
+
+    const annualReturn = Number(withdrawalConfig.expectedReturn) || 0.05;
+    const inflation = Number(withdrawalConfig.inflationRate) || 0.02;
+    const realAnnualReturn = (1 + annualReturn) / (1 + inflation) - 1;
+    const meanMonthly = realAnnualReturn / 12;
+
+    const volAnnual = _getWithdrawalVolAnnual();
+    const volMonthly = volAnnual / Math.sqrt(12);
+
+    // --- 2) Appel Worker (ou fallback sync transparent) ---
+    let result;
+    if (typeof runMCWithdrawalAsync === 'function') {
+        result = await runMCWithdrawalAsync({
+            current,
+            monthlyAmount,
+            months,
+            meanMonthly,
+            volMonthly,
+            numPaths: 5000
+        });
+    } else {
+        // Aucun wrapper chargé (cas très improbable) → fallback total
+        result = runWithdrawalMonteCarlo(5000);
+    }
+
+    // --- 3) Enrichit avec les métadonnées ---
+    const enriched = {
+        ...result,
+        initialCapital: current,
+        monthlyAmount,
+        years,
+        volAnnual,
+        realAnnualReturn,
+        numPaths: 5000
+    };
+
+    _withdrawalMcResult = enriched;
+    return enriched;
+}
+
+// ---------------------------------------------------------------------
+// RENDU — Panneau (async-aware, Chantier #13)
+// ---------------------------------------------------------------------
+// La fonction reste SYNCHRONE de la signature (refreshAllUI l'appelle
+// sans await). À l'intérieur :
+//   1. KPIs synchrones rendus immédiatement (capital, taux, vol…)
+//   2. Monte-Carlo lancé en async (Worker ou fallback sync)
+//   3. KPIs stochastiques rafraîchis dès que le résultat arrive
+//
+// Un token incrémental invalide les rendus obsolètes en cas de
+// re-render rapide (changement d'onglet, save config…).
 function renderWithdrawalPanel() {
     const panel = document.getElementById('withdrawal-panel');
     if (!panel) return;
@@ -206,11 +282,69 @@ function renderWithdrawalPanel() {
     // Recharge la config
     withdrawalConfig = loadWithdrawalConfigFromStorage();
 
-    const r = getWithdrawalResult();
+    // Token de garde anti-race
+    const token = ++_withdrawalCalcToken;
 
-    // --- KPIs ---
+    // ----------------------------------------------------------------
+    // PHASE 1 — KPIs synchrones (rendu immédiat, aucune dépendance MC)
+    // ----------------------------------------------------------------
     const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
-    const setHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+    const realAssets = assets.filter(a => !isPaperAsset(a));
+    const currentCapital = realAssets.reduce((s, a) => s + (a.value || 0), 0);
+
+    countUp(document.getElementById('withdrawal-stat-capital'), currentCapital, formatEUR);
+
+    const monthlyAmount = Math.max(0, Number(withdrawalConfig.monthlyAmount) || 0);
+    setText('withdrawal-stat-monthly', formatEUR(monthlyAmount) + ' / mois');
+
+    const impliedRate = currentCapital > 0 ? (monthlyAmount * 12 / currentCapital * 100) : 0;
+    const rateEl = document.getElementById('withdrawal-stat-rate');
+    if (rateEl) {
+        rateEl.innerText = impliedRate.toFixed(2) + ' % / an';
+        rateEl.className = `text-lg font-bold font-mono ${
+            impliedRate <= 4 ? 'text-emerald-400' :
+            impliedRate <= 5 ? 'text-amber-400' :
+            'text-rose-400'
+        }`;
+    }
+
+    // Méthodologie (vol + rendement réel — calculs instantanés)
+    const volAnnual = _getWithdrawalVolAnnual();
+    const annualReturn = Number(withdrawalConfig.expectedReturn) || 0.05;
+    const inflation = Number(withdrawalConfig.inflationRate) || 0.02;
+    const realAnnualReturn = (1 + annualReturn) / (1 + inflation) - 1;
+    setText('withdrawal-stat-vol', (volAnnual * 100).toFixed(1) + ' %');
+    setText('withdrawal-stat-real', (realAnnualReturn * 100).toFixed(2) + ' %');
+
+    // ----------------------------------------------------------------
+    // PHASE 2 — KPIs stochastiques (cache immédiat ou async)
+    // ----------------------------------------------------------------
+    if (_withdrawalMcResult) {
+        // Cache chaud → rendu immédiat
+        _renderWithdrawalMcKpis(_withdrawalMcResult);
+    } else {
+        // Affiche un état "calcul en cours" (dernier état connu : 0)
+        _showWithdrawalLoadingState();
+
+        // Calcul async puis mise à jour
+        getWithdrawalResultAsync().then(r => {
+            if (token !== _withdrawalCalcToken) return;  // un nouveau rendu a pris la main
+            if (!r) {
+                _showWithdrawalEmptyState();
+                return;
+            }
+            _renderWithdrawalMcKpis(r);
+        }).catch(err => {
+            console.warn('[Withdrawal] Erreur Monte-Carlo async :', err);
+            _showWithdrawalEmptyState('Erreur de calcul — voir console.');
+        });
+    }
+}
+
+// Rendu des KPIs dépendants du Monte-Carlo.
+function _renderWithdrawalMcKpis(r) {
+    const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
 
     // Probabilité de succès
     const successEl = document.getElementById('withdrawal-stat-success');
@@ -224,7 +358,7 @@ function renderWithdrawalPanel() {
         }`;
     }
 
-    // Barre
+    // Barre de progression
     const bar = document.getElementById('withdrawal-stat-success-bar');
     if (bar) {
         const pct = r.successProb * 100;
@@ -232,39 +366,18 @@ function renderWithdrawalPanel() {
         bar.style.background = pct >= 85 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444';
     }
 
-    // Capital initial
-    countUp(document.getElementById('withdrawal-stat-capital'), r.initialCapital, formatEUR);
-
-    // Retrait mensuel
-    setText('withdrawal-stat-monthly', formatEUR(r.monthlyAmount) + ' / mois');
-
-    // Taux de retrait implicite (mensuel × 12 / capital)
-    const impliedRate = r.initialCapital > 0 ? (r.monthlyAmount * 12 / r.initialCapital * 100) : 0;
-    const rateEl = document.getElementById('withdrawal-stat-rate');
-    if (rateEl) {
-        rateEl.innerText = impliedRate.toFixed(2) + ' % / an';
-        rateEl.className = `text-lg font-bold font-mono ${
-            impliedRate <= 4 ? 'text-emerald-400' :
-            impliedRate <= 5 ? 'text-amber-400' :
-            'text-rose-400'
-        }`;
-    }
-
-    // Détail percentiles
+    // Percentiles
     setText('withdrawal-stat-p10', formatEUR(r.p10Final));
     setText('withdrawal-stat-median', formatEUR(r.medianFinal));
     setText('withdrawal-stat-p90', formatEUR(r.p90Final));
 
-    // Message de diagnostic
+    // Diagnostic
     const diagEl = document.getElementById('withdrawal-diagnostic');
     if (diagEl) {
         const pct = r.successProb * 100;
         let msg = '';
         let cls = '';
-        if (r.initialCapital <= 0) {
-            msg = 'Ajoutez des actifs pour lancer la simulation.';
-            cls = 'text-gray-500 italic';
-        } else if (pct >= 90) {
+        if (pct >= 90) {
             msg = `Retrait très sûr : ${pct.toFixed(0)} % des trajectoires tiennent sur ${r.years} ans.`;
             cls = 'text-emerald-300';
         } else if (pct >= 70) {
@@ -282,11 +395,7 @@ function renderWithdrawalPanel() {
         diagEl.innerText = msg;
     }
 
-    // Info méthodologie
-    setText('withdrawal-stat-vol', (r.volAnnual * 100).toFixed(1) + ' %');
-    setText('withdrawal-stat-real', (r.realAnnualReturn * 100).toFixed(2) + ' %');
-
-    // Affiche/masque le bandeau d'alerte d'épuisement
+    // Bandeau d'alerte d'épuisement
     const depEl = document.getElementById('withdrawal-depletion-alert');
     if (depEl) {
         if (r.medianDepletionYear !== null && r.successProb < 0.5) {
@@ -300,6 +409,42 @@ function renderWithdrawalPanel() {
             depEl.classList.add('hidden');
         }
     }
+}
+
+// État visuel pendant un calcul (résultat non encore disponible).
+function _showWithdrawalLoadingState() {
+    const successEl = document.getElementById('withdrawal-stat-success');
+    if (successEl) {
+        successEl.innerText = '⏳ …';
+        successEl.className = 'text-2xl font-bold font-mono text-violet-400';
+    }
+    const diagEl = document.getElementById('withdrawal-diagnostic');
+    if (diagEl) {
+        diagEl.className = 'text-[11px] leading-relaxed text-violet-300';
+        diagEl.innerText = 'Simulation Monte-Carlo en cours (5000 trajectoires)…';
+    }
+    const depEl = document.getElementById('withdrawal-depletion-alert');
+    if (depEl) depEl.classList.add('hidden');
+}
+
+// État visuel quand la simulation ne peut pas être lancée.
+function _showWithdrawalEmptyState(reason) {
+    const successEl = document.getElementById('withdrawal-stat-success');
+    if (successEl) {
+        successEl.innerText = '— %';
+        successEl.className = 'text-2xl font-bold font-mono text-gray-500';
+    }
+    const diagEl = document.getElementById('withdrawal-diagnostic');
+    if (diagEl) {
+        diagEl.className = 'text-[11px] leading-relaxed text-gray-500 italic';
+        diagEl.innerText = reason || 'Ajoutez des actifs pour lancer la simulation.';
+    }
+    ['withdrawal-stat-p10', 'withdrawal-stat-median', 'withdrawal-stat-p90'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = '—';
+    });
+    const depEl = document.getElementById('withdrawal-depletion-alert');
+    if (depEl) depEl.classList.add('hidden');
 }
 
 // ---------------------------------------------------------------------

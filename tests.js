@@ -2879,6 +2879,574 @@ _suite('getWithdrawalResult — cache');
 })();
 
 // ---------------------------------------------------------------------
+// TESTS : Chantier #10 — Détection des lignes mortes
+// ---------------------------------------------------------------------
+
+// ---------------------------------------------------------------------
+// TESTS : _dlSignalLowWeight
+// ---------------------------------------------------------------------
+_suite('_dlSignalLowWeight');
+(function testSignalLowWeight() {
+    const asset = { value: 500 };
+    const total = 100000;   // 0.5 %
+
+    // --- Bornes du signal ---
+    // 0,1 % → score 100
+    const r01 = _dlSignalLowWeight({ value: 100 }, total);
+    assertEq(r01.points, 100, '_dlSignalLowWeight : 0,1 % → 100 points');
+
+    // 0,5 % → exactement la borne (100 - 0 sur la plage 0,5-1)
+    const r05 = _dlSignalLowWeight({ value: 500 }, total);
+    assertEq(r05.points, 100, '_dlSignalLowWeight : 0,5 % → 100 points (borne haute)');
+
+    // 0,75 % → 80 points (milieu de la plage 100→60)
+    const r075 = _dlSignalLowWeight({ value: 750 }, total);
+    assertApprox(r075.points, 80, 0.1, '_dlSignalLowWeight : 0,75 % → 80 points');
+
+    // 1 % → 60 points (début de la plage 60→0)
+    const r1 = _dlSignalLowWeight({ value: 1000 }, total);
+    assertApprox(r1.points, 60, 0.1, '_dlSignalLowWeight : 1 % → 60 points');
+
+    // 1,5 % → 30 points (milieu de la plage 60→0)
+    const r15 = _dlSignalLowWeight({ value: 1500 }, total);
+    assertApprox(r15.points, 30, 0.1, '_dlSignalLowWeight : 1,5 % → 30 points');
+
+    // 2 % → 0 points
+    const r2 = _dlSignalLowWeight({ value: 2000 }, total);
+    assertEq(r2.points, 0, '_dlSignalLowWeight : 2 % → 0 points');
+
+    // 5 % → 0 points (au-delà)
+    const r5 = _dlSignalLowWeight({ value: 5000 }, total);
+    assertEq(r5.points, 0, '_dlSignalLowWeight : 5 % → 0 points');
+
+    // --- Cas dégénérés ---
+    const rEmpty = _dlSignalLowWeight(asset, 0);
+    assertEq(rEmpty.points, 0, '_dlSignalLowWeight : totalValue = 0 → 0 points');
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : _dlSignalFlatPerformance
+// ---------------------------------------------------------------------
+_suite('_dlSignalFlatPerformance');
+(function testSignalFlatPerf() {
+    // Actif de 2 ans, perf +2 % → 100 points
+    const flat = {
+        invested: 1000, value: 1020,
+        lots: [{ date: new Date(Date.now() - 2 * 365 * 864e5).toISOString().slice(0, 10), qtyRemaining: 1 }]
+    };
+    assertEq(_dlSignalFlatPerformance(flat).points, 100, '_dlSignalFlatPerformance : +2 % sur 2 ans → 100');
+
+    // Actif de 2 ans, perf -5 % → 100 points (|P&L| < 10)
+    const slightlyNeg = {
+        invested: 1000, value: 950,
+        lots: [{ date: new Date(Date.now() - 2 * 365 * 864e5).toISOString().slice(0, 10), qtyRemaining: 1 }]
+    };
+    assertEq(_dlSignalFlatPerformance(slightlyNeg).points, 100, '_dlSignalFlatPerformance : -5 % sur 2 ans → 100');
+
+    // Actif de 2 ans, perf +20 % → 50 points (milieu de la plage 10→30)
+    const midRange = {
+        invested: 1000, value: 1200,
+        lots: [{ date: new Date(Date.now() - 2 * 365 * 864e5).toISOString().slice(0, 10), qtyRemaining: 1 }]
+    };
+    assertApprox(_dlSignalFlatPerformance(midRange).points, 50, 0.1, '_dlSignalFlatPerformance : +20 % → 50');
+
+    // Actif de 2 ans, perf +30 % → 0 points (borne)
+    const bigGain = {
+        invested: 1000, value: 1300,
+        lots: [{ date: new Date(Date.now() - 2 * 365 * 864e5).toISOString().slice(0, 10), qtyRemaining: 1 }]
+    };
+    assertEq(_dlSignalFlatPerformance(bigGain).points, 0, '_dlSignalFlatPerformance : +30 % → 0');
+
+    // Actif < 1 an → 0 points (grâce de jeunesse)
+    const young = {
+        invested: 1000, value: 1005,
+        lots: [{ date: new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10), qtyRemaining: 1 }]
+    };
+    assertEq(_dlSignalFlatPerformance(young).points, 0, '_dlSignalFlatPerformance : < 1 an → 0');
+
+    // Invested = 0 → 0 points
+    assertEq(_dlSignalFlatPerformance({ invested: 0, value: 0 }).points, 0, '_dlSignalFlatPerformance : invested = 0 → 0');
+
+    // Pas de date connue → 0 points
+    assertEq(_dlSignalFlatPerformance({ invested: 1000, value: 1000, lots: [] }).points, 0, '_dlSignalFlatPerformance : date inconnue → 0');
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : _dlSignalInactivityAge
+// ---------------------------------------------------------------------
+_suite('_dlSignalInactivityAge');
+(function testSignalInactivity() {
+    // 1 an, perf +5 % → 0 points (< 2 ans)
+    const y1 = {
+        invested: 1000, value: 1050,
+        lots: [{ date: new Date(Date.now() - 1 * 365 * 864e5).toISOString().slice(0, 10), qtyRemaining: 1 }]
+    };
+    assertEq(_dlSignalInactivityAge(y1).points, 0, '_dlSignalInactivityAge : 1 an → 0');
+
+    // 3,5 ans, perf +5 % → ~50 points (milieu de 2→5)
+    const y35 = {
+        invested: 1000, value: 1050,
+        lots: [{ date: new Date(Date.now() - 3.5 * 365 * 864e5).toISOString().slice(0, 10), qtyRemaining: 1 }]
+    };
+    assertApprox(_dlSignalInactivityAge(y35).points, 50, 1, '_dlSignalInactivityAge : 3,5 ans → ~50');
+
+    // 6 ans, perf +5 % → 100 points (> 5 ans)
+    const y6 = {
+        invested: 1000, value: 1050,
+        lots: [{ date: new Date(Date.now() - 6 * 365 * 864e5).toISOString().slice(0, 10), qtyRemaining: 1 }]
+    };
+    assertEq(_dlSignalInactivityAge(y6).points, 100, '_dlSignalInactivityAge : 6 ans → 100');
+
+    // 6 ans mais perf +25 % → 0 points (ligne performante)
+    const winner = {
+        invested: 1000, value: 1250,
+        lots: [{ date: new Date(Date.now() - 6 * 365 * 864e5).toISOString().slice(0, 10), qtyRemaining: 1 }]
+    };
+    assertEq(_dlSignalInactivityAge(winner).points, 0, '_dlSignalInactivityAge : 6 ans +25 % → 0');
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : _dlSignalFeeRatio
+// ---------------------------------------------------------------------
+_suite('_dlSignalFeeRatio');
+(function testSignalFeeRatio() {
+    // 0,5 % de frais → 0 points
+    assertEq(_dlSignalFeeRatio({ invested: 10000, frais: 50 }).points, 0, '_dlSignalFeeRatio : 0,5 % → 0');
+
+    // 1 % → 0 (borne basse de la plage 1→3)
+    assertEq(_dlSignalFeeRatio({ invested: 10000, frais: 100 }).points, 0, '_dlSignalFeeRatio : 1 % → 0');
+
+    // 2 % → ~30 points (milieu de 0→60)
+    assertApprox(_dlSignalFeeRatio({ invested: 10000, frais: 200 }).points, 30, 0.1, '_dlSignalFeeRatio : 2 % → 30');
+
+    // 3 % → 60 points (fin plage 1)
+    assertApprox(_dlSignalFeeRatio({ invested: 10000, frais: 300 }).points, 60, 0.1, '_dlSignalFeeRatio : 3 % → 60');
+
+    // 4 % → 80 points (milieu plage 60→100)
+    assertApprox(_dlSignalFeeRatio({ invested: 10000, frais: 400 }).points, 80, 0.1, '_dlSignalFeeRatio : 4 % → 80');
+
+    // 5 % → 100 points (borne haute)
+    assertEq(_dlSignalFeeRatio({ invested: 10000, frais: 500 }).points, 100, '_dlSignalFeeRatio : 5 % → 100');
+
+    // 10 % → 100 points (clampé)
+    assertEq(_dlSignalFeeRatio({ invested: 10000, frais: 1000 }).points, 100, '_dlSignalFeeRatio : 10 % → 100');
+
+    // invested = 0 → 0
+    assertEq(_dlSignalFeeRatio({ invested: 0, frais: 100 }).points, 0, '_dlSignalFeeRatio : invested = 0 → 0');
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : _dlSignalNoThesis
+// ---------------------------------------------------------------------
+_suite('_dlSignalNoThesis');
+(function testSignalNoThesis() {
+    const total = 100000;
+
+    // Avec thèse → 0 points
+    const withThesis = {
+        value: 500,
+        thesis: { text: 'Ma thèse', createdAt: Date.now(), updatedAt: Date.now(), lastReviewedAt: Date.now() }
+    };
+    assertEq(_dlSignalNoThesis(withThesis, total).points, 0, '_dlSignalNoThesis : avec thèse → 0');
+
+    // Sans thèse, poids 0,3 % → 100 points
+    const noThesisSmall = { value: 300 };
+    assertEq(_dlSignalNoThesis(noThesisSmall, total).points, 100, '_dlSignalNoThesis : poids 0,3 % → 100');
+
+    // Sans thèse, poids 1,5 % → 60 points
+    const noThesisMid = { value: 1500 };
+    assertEq(_dlSignalNoThesis(noThesisMid, total).points, 60, '_dlSignalNoThesis : poids 1,5 % → 60');
+
+    // Sans thèse, poids 3 % → 0 points (au-delà)
+    const noThesisBig = { value: 3000 };
+    assertEq(_dlSignalNoThesis(noThesisBig, total).points, 0, '_dlSignalNoThesis : poids 3 % → 0');
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : computeDeadLineScore — score global sur un cas construit
+// ---------------------------------------------------------------------
+_suite('computeDeadLineScore');
+(function testComputeDeadLineScore() {
+    const backupAssets = assets.slice();
+
+    // Portefeuille cible : 1 M€ dont 100 k€ dans l'actif test = 10 %.
+    // Actif : investi 100 k€, valeur 102 k€ (+2 %), détenu depuis 3 ans,
+    // frais 3 % (3 k€), sans thèse.
+    assets.length = 0;
+    assets.push({
+        id: 998001, name: 'Portefeuille principal', ticker: 'PRINC',
+        categories: ['Autre'], envelope: '', cadran: 'HORS_GAVE',
+        cadrans: { primary: 'HORS_GAVE', secondary: [] },
+        qty: 1, invested: 900000, value: 900000,
+        lots: [], buys: [], history: []
+    });
+    assets.push({
+        id: 998002, name: 'Ligne test', ticker: 'TST',
+        categories: ['Autre'], envelope: '', cadran: 'HORS_GAVE',
+        cadrans: { primary: 'HORS_GAVE', secondary: [] },
+        qty: 1, invested: 100000, value: 102000, frais: 3000,
+        lots: [{ id: 1, date: new Date(Date.now() - 3 * 365 * 864e5).toISOString().slice(0, 10), qty: 1, qtyRemaining: 1, price: 97000, frais: 3000, reference: '' }],
+        buys: [], history: []
+    });
+
+    const asset = assets[1];
+    const total = 1002000;
+    const r = computeDeadLineScore(asset, total);
+
+    // --- Structure ---
+    assertTrue(r !== null, 'computeDeadLineScore : résultat non null');
+    assertTrue(Number.isFinite(r.score), 'computeDeadLineScore : score numérique');
+    assertTrue(r.score >= 0 && r.score <= 100, 'computeDeadLineScore : score ∈ [0, 100]');
+
+    // --- 6 signaux présents ---
+    const expectedKeys = ['lowWeight', 'flatPerformance', 'inactivityAge', 'feeRatio', 'lowAssetScore', 'noThesis'];
+    expectedKeys.forEach(k => {
+        assertTrue(r.details[k] !== undefined, `computeDeadLineScore : signal ${k} présent`);
+        assertTrue(Number.isFinite(r.details[k].points), `computeDeadLineScore : signal ${k} → points numériques`);
+    });
+
+    // --- Vérif individuelle des signaux sur ce cas ---
+    // Poids = 102000/1002000 ≈ 10,2 % → 0 points
+    assertEq(r.details.lowWeight.points, 0, 'computeDeadLineScore : poids 10 % → signal lowWeight à 0');
+    // Perf = +2 % sur 3 ans → 100 points
+    assertEq(r.details.flatPerformance.points, 100, 'computeDeadLineScore : perf plate → 100');
+    // Ancienneté 3 ans, perf +2 % → ~33 points
+    assertTrue(r.details.inactivityAge.points > 20 && r.details.inactivityAge.points < 50,
+        'computeDeadLineScore : ancienneté 3 ans → points intermédiaires');
+    // Frais = 3000/100000 = 3 % → 60 points
+    assertApprox(r.details.feeRatio.points, 60, 0.1, 'computeDeadLineScore : frais 3 % → 60');
+    // Sans thèse, poids 10 % → 0 points (au-delà de 2 %)
+    assertEq(r.details.noThesis.points, 0, 'computeDeadLineScore : sans thèse mais poids 10 % → 0');
+
+    // --- Score attendu ---
+    // Calcul mental : 0*0.25 + 100*0.25 + 33*0.15 + 60*0.10 + ?*0.15 + 0*0.10
+    // = 25 + 5 + 6 + ~0.15*lowAssetScore
+    // => entre 36 et 60 (large). On vérifie juste que le score est > 20.
+    assertTrue(r.score > 20, 'computeDeadLineScore : score > 20 pour ce cas (obtenu ' + r.score + ')');
+
+    // --- Flag critical ---
+    assertEq(r.isCritical, r.score >= DEAD_LINE_CRITICAL_THRESHOLD,
+        'computeDeadLineScore : isCritical cohérent avec le seuil');
+
+    // --- Cas sans totalValue (fallback sur assets global) ---
+    const rAuto = computeDeadLineScore(asset);
+    assertTrue(rAuto !== null, 'computeDeadLineScore : fonctionne sans totalValue explicite');
+
+    // --- Cas null ---
+    assertNull(computeDeadLineScore(null), 'computeDeadLineScore : null → null');
+
+    // Restaure
+    assets.length = 0;
+    backupAssets.forEach(a => assets.push(a));
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : detectDeadLines — portefeuille entier
+// ---------------------------------------------------------------------
+_suite('detectDeadLines');
+(function testDetectDeadLines() {
+    const backupAssets = assets.slice();
+
+    // --- Cas 1 : portefeuille vide → liste vide ---
+    assets.length = 0;
+    const r1 = detectDeadLines();
+    assertEq(r1.lines.length, 0, 'detectDeadLines : vide → 0 ligne');
+    assertEq(r1.counts.total, 0, 'detectDeadLines : vide → count 0');
+    assertEq(r1.totalValue, 0, 'detectDeadLines : vide → totalValue 0');
+
+    // --- Cas 2 : portefeuille sain → aucune ligne morte ---
+    assets.push({
+        id: 997001, name: 'Sain', ticker: 'SAIN',
+        categories: ['Autre'], envelope: '',
+        cadrans: { primary: 'HORS_GAVE', secondary: [] },
+        qty: 1, invested: 10000, value: 15000, frais: 10,
+        lots: [{ id: 1, date: new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10), qty: 1, qtyRemaining: 1, price: 9990, frais: 10, reference: '' }],
+        buys: [], history: []
+    });
+    const r2 = detectDeadLines();
+    assertEq(r2.lines.length, 0, 'detectDeadLines : portefeuille sain → 0 ligne');
+    assertEq(r2.counts.critical, 0, 'detectDeadLines : portefeuille sain → 0 critique');
+
+    // --- Cas 3 : ligne très morte ajoutée → détectée ---
+    assets.push({
+        id: 997002, name: 'Morte', ticker: 'MORTE',
+        categories: ['Autre'], envelope: '',
+        cadrans: { primary: 'HORS_GAVE', secondary: [] },
+        qty: 1, invested: 500, value: 505, frais: 25,
+        lots: [{ id: 1, date: new Date(Date.now() - 4 * 365 * 864e5).toISOString().slice(0, 10), qty: 1, qtyRemaining: 1, price: 475, frais: 25, reference: '' }],
+        buys: [], history: []
+    });
+    const r3 = detectDeadLines();
+    assertEq(r3.lines.length, 1, 'detectDeadLines : 1 ligne morte détectée');
+    assertEq(r3.lines[0].asset.id, 997002, 'detectDeadLines : la bonne ligne est identifiée');
+    assertTrue(r3.lines[0].score >= 40, 'detectDeadLines : score ≥ seuil (obtenu ' + r3.lines[0].score + ')');
+    assertTrue(r3.potentialCapital > 0, 'detectDeadLines : capital concerné > 0');
+
+    // --- Cas 4 : seuil abaissé → plus de lignes détectées ---
+    const r4 = detectDeadLines({ threshold: 5 });
+    assertTrue(r4.lines.length >= r3.lines.length, 'detectDeadLines : seuil abaissé → au moins autant de lignes');
+
+    // --- Cas 5 : seuil relevé → moins de lignes ---
+    const r5 = detectDeadLines({ threshold: 99 });
+    assertEq(r5.lines.length, 0, 'detectDeadLines : seuil 99 → aucune ligne');
+
+    // Restaure
+    assets.length = 0;
+    backupAssets.forEach(a => assets.push(a));
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : markDeadLineReviewed / unmarkDeadLineReviewed
+// ---------------------------------------------------------------------
+_suite('markDeadLineReviewed / unmarkDeadLineReviewed');
+(function testDeadLineReview() {
+    const backupAssets = assets.slice();
+    const backupStorage = localStorage.getItem('patriMonial_assets');
+
+    // Prépare un actif mort réutilisable
+    assets.length = 0;
+    assets.push({
+        id: 996001, name: 'Morte', ticker: 'MORTE',
+        categories: ['Autre'], envelope: '',
+        cadrans: { primary: 'HORS_GAVE', secondary: [] },
+        qty: 1, invested: 500, value: 505, frais: 25,
+        lots: [{ id: 1, date: new Date(Date.now() - 4 * 365 * 864e5).toISOString().slice(0, 10), qty: 1, qtyRemaining: 1, price: 475, frais: 25, reference: '' }],
+        buys: [], history: []
+    });
+
+    // --- Cas 1 : actif introuvable → false ---
+    assertFalse(markDeadLineReviewed(999999), 'markDeadLineReviewed : actif introuvable → false');
+    assertFalse(unmarkDeadLineReviewed(999999), 'unmarkDeadLineReviewed : actif introuvable → false');
+
+    // --- Cas 2 : détection initiale → 1 ligne morte ---
+    let r = detectDeadLines();
+    assertEq(r.lines.length, 1, 'markDeadLineReviewed : 1 ligne détectée avant marquage');
+
+    // --- Cas 3 : marquage → exclue de la détection ---
+    assertTrue(markDeadLineReviewed(996001), 'markDeadLineReviewed : retourne true');
+    assertTrue(assets[0].deadLineReviewedAt > 0, 'markDeadLineReviewed : timestamp posé');
+
+    r = detectDeadLines();
+    assertEq(r.lines.length, 0, 'markDeadLineReviewed : ligne exclue après marquage');
+
+    // --- Cas 4 : includeReviewed = true → réapparaît ---
+    r = detectDeadLines({ includeReviewed: true });
+    assertEq(r.lines.length, 1, 'detectDeadLines : includeReviewed → ligne réaffichée');
+    assertTrue(r.lines[0].isReviewed === true, 'detectDeadLines : flag isReviewed = true');
+
+    // --- Cas 5 : annulation du marquage → réapparaît normalement ---
+    assertTrue(unmarkDeadLineReviewed(996001), 'unmarkDeadLineReviewed : retourne true');
+    assertTrue(assets[0].deadLineReviewedAt === undefined, 'unmarkDeadLineReviewed : propriété supprimée');
+
+    r = detectDeadLines();
+    assertEq(r.lines.length, 1, 'unmarkDeadLineReviewed : ligne de nouveau détectée');
+
+    // Restaure
+    assets.length = 0;
+    backupAssets.forEach(a => assets.push(a));
+    if (backupStorage) {
+        try { localStorage.setItem('patriMonial_assets', backupStorage); } catch (_) {}
+    } else {
+        try { localStorage.removeItem('patriMonial_assets'); } catch (_) {}
+    }
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : computeDeadLineScore — cohérence des pondérations
+// ---------------------------------------------------------------------
+_suite('computeDeadLineScore — pondérations');
+(function testWeightsCoherence() {
+    // Vérifie que la somme des poids vaut bien 1.0 (détecte une régression
+    // silencieuse si quelqu'un modifie DEAD_LINE_WEIGHTS sans renormaliser)
+    const sum = Object.values(DEAD_LINE_WEIGHTS).reduce((a, b) => a + b, 0);
+    assertApprox(sum, 1.0, 0.0001, 'DEAD_LINE_WEIGHTS : somme = 1.0');
+
+    // Vérifie les 6 clés attendues
+    const keys = Object.keys(DEAD_LINE_WEIGHTS).sort();
+    const expected = ['feeRatio', 'flatPerformance', 'inactivityAge', 'lowAssetScore', 'lowWeight', 'noThesis'].sort();
+    assertEq(JSON.stringify(keys), JSON.stringify(expected),
+        'DEAD_LINE_WEIGHTS : les 6 clés attendues sont présentes');
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : Chantier #13 — Web Worker Monte-Carlo
+// ---------------------------------------------------------------------
+
+// ---------------------------------------------------------------------
+// TESTS : _isWorkerSupported — détection de support
+// ---------------------------------------------------------------------
+_suite('MCWorker — détection de support');
+(function testWorkerSupport() {
+    // L'API Worker est disponible dans tous les navigateurs cibles. En
+    // environnement de test (DevTools ou page réelle), le support doit
+    // être activé — sinon c'est que le test tourne dans un contexte
+    // exotique (Worker lui-même, Node.js…).
+    const supported = _isWorkerSupported();
+    assertTrue(typeof supported === 'boolean', '_isWorkerSupported : retourne un booléen');
+
+    // Cohérence avec l'état du module
+    const status = getMCWorkerStatus();
+    assertEq(status.supported, supported, 'getMCWorkerStatus : supported = _isWorkerSupported()');
+
+    // En contexte réel (page HTTP/HTTPS), le support doit être true
+    assertTrue(supported, '_isWorkerSupported : true en contexte HTTP/HTTPS');
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : _runWithdrawalSync — validation des payloads
+// ---------------------------------------------------------------------
+_suite('MCWorker — _runWithdrawalSync validation');
+(function testSyncValidation() {
+    // --- Cas 1 : current invalide ---
+    const r1 = _runWithdrawalSync({
+        current: 0, monthlyAmount: 100, months: 12,
+        meanMonthly: 0.005, volMonthly: 0.01, numPaths: 10
+    });
+    assertEq(r1.error, 'invalid_current', '_runWithdrawalSync : current=0 → invalid_current');
+
+    const r2 = _runWithdrawalSync({
+        current: -100, monthlyAmount: 100, months: 12,
+        meanMonthly: 0.005, volMonthly: 0.01, numPaths: 10
+    });
+    assertEq(r2.error, 'invalid_current', '_runWithdrawalSync : current<0 → invalid_current');
+
+    // --- Cas 2 : months invalide ---
+    const r3 = _runWithdrawalSync({
+        current: 10000, monthlyAmount: 100, months: 0,
+        meanMonthly: 0.005, volMonthly: 0.01, numPaths: 10
+    });
+    assertEq(r3.error, 'invalid_months', '_runWithdrawalSync : months=0 → invalid_months');
+
+    const r4 = _runWithdrawalSync({
+        current: 10000, monthlyAmount: 100, months: -1,
+        meanMonthly: 0.005, volMonthly: 0.01, numPaths: 10
+    });
+    assertEq(r4.error, 'invalid_months', '_runWithdrawalSync : months<0 → invalid_months');
+
+    // --- Cas 3 : numPaths invalide ---
+    const r5 = _runWithdrawalSync({
+        current: 10000, monthlyAmount: 100, months: 12,
+        meanMonthly: 0.005, volMonthly: 0.01, numPaths: 0
+    });
+    assertEq(r5.error, 'invalid_numPaths', '_runWithdrawalSync : numPaths=0 → invalid_numPaths');
+
+    const r6 = _runWithdrawalSync({
+        current: 10000, monthlyAmount: 100, months: 12,
+        meanMonthly: 0.005, volMonthly: 0.01, numPaths: -5
+    });
+    assertEq(r6.error, 'invalid_numPaths', '_runWithdrawalSync : numPaths<0 → invalid_numPaths');
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : _runWithdrawalSync — structure du résultat
+// ---------------------------------------------------------------------
+_suite('MCWorker — _runWithdrawalSync structure');
+(function testSyncStructure() {
+    // Cas nominal : 1 M€, retrait 2500 €/mois, 30 ans, vol 15 %
+    const r = _runWithdrawalSync({
+        current: 1000000,
+        monthlyAmount: 2500,
+        months: 360,
+        meanMonthly: 0.0294 / 12,     // ~2,94 %/an réel
+        volMonthly: 0.15 / Math.sqrt(12),
+        numPaths: 200
+    });
+
+    // --- Aucune erreur ---
+    assertTrue(r.error === undefined, '_runWithdrawalSync : pas d\'erreur sur payload valide');
+
+    // --- Toutes les clés attendues ---
+    const expectedKeys = ['successProb', 'failureCount', 'medianFinal', 'p10Final', 'p90Final', 'medianDepletionYear'];
+    expectedKeys.forEach(k => {
+        assertTrue(r[k] !== undefined, `_runWithdrawalSync : clé ${k} présente`);
+    });
+
+    // --- Bornes ---
+    assertTrue(r.successProb >= 0 && r.successProb <= 1, '_runWithdrawalSync : successProb ∈ [0, 1]');
+    assertTrue(r.failureCount >= 0 && r.failureCount <= 200, '_runWithdrawalSync : failureCount ∈ [0, numPaths]');
+    assertEq(r.successProb * 200 + r.failureCount, 200, '_runWithdrawalSync : successProb + failureCount cohérents');
+
+    // --- Percentiles ordonnés ---
+    assertTrue(r.p10Final <= r.medianFinal, '_runWithdrawalSync : P10 ≤ P50');
+    assertTrue(r.medianFinal <= r.p90Final, '_runWithdrawalSync : P50 ≤ P90');
+
+    // --- Cas soutenable : probabilité élevée attendue ---
+    assertTrue(r.successProb >= 0.7,
+        '_runWithdrawalSync : retrait 3 % → succès ≥ 70 % (obtenu ' + (r.successProb * 100).toFixed(1) + ' %)');
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : _runWithdrawalSync — cas insoutenable
+// ---------------------------------------------------------------------
+_suite('MCWorker — _runWithdrawalSync insoutenable');
+(function testSyncUnsustainable() {
+    // 100 k€ avec retrait 5000 €/mois = 60 % / an → épuisement quasi certain
+    const r = _runWithdrawalSync({
+        current: 100000,
+        monthlyAmount: 5000,
+        months: 360,
+        meanMonthly: 0.0294 / 12,
+        volMonthly: 0.15 / Math.sqrt(12),
+        numPaths: 100
+    });
+
+    assertTrue(r.successProb < 0.10,
+        '_runWithdrawalSync : retrait 60 % → succès < 10 % (obtenu ' + (r.successProb * 100).toFixed(1) + ' %)');
+    assertTrue(r.failureCount > 0, '_runWithdrawalSync : failureCount > 0');
+    assertTrue(r.medianDepletionYear !== null, '_runWithdrawalSync : médiane d\'épuisement calculée');
+    assertTrue(r.medianDepletionYear < 5,
+        '_runWithdrawalSync : épuisement médian < 5 ans (obtenu ' + r.medianDepletionYear + ')');
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : getMCWorkerStatus / terminateMCWorker / resetMCWorkerState
+// ---------------------------------------------------------------------
+_suite('MCWorker — gestion d\'état');
+(function testWorkerStateManagement() {
+    // --- Cas 1 : état initial ---
+    const s1 = getMCWorkerStatus();
+    assertTrue(typeof s1 === 'object', 'getMCWorkerStatus : retourne un objet');
+    assertTrue(typeof s1.supported === 'boolean', 'getMCWorkerStatus : supported est un booléen');
+    assertTrue(typeof s1.initialized === 'boolean', 'getMCWorkerStatus : initialized est un booléen');
+    assertTrue(typeof s1.broken === 'boolean', 'getMCWorkerStatus : broken est un booléen');
+    assertTrue(typeof s1.pendingCount === 'number', 'getMCWorkerStatus : pendingCount est un nombre');
+    assertTrue(s1.pendingCount >= 0, 'getMCWorkerStatus : pendingCount ≥ 0');
+
+    // --- Cas 2 : terminateMCWorker ne casse rien (idempotent) ---
+    assertDoesNotThrow(() => terminateMCWorker(), 'terminateMCWorker : ne lève pas');
+    assertDoesNotThrow(() => terminateMCWorker(), 'terminateMCWorker : idempotent');
+
+    const s2 = getMCWorkerStatus();
+    assertEq(s2.initialized, false, 'terminateMCWorker : initialized = false après terminaison');
+    assertEq(s2.pendingCount, 0, 'terminateMCWorker : plus aucune requête pendante');
+
+    // --- Cas 3 : resetMCWorkerState remet tout à zéro ---
+    assertDoesNotThrow(() => resetMCWorkerState(), 'resetMCWorkerState : ne lève pas');
+
+    const s3 = getMCWorkerStatus();
+    assertEq(s3.broken, false, 'resetMCWorkerState : broken = false après reset');
+    assertEq(s3.initialized, false, 'resetMCWorkerState : initialized = false après reset');
+    assertEq(s3.pendingCount, 0, 'resetMCWorkerState : pendingCount = 0 après reset');
+})();
+
+// ---------------------------------------------------------------------
+// TESTS : runMCWithdrawalAsync — API publique
+// ---------------------------------------------------------------------
+_suite('MCWorker — runMCWithdrawalAsync');
+(function testAsyncApi() {
+    // L'API doit exister et retourner une Promise
+    assertTrue(typeof runMCWithdrawalAsync === 'function', 'runMCWithdrawalAsync : fonction globale exposée');
+
+    // Payload invalide → la promesse doit être résolue avec un objet { error }
+    // (le fallback sync renvoie l'erreur plutôt que de rejeter)
+    const p = runMCWithdrawalAsync({
+        current: 0, monthlyAmount: 100, months: 12,
+        meanMonthly: 0.005, volMonthly: 0.01, numPaths: 10
+    });
+    assertTrue(p && typeof p.then === 'function', 'runMCWithdrawalAsync : retourne une Promise');
+})();
+
+// ---------------------------------------------------------------------
 // LANCEUR
 // ---------------------------------------------------------------------
 function runTests(options = {}) {

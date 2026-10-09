@@ -298,6 +298,23 @@ window.addEventListener('DOMContentLoaded', () => {
         initPwaModule();
     }
 
+    // 8n-sexdecies. Chantier #10 — initialisation du détecteur de lignes
+    //               mortes. Aucun chargement asynchrone : tout est calculé
+    //               à la volée par refreshAllUI sur l'onglet dashboard.
+    if (typeof initDeadLinesModule === 'function') {
+        initDeadLinesModule();
+    }
+
+    // 8n-septdecies. Chantier #13 — initialisation du wrapper Web Worker
+    //                Monte-Carlo. Aucune action au boot : le Worker est
+    //                instancié lazy au premier appel de
+    //                runMCWithdrawalAsync() depuis le panneau Withdrawal.
+    //                Ce log permet juste de vérifier la disponibilité du
+    //                support dans la console.
+    if (typeof initMcWorkerModule === 'function') {
+        initMcWorkerModule();
+    }
+
     // Hook sur refreshBenchmarkSeries : dès que le benchmark est
     // téléchargé ou rafraîchi, on recalcule le comparateur CW8 et on
     // re-rend si l'onglet dashboard est actif.

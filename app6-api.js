@@ -972,6 +972,8 @@ function refreshAllUI() {
         if (typeof renderCorrelationSection === 'function') renderCorrelationSection();
         // Chantier §7 — waterfall du P&L
         if (typeof renderWaterfallSection === 'function') renderWaterfallSection();
+        // Chantier #10 — détection des petites lignes mortes
+        if (typeof renderDeadLinesSection === 'function') renderDeadLinesSection();
     }
     // tab-accueil : uniquement les KPI banners — pas de graphique à initialiser
     else if (activeTab === 'tab-gave') initGaveDonutChart();

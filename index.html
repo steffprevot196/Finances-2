@@ -1037,6 +1037,52 @@
                 <div id="suggestions-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
             </div>
 
+            <!-- DÉTECTION DES LIGNES MORTES (Chantier #10) -->
+            <div class="bg-gray-900/60 border border-amber-900/40 rounded-xl p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Lignes mortes
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Positions qui cumulent plusieurs signaux faibles (poids &lt; 0,5 %, performance plate,
+                            ancienneté inactive, frais élevés…) sans rôle justifié. Un garde-fou contre le
+                            « musée du portefeuille ».
+                        </p>
+                    </div>
+                    <button onclick="openDeadLinesMethodModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 flex items-center gap-1.5 whitespace-nowrap transition">
+                        <i class="fa-solid fa-circle-question text-[10px]"></i> Méthode
+                    </button>
+                </div>
+
+                <!-- KPIs -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                    <div class="bg-gray-950 border border-amber-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Lignes détectées</div>
+                        <div class="text-lg font-bold font-mono text-white" id="deadlines-stat-total">0</div>
+                        <div class="text-[9px] text-gray-500">au score ≥ 40</div>
+                    </div>
+                    <div class="bg-gray-950 border border-rose-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Critiques</div>
+                        <div class="text-lg font-bold font-mono text-rose-400" id="deadlines-stat-critical">0</div>
+                        <div class="text-[9px] text-gray-500">score ≥ 70</div>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Capital concerné</div>
+                        <div class="text-lg font-bold font-mono text-white" id="deadlines-stat-capital">0,00 €</div>
+                        <div class="text-[9px] text-gray-500">valeur cumulée</div>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Seuil actif</div>
+                        <div class="text-lg font-bold font-mono text-gray-400" id="deadlines-stat-threshold">40 / 100</div>
+                        <div class="text-[9px] text-gray-500">paramétrable</div>
+                    </div>
+                </div>
+
+                <!-- Liste -->
+                <div id="dead-lines-wrap"></div>
+            </div>
+
             <!-- LEADERBOARD — SCORING DES ACTIFS (Chantier H) -->
             <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
@@ -4933,6 +4979,8 @@
     <script src="app39-thesis.js"></script>
     <script src="app40-withdrawal.js"></script>
     <script src="app41-pwa.js"></script>
+    <script src="app42-dead-lines.js"></script>
+    <script src="app43-mc-worker.js"></script>
     <script src="tests.js"></script>
     <script src="app7-init.js"></script>
 </body>
