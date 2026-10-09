@@ -298,7 +298,11 @@ function renderDashboardTreemap() {
         const weight = grandTotal > 0 ? (item.value / grandTotal) * 100 : 0;
         const isPos  = item.pnlPct >= 0;
 
-        const tooltip = `${item.name}&#10;${formatEUR(item.value)} · ${weight.toFixed(1)} % du portefeuille&#10;P&L : ${isPos ? '+' : ''}${item.pnlPct.toFixed(2)} %`;
+        // item.name peut contenir <, >, & (issus d'une saisie libre ou d'un
+        // import CSV/JSON). Le <title> SVG est interprété comme du XML
+        // strict : on doit échapper le nom pour éviter un SVG cassé ou une
+        // injection XML.
+        const tooltip = `${escapeHTML(item.name)}&#10;${formatEUR(item.value)} · ${weight.toFixed(1)} % du portefeuille&#10;P&L : ${isPos ? '+' : ''}${item.pnlPct.toFixed(2)} %`;
 
         // Rectangle cliquable avec effet hover
         html += `<g class="cursor-pointer" onclick="openAssetDetailModal(${item.id})">
@@ -468,12 +472,143 @@ function openAssetDetailModal(id) {
 
     document.getElementById('modal-asset-icon').innerText     = (asset.ticker || '--').slice(0, 4);
     document.getElementById('modal-asset-title').innerText    = asset.name;
-    document.getElementById('modal-asset-subtitle').innerText = `${asset.ticker} • ${asset.category}`;
+
+    // Sous-titre enrichi avec la devise si ≠ EUR (Chantier 1.2)
+    const subtitleParts = [asset.ticker, asset.category];
+    if (asset.currency && asset.currency !== 'EUR') {
+        subtitleParts.push(asset.currency);
+    }
+    document.getElementById('modal-asset-subtitle').innerText = subtitleParts.join(' • ');
     document.getElementById('modal-asset-cadran-select-wrap').innerHTML = cadranSelectHTML(asset.id, asset.cadran || 'HORS_GAVE');
 
     renderAssetDetailChart(id);
+    renderFxEffectPanel(asset);         // Chantier 1.2 — encart effet de change
     renderAssetLotsTable(asset);
+    renderAssetSplitsTable(asset);      // Chantier 1.3 — historique des splits
+    renderAssetDividendsTable(asset);   // Chantier 1.1
     document.getElementById('modal-asset-detail').classList.remove('hidden');
+}
+
+// =====================================================================
+// ENCART « EFFET DE CHANGE » — modal de détail actif (Chantier 1.2)
+// ---------------------------------------------------------------------
+// Affiche, pour les actifs cotés dans une devise ≠ EUR :
+//   • Valeur native actuelle (≈ 500,00 $)
+//   • Valeur native d'achat (reconstituée via fxRateAtPurchase)
+//   • Effet de change depuis l'achat (en %)
+//   • P&L en devise native vs P&L en EUR (isole la performance intrinsèque)
+//
+// L'encart est injecté dynamiquement APRÈS le canvas du graphique, et
+// retiré/silencieusement ignoré pour les actifs en EUR.
+// =====================================================================
+function renderFxEffectPanel(asset) {
+    // Retire un éventuel encart précédent (changement d'actif dans le modal)
+    const old = document.getElementById('asset-fx-panel');
+    if (old) old.remove();
+
+    // Pas de devise ≠ EUR → rien à afficher
+    if (!asset || !asset.currency || asset.currency === 'EUR') return;
+
+    const native = getAssetNativeValue(asset);
+    if (!native) return;
+
+    // Valeur d'achat native : on reconstitue à partir du taux FIGÉ à l'achat
+    // (fxRateAtPurchase). Si absent, on ne peut pas calculer l'effet de change.
+    const fxAtPurchase = Number(asset.fxRateAtPurchase) || 0;
+    let nativePurchaseValue = null;
+    let fxEffectPct = null;
+    let nativePnl = null;
+    let nativePnlPct = null;
+
+    if (fxAtPurchase > 0) {
+        nativePurchaseValue = (asset.invested || 0) / fxAtPurchase;
+        if (nativePurchaseValue > 0) {
+            fxEffectPct = ((native.rate - fxAtPurchase) / fxAtPurchase) * 100;
+        }
+        // P&L en devise native : valeur native − coût d'achat natif
+        if (nativePurchaseValue !== null) {
+            nativePnl = native.nativeValue - nativePurchaseValue;
+            nativePnlPct = nativePurchaseValue > 0 ? (nativePnl / nativePurchaseValue) * 100 : 0;
+        }
+    }
+
+    // P&L EUR réel de l'actif
+    const eurPnl = (asset.value || 0) - (asset.invested || 0);
+    const eurPnlPct = asset.invested > 0 ? (eurPnl / asset.invested) * 100 : 0;
+
+    // Détermine la couleur de l'effet de change
+    const fxCls = fxEffectPct === null ? 'text-gray-400' : fxEffectPct >= 0 ? 'text-emerald-400' : 'text-rose-400';
+    const fxSign = fxEffectPct !== null && fxEffectPct >= 0 ? '+' : '';
+
+    const natCls = nativePnl === null ? 'text-gray-400' : nativePnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+    const eurCls = eurPnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+
+    const fxDateTxt = asset.fxRateDate
+        ? new Date(asset.fxRateDate).toLocaleDateString('fr-FR')
+        : '—';
+
+    const html = `
+        <div id="asset-fx-panel" class="bg-blue-950/20 border border-blue-800/40 rounded-xl p-4 space-y-3">
+            <div class="flex justify-between items-start gap-3">
+                <div>
+                    <div class="text-[11px] font-bold text-blue-300 uppercase tracking-wide flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                        Effet de change — devise ${escapeHTML(asset.currency)}
+                    </div>
+                    <div class="text-[10px] text-gray-500 mt-0.5">
+                        Taux figé à l'achat le ${fxDateTxt} : 1 ${escapeHTML(asset.currency)} ≈ ${fxAtPurchase > 0 ? fxAtPurchase.toFixed(4) : '—'} € · Taux courant : 1 ${escapeHTML(asset.currency)} ≈ ${native.rate.toFixed(4)} €
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                <div class="bg-gray-950/60 border border-gray-800 rounded-lg p-2">
+                    <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Valeur native actuelle</div>
+                    <div class="font-mono font-bold text-white">${escapeHTML(formatNative(native.nativeValue, asset.currency))}</div>
+                    <div class="text-[9px] text-gray-500 font-mono">${escapeHTML(formatNative(native.nativeUnitValue, asset.currency))} / unité</div>
+                </div>
+                <div class="bg-gray-950/60 border border-gray-800 rounded-lg p-2">
+                    <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Coût d'achat natif</div>
+                    <div class="font-mono font-bold text-white">${nativePurchaseValue !== null ? escapeHTML(formatNative(nativePurchaseValue, asset.currency)) : '—'}</div>
+                    <div class="text-[9px] text-gray-500">reconstitué via taux figé</div>
+                </div>
+                <div class="bg-gray-950/60 border border-gray-800 rounded-lg p-2">
+                    <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Effet de change</div>
+                    <div class="font-mono font-bold ${fxCls}">${fxEffectPct === null ? '—' : fxSign + fxEffectPct.toFixed(2) + ' %'}</div>
+                    <div class="text-[9px] text-gray-500">${fxEffectPct === null ? 'taux d\'achat manquant' : (fxEffectPct >= 0 ? 'devise favorable' : 'devise défavorable')}</div>
+                </div>
+                <div class="bg-gray-950/60 border border-gray-800 rounded-lg p-2">
+                    <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">P&amp;L en devise native</div>
+                    <div class="font-mono font-bold ${natCls}">${nativePnl === null ? '—' : (nativePnl >= 0 ? '+' : '') + escapeHTML(formatNative(nativePnl, asset.currency))}</div>
+                    <div class="text-[9px] ${natCls} font-mono">${nativePnlPct === null ? '' : (nativePnlPct >= 0 ? '+' : '') + nativePnlPct.toFixed(2) + ' %'}</div>
+                </div>
+            </div>
+
+            <div class="text-[10px] text-gray-400 leading-relaxed bg-gray-950/40 border border-gray-800 rounded-lg p-2">
+                <i class="fa-solid fa-circle-info mr-1 text-blue-400"></i>
+                <b>Lecture :</b> votre P&amp;L total en EUR est de
+                <span class="${eurCls} font-mono font-bold">${eurPnl >= 0 ? '+' : ''}${formatEUR(eurPnl)} (${eurPnlPct >= 0 ? '+' : ''}${eurPnlPct.toFixed(2)} %)</span>.
+                ${fxEffectPct !== null
+                    ? `L'effet de change contribue pour <span class="${fxCls} font-mono font-bold">${fxSign}${fxEffectPct.toFixed(2)} %</span> de ce résultat — le reste provient de la performance intrinsèque de l'actif en devise native.`
+                    : `Renseignez le taux de change à l'achat (édition de l'actif) pour décomposer l'effet de change.`}
+            </div>
+        </div>
+    `;
+
+    // Insertion APRÈS le bloc du graphique (canvas + sa div parente)
+    const chartCanvas = document.getElementById('assetHistoryChart');
+    if (chartCanvas) {
+        const chartWrap = chartCanvas.closest('.h-64') || chartCanvas.parentElement;
+        if (chartWrap && chartWrap.parentElement) {
+            chartWrap.insertAdjacentHTML('afterend', html);
+            return;
+        }
+    }
+    // Fallback : insertion après le sous-titre
+    const subtitle = document.getElementById('modal-asset-subtitle');
+    if (subtitle && subtitle.parentElement) {
+        subtitle.parentElement.insertAdjacentHTML('afterend', html);
+    }
 }
 
 // Affiche le tableau des lots dans le modal de détail de l'actif.
@@ -695,6 +830,227 @@ function renderAssetLotsTable(asset) {
 
     tbody.innerHTML = rowsHTML + summaryRow;
     updateLotSortIndicators();
+}
+
+// =====================================================================
+// TABLEAU DES DIVIDENDES / COUPONS — tri, cumul glissant 12m (Chantier 1.1)
+// =====================================================================
+
+let dividendSortKey = 'date';   // 'date' | 'amount' | 'net' | 'kind'
+let dividendSortDir = 'desc';   // par défaut : le plus récent en haut
+
+function _sortDividendsArray(list, key, dir) {
+    const mult = dir === 'asc' ? 1 : -1;
+    const getVal = (d) => {
+        switch (key) {
+            case 'date':   return d._date ? d._date.getTime() : 0;
+            case 'amount': return d.amount || 0;
+            case 'net':    return d._net || 0;
+            case 'kind':   return d.kind || '';
+            default:       return 0;
+        }
+    };
+    return [...list].sort((a, b) => {
+        const va = getVal(a), vb = getVal(b);
+        if (typeof va === 'string') return va.localeCompare(vb) * mult;
+        return (va - vb) * mult;
+    });
+}
+
+function updateDividendSortIndicators() {
+    const keys = ['date'];
+    keys.forEach(k => {
+        const icon = document.getElementById('dividends-sort-icon-' + k);
+        if (!icon) return;
+        icon.className = 'fa-solid text-[9px]';
+        if (dividendSortKey === k) {
+            icon.classList.add(dividendSortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'text-emerald-400');
+        } else {
+            icon.classList.add('fa-sort', 'opacity-30');
+        }
+    });
+}
+
+function sortDividends(key) {
+    if (dividendSortKey === key) {
+        dividendSortDir = dividendSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        dividendSortKey = key;
+        dividendSortDir = key === 'date' ? 'desc' : 'desc';
+    }
+    if (currentAssetDetailId) {
+        const asset = assets.find(a => a.id === currentAssetDetailId);
+        if (asset) renderAssetDividendsTable(asset);
+    }
+}
+
+// Enrichit chaque dividende avec _date (objet Date) et _net (brut - retenue)
+// ainsi que le cumul glissant sur 12 mois (rolling sum, du plus ancien au plus récent).
+function _enrichDividendsForAsset(asset) {
+    const list = (asset.dividends || []).map(d => {
+        const dt = parseFlexDate(d.date);
+        const net = (Number(d.amount) || 0) - (Number(d.taxWithheld) || 0);
+        return { ...d, _date: dt, _net: net };
+    }).filter(d => d._date);
+
+    // Tri chronologique croissant pour calculer le cumul glissant
+    const chrono = [...list].sort((a, b) => a._date - b._date);
+    const rolling12m = {};
+    for (let i = 0; i < chrono.length; i++) {
+        const cutoff = new Date(chrono[i]._date);
+        cutoff.setFullYear(cutoff.getFullYear() - 1);
+        let sum = 0;
+        for (let j = i; j >= 0; j--) {
+            if (chrono[j]._date >= cutoff && chrono[j]._date <= chrono[i]._date) {
+                sum += chrono[j]._net;
+            } else break;
+        }
+        rolling12m[chrono[i].id] = sum;
+    }
+    list.forEach(d => { d._rolling12m = rolling12m[d.id] || 0; });
+
+    return list;
+}
+
+// Rendu principal — appelé à l'ouverture du modal et après chaque CRUD
+function renderAssetDividendsTable(asset) {
+    const tbody = document.getElementById('modal-asset-dividends-body');
+    if (!tbody) return;
+
+    const empty = document.getElementById('asset-dividends-empty');
+    const badge = document.getElementById('asset-dividends-count-badge');
+    const summary = document.getElementById('asset-dividends-summary');
+
+    const enriched = _enrichDividendsForAsset(asset);
+
+    // Badge + résumé
+    if (badge) {
+        if (enriched.length > 0) {
+            badge.classList.remove('hidden');
+            badge.innerText = enriched.length;
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+    if (summary) {
+        if (enriched.length === 0) {
+            summary.innerText = '—';
+            summary.className = 'text-gray-500 font-mono';
+        } else {
+            const d12 = getAssetDividendsSinceMonths(asset, 12);
+            const y = getAssetDividendYield(asset);
+            const yTxt = y !== null ? ` · rendement ${y.toFixed(2)} %` : '';
+            const yCls = y !== null && y >= 3 ? 'text-emerald-400' : y !== null && y >= 1 ? 'text-amber-400' : 'text-gray-400';
+            summary.innerHTML = `<span class="${yCls}">12m : +${formatEUR(d12.net)}${yTxt}</span>`;
+        }
+    }
+
+    // Tableau
+    if (!enriched.length) {
+        tbody.innerHTML = '';
+        if (empty) empty.classList.remove('hidden');
+        updateDividendSortIndicators();
+        return;
+    }
+    if (empty) empty.classList.add('hidden');
+
+    const sorted = _sortDividendsArray(enriched, dividendSortKey, dividendSortDir);
+
+    const kindLabels = {
+        DIVIDENDE: { txt: 'Dividende', icon: 'fa-chart-line', cls: 'text-emerald-400' },
+        COUPON:    { txt: 'Coupon',    icon: 'fa-landmark',    cls: 'text-teal-400' },
+        INTERET:   { txt: 'Intérêt',   icon: 'fa-percent',     cls: 'text-blue-400' }
+    };
+
+    tbody.innerHTML = sorted.map(d => {
+        const k = kindLabels[d.kind] || kindLabels.DIVIDENDE;
+        const netCls = d._net >= 0 ? 'text-emerald-400' : 'text-rose-400';
+        const curBadge = d.currency && d.currency !== 'EUR'
+            ? ` <span class="text-[9px] text-gray-500">${escapeHTML(d.currency)}</span>`
+            : '';
+        return `<tr>
+            <td class="p-2.5 whitespace-nowrap">${d._date.toLocaleDateString('fr-FR')}</td>
+            <td class="p-2.5"><span class="${k.cls} text-[11px]"><i class="fa-solid ${k.icon} text-[10px] mr-1"></i>${k.txt}</span></td>
+            <td class="p-2.5 text-gray-400 truncate max-w-[180px]" title="${escapeHTML(d.source || '')}">${escapeHTML(d.source) || '—'}</td>
+            <td class="p-2.5 text-right">${formatEUR(d.amount)}${curBadge}</td>
+            <td class="p-2.5 text-right text-gray-500">${d.taxWithheld > 0 ? '−' + formatEUR(d.taxWithheld) : '—'}</td>
+            <td class="p-2.5 text-right font-bold ${netCls}">+${formatEUR(d._net)}</td>
+            <td class="p-2.5 text-right text-gray-400">${d._rolling12m > 0 ? formatEUR(d._rolling12m) : '—'}</td>
+            <td class="p-2.5 text-center whitespace-nowrap">
+                <button type="button" aria-label="Modifier" title="Modifier" onclick="event.stopPropagation(); openAddDividendModal(${asset.id}, ${d.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-emerald-900/60 hover:text-emerald-300 transition"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" aria-label="Supprimer" title="Supprimer" onclick="event.stopPropagation(); deleteDividend(${asset.id}, ${d.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    updateDividendSortIndicators();
+}
+
+// =====================================================================
+// TABLEAU DES SPLITS & REVERSE SPLITS (Chantier 1.3)
+// =====================================================================
+function renderAssetSplitsTable(asset) {
+    const tbody = document.getElementById('modal-asset-splits-body');
+    if (!tbody) return;
+
+    const empty = document.getElementById('asset-splits-empty');
+    const badge = document.getElementById('asset-splits-count-badge');
+    const summary = document.getElementById('asset-splits-summary');
+
+    const list = (asset.splits || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Badge compteur
+    if (badge) {
+        if (list.length > 0) {
+            badge.classList.remove('hidden');
+            badge.innerText = list.length;
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+
+    // Résumé : facteur cumulé (multiplication de tous les ratios)
+    if (summary) {
+        if (list.length === 0) {
+            summary.innerText = '—';
+            summary.className = 'text-gray-500 font-mono';
+        } else {
+            const cumul = list.reduce((acc, s) => acc * (Number(s.ratio) || 1), 1);
+            const label = cumul >= 1
+                ? `facteur cumulé ×${cumul.toFixed(cumul >= 10 ? 0 : 4).replace(/\.?0+$/, '')}`
+                : `facteur cumulé ÷${(1 / cumul).toFixed(2)}`;
+            summary.innerHTML = `<span class="text-cyan-400">${list.length} opération${list.length > 1 ? 's' : ''} · ${label}</span>`;
+        }
+    }
+
+    if (!list.length) {
+        tbody.innerHTML = '';
+        if (empty) empty.classList.remove('hidden');
+        return;
+    }
+    if (empty) empty.classList.add('hidden');
+
+    tbody.innerHTML = list.map(s => {
+        const dt = parseFlexDate(s.date);
+        const dtTxt = dt ? dt.toLocaleDateString('fr-FR') : '—';
+        const isSplit = s.ratio >= 1;
+        const opLabel = isSplit ? 'Split' : 'Reverse split';
+        const opIcon = isSplit ? 'fa-arrow-up-wide-short' : 'fa-arrow-down-short-wide';
+        const opCls = isSplit ? 'text-cyan-400' : 'text-rose-400';
+        const ratioTxt = isSplit
+            ? `${(s.ratio).toFixed(s.ratio >= 10 ? 0 : 4).replace(/\.?0+$/, '')}:1`
+            : `1:${(1 / s.ratio).toFixed((1 / s.ratio) >= 10 ? 0 : 2).replace(/\.?0+$/, '')}`;
+
+        return `<tr>
+            <td class="p-2.5 whitespace-nowrap">${dtTxt}</td>
+            <td class="p-2.5"><span class="${opCls} text-[11px]"><i class="fa-solid ${opIcon} text-[10px] mr-1"></i>${opLabel}</span></td>
+            <td class="p-2.5 text-right font-bold text-white">${ratioTxt}</td>
+            <td class="p-2.5 text-gray-400 truncate max-w-[220px]" title="${escapeHTML(s.note || '')}">${escapeHTML(s.note) || '—'}</td>
+            <td class="p-2.5 text-center whitespace-nowrap">
+                <button type="button" aria-label="Supprimer cette entrée d'historique" title="Supprimer l'entrée d'historique (ne défait PAS le split)" onclick="event.stopPropagation(); deleteSplit(${asset.id}, ${s.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
 }
 
 // =====================================================================
@@ -1270,8 +1626,18 @@ function _buildDailyPortfolioSeries(days = 365) {
             if (d && Number.isFinite(h.value)) allPoints.push({ date: d, id: a.id, value: h.value });
         });
     });
-    // Ajoute l'état actuel comme point "aujourd'hui"
-    assets.forEach(a => allPoints.push({ date: new Date(today), id: a.id, value: a.value || 0 }));
+    // Ajoute l'état actuel comme point "aujourd'hui", uniquement si aucun
+    // point daté d'aujourd'hui n'existe déjà dans l'historique (évite le doublon).
+    const todayStr = today.toDateString();
+    assets.forEach(a => {
+        const hasToday = (a.history || []).some(h => {
+            const d = parseFlexDate(h.date);
+            return d && d.toDateString() === todayStr;
+        });
+        if (!hasToday) {
+            allPoints.push({ date: new Date(today), id: a.id, value: a.value || 0 });
+        }
+    });
     allPoints.sort((a, b) => a.date - b.date);
 
     const lastValues = {};

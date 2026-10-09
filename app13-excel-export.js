@@ -15,11 +15,9 @@ function _xlsxAddSheet(workbook, sheetName, aoa, colWidths) {
     if (Array.isArray(colWidths)) {
         ws['!cols'] = colWidths.map(w => ({ wch: w }));
     }
-    // Style des en-têtes (ligne 1) — ignoré silencieusement si SheetJS community
-    // édition ne supporte pas les styles complets (c'est le cas par défaut).
-    if (ws['A1']) {
-        ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-    }
+    // Note : SheetJS Community ne supporte NI les styles ni le gel de volets.
+    // La propriété `!freeze` n'est pas reconnue et serait silencieusement ignorée.
+    // Rien à faire ici tant qu'on reste sur la version community.
     XLSX.utils.book_append_sheet(workbook, ws, sheetName);
     return ws;
 }

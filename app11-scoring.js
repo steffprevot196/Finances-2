@@ -17,10 +17,13 @@ const SCORE_MAX = {
     CONCENTRATION:  10
 };
 
-// Rendements réels annualisés du MSCI World (repris de app1-core.js)
-function _benchmarkAnnualMean() {
+// Rendements réels annualisés du MSCI World — mémoïsé (invariant du runtime)
+const _benchmarkAnnualMeanCache = (() => {
     const rs = Object.values(MSCI_WORLD_ANNUAL_RETURNS_EUR);
     return rs.reduce((a, b) => a + b, 0) / rs.length;
+})();
+function _benchmarkAnnualMean() {
+    return _benchmarkAnnualMeanCache;
 }
 
 const _scoreCache = new Map();

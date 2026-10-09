@@ -430,6 +430,227 @@ function benchmarkStatsFromHistory() {
     return { mean, vol: Math.sqrt(variance) };
 }
 
+// =====================================================================
+// RATIOS DE RISQUE AVEC BENCHMARK RÉEL (Chantier 1.6)
+// ---------------------------------------------------------------------
+// Reproduit la même logique que computeRiskMetricsFromAssets(), mais au
+// lieu d'utiliser l'hypothèse assumedCorrelation = 0.7 :
+//   • Aligne JOUR PAR JOUR les rendements du portefeuille et ceux du
+//     benchmark (CW8.PA ou équivalent)
+//   • Calcule Bêta, R², Alpha, Tracking Error, Information Ratio,
+//     Treynor à partir des vraies covariances / corrélations observées
+//
+// Retourne null si :
+//   • le benchmark n'est pas disponible en cache
+//   • la série appariée fait moins de 30 points communs
+//   • le portefeuille n'a pas de rendements réels exploitables
+// =====================================================================
+
+// Construit la série de rendements journaliers du benchmark alignée sur
+// les jours civils. Retourne { byDay: { 'YYYY-MM-DD': price } } ou null.
+function _benchmarkByDay(series) {
+    if (!Array.isArray(series) || series.length < 30) return null;
+    const byDay = {};
+    series.forEach(pt => {
+        if (!pt || !Number.isFinite(pt.price) || pt.price <= 0) return;
+        const day = new Date(pt.date).toISOString().slice(0, 10);
+        byDay[day] = pt.price;
+    });
+    return Object.keys(byDay).length >= 30 ? byDay : null;
+}
+
+// Construit la série de rendements journaliers du portefeuille alignée sur
+// les jours civils, EXACTEMENT comme buildWeightedRealReturns() mais en
+// exposant la MAP jour→valeur plutôt qu'un tableau brut (pour l'appariement).
+// Retourne { byDay: { 'YYYY-MM-DD': totalValue } } ou null.
+function _portfolioByDay(assetList) {
+    const totalValue = assetList.reduce((s, a) => s + (a.value || 0), 0);
+    if (totalValue <= 0) return null;
+
+    // Utilise les cours réels des actifs couverts (crypto, devises, actions/ETF)
+    const covered = assetList.filter(a => {
+        const key = (a.ticker || '').toUpperCase();
+        return realSeriesCache[key] && realSeriesCache[key].length >= 30;
+    });
+    if (!covered.length) return null;
+
+    const coveredValue = covered.reduce((s, a) => s + (a.value || 0), 0);
+    const coverageRatio = coveredValue / totalValue;
+    if (coverageRatio < 0.5) return null;
+
+    // Tableau { 'YYYY-MM-DD': { assetId: price } }
+    const byDayRaw = {};
+    covered.forEach(a => {
+        const key = (a.ticker || '').toUpperCase();
+        realSeriesCache[key].forEach(pt => {
+            const day = new Date(pt.date).toISOString().slice(0, 10);
+            if (!byDayRaw[day]) byDayRaw[day] = {};
+            byDayRaw[day][a.id] = pt.price;
+        });
+    });
+
+    // Forward-fill : à chaque jour civil, on calcule la valeur totale du
+    // portefeuille couvert (dernier prix connu × quantité).
+    const days = Object.keys(byDayRaw).sort();
+    if (days.length < 30) return null;
+
+    const lastPrice = {};
+    const byDay = {};
+    days.forEach(day => {
+        covered.forEach(a => {
+            if (byDayRaw[day][a.id] !== undefined) lastPrice[a.id] = byDayRaw[day][a.id];
+        });
+        let total = 0;
+        covered.forEach(a => {
+            if (lastPrice[a.id] !== undefined) total += lastPrice[a.id] * (a.qty || 0);
+        });
+        if (total > 0) byDay[day] = total;
+    });
+
+    return { byDay, coverageRatio, periodsPerYear: 365 };
+}
+
+// Calcule les ratios de risque en appariant les rendements réels du
+// portefeuille avec ceux du benchmark sur les mêmes dates.
+// Renvoie un objet similaire à computeRiskMetricsFromAssets() ou null.
+function computeRiskMetricsWithBenchmark(assetList) {
+    if (typeof hasBenchmarkAvailable !== 'function' || !hasBenchmarkAvailable()) {
+        return null;
+    }
+    if (!assetList || !assetList.length) return null;
+
+    const benchByDay = _benchmarkByDay(benchmarkSeriesCache);
+    if (!benchByDay) return null;
+
+    const pf = _portfolioByDay(assetList);
+    if (!pf) return null;
+
+    // --- 1) Appariement jour par jour ---
+    // On ne garde que les jours présents dans les DEUX séries.
+    const commonDays = Object.keys(pf.byDay)
+        .filter(d => benchByDay[d] !== undefined)
+        .sort();
+    if (commonDays.length < 30) return null;
+
+    const pfPrices   = commonDays.map(d => pf.byDay[d]);
+    const benchPrices = commonDays.map(d => benchByDay[d]);
+
+    // --- 2) Rendements journaliers (log-returns ? non : rendements simples) ---
+    const pfReturns = [];
+    const benchReturns = [];
+    for (let i = 1; i < commonDays.length; i++) {
+        if (pfPrices[i - 1] > 0 && benchPrices[i - 1] > 0) {
+            pfReturns.push((pfPrices[i] - pfPrices[i - 1]) / pfPrices[i - 1]);
+            benchReturns.push((benchPrices[i] - benchPrices[i - 1]) / benchPrices[i - 1]);
+        }
+    }
+    if (pfReturns.length < 20) return null;
+
+    const n = pfReturns.length;
+    const periodsPerYear = 365;   // séries quotidiennes
+
+    // --- 3) Moyennes ---
+    const meanPf    = pfReturns.reduce((a, b) => a + b, 0) / n;
+    const meanBench = benchReturns.reduce((a, b) => a + b, 0) / n;
+
+    // --- 4) Variances et covariance (échantillon, / n) ---
+    let varPf = 0, varBench = 0, cov = 0;
+    for (let i = 0; i < n; i++) {
+        const dp = pfReturns[i] - meanPf;
+        const db = benchReturns[i] - meanBench;
+        varPf    += dp * dp;
+        varBench += db * db;
+        cov      += dp * db;
+    }
+    varPf    /= n;
+    varBench /= n;
+    cov      /= n;
+
+    const stdevPf    = Math.sqrt(varPf);
+    const stdevBench = Math.sqrt(varBench);
+
+    // --- 5) Annualisation ---
+    const volAnnualized      = stdevPf * Math.sqrt(periodsPerYear);
+    const benchVolAnnualized = stdevBench * Math.sqrt(periodsPerYear);
+    const meanPfAnnualized   = meanPf * periodsPerYear;
+    const meanBenchAnnualized = meanBench * periodsPerYear;
+
+    // --- 6) Bêta = Cov(pf, bench) / Var(bench) ---
+    const beta = varBench > 0 ? cov / varBench : 0;
+
+    // --- 7) Corrélation et R² (décomposition risque systématique/spécifique) ---
+    const correlation = (stdevPf > 0 && stdevBench > 0) ? cov / (stdevPf * stdevBench) : 0;
+    const rSquared    = correlation * correlation;
+    const systematicRiskPct = rSquared;
+    const specificRiskPct   = 1 - rSquared;
+
+    // --- 8) Alpha de Jensen ---
+    const riskFree = 0.02;
+    const alpha = meanPfAnnualized - (riskFree + beta * (meanBenchAnnualized - riskFree));
+
+    // --- 9) Tracking Error = std(pf - bench) annualisée ---
+    //     (plus correct que la formule avec corrélation supposée)
+    let varDiff = 0;
+    for (let i = 0; i < n; i++) {
+        const d = pfReturns[i] - benchReturns[i];
+        varDiff += d * d;
+    }
+    varDiff /= n;
+    const trackingError = Math.sqrt(varDiff) * Math.sqrt(periodsPerYear);
+
+    // --- 10) Information Ratio ---
+    const informationRatio = trackingError > 0
+        ? (meanPfAnnualized - meanBenchAnnualized) / trackingError
+        : 0;
+
+    // --- 11) Ratio de Treynor ---
+    const treynor = beta !== 0 ? (meanPfAnnualized - riskFree) / beta : 0;
+
+    // --- 12) Sharpe / Sortino (inchangés, basés sur pf seul) ---
+    const sharpe = volAnnualized > 0 ? (meanPfAnnualized - riskFree) / volAnnualized : 0;
+
+    const periodRiskFree = riskFree / periodsPerYear;
+    const downsideSq = pfReturns.map(r => Math.pow(Math.min(0, r - periodRiskFree), 2));
+    const downsideDev = Math.sqrt(downsideSq.reduce((a, b) => a + b, 0) / n);
+    const downsideDevAnnualized = downsideDev * Math.sqrt(periodsPerYear);
+    const sortino = downsideDevAnnualized > 0
+        ? (meanPfAnnualized - riskFree) / downsideDevAnnualized
+        : 0;
+
+    // --- 13) Max Drawdown (sur la série de valeurs appariée) ---
+    let peak = pfPrices[0], maxDrawdown = 0;
+    pfPrices.forEach(v => {
+        peak = Math.max(peak, v);
+        if (peak > 0) maxDrawdown = Math.max(maxDrawdown, (peak - v) / peak);
+    });
+
+    // --- 14) VaR 95% 1 mois ---
+    const monthlyVol  = volAnnualized / Math.sqrt(12);
+    const monthlyMean = meanPfAnnualized / 12;
+    const var95Pct    = Math.max(0, 1.645 * monthlyVol - monthlyMean);
+    const totalValue  = assetList.reduce((s, a) => s + (a.value || 0), 0);
+    const var95Amount = totalValue * var95Pct;
+
+    return {
+        volatility: volAnnualized,
+        sharpe, beta, alpha, sortino, maxdrawdown: maxDrawdown,
+        trackingerror: trackingError, informationratio: informationRatio, treynor,
+        var95Pct, var95Amount, meanAnnualized: meanPfAnnualized, riskFree,
+        benchReturn: meanBenchAnnualized,
+        benchVol: benchVolAnnualized,
+        benchSymbol: benchmarkMetaCache ? benchmarkMetaCache.symbol : '—',
+        benchSource: benchmarkMetaCache ? benchmarkMetaCache.source : 'benchmark réel',
+        benchUpdatedAt: benchmarkMetaCache ? benchmarkMetaCache.updatedAt : null,
+        correlation,
+        totalValue,
+        usedRealReturns: true,
+        usedRealBenchmark: true,
+        coverageRatio: pf.coverageRatio,
+        alignedDays: commonDays.length,
+        systematicRiskPct, specificRiskPct
+    };
+}
+
 // Construit, jour par jour, un rendement de PORTEFEUILLE pondéré à partir des
 // vrais cours (Crypto/Devises) des actifs de assetList. Retourne null si la
 // couverture est trop faible pour être représentative (on préfère alors la
@@ -575,7 +796,26 @@ function calculateRiskMetrics() {
     const els = {};
     ids.forEach(id => { els[id] = document.getElementById('risk-stat-' + id); });
 
-    const m = computeRiskMetricsFromAssets(assets);
+    // Chantier 1.6 — priorité au benchmark réel si disponible
+    //   • computeRiskMetricsWithBenchmark() utilise CW8.PA (ou équivalent)
+    //     téléchargé via Twelve Data / Yahoo, apparié jour par jour.
+    //   • Repli automatique sur l'ancienne méthode (corrélation 0.7) si :
+    //       - la série benchmark n'est pas encore en cache
+    //       - le portefeuille n'a pas assez de cours réels (< 50 % de couverture)
+    //       - moins de 30 jours communs entre les deux séries
+    let m = null;
+    try {
+        if (typeof computeRiskMetricsWithBenchmark === 'function') {
+            m = computeRiskMetricsWithBenchmark(assets);
+        }
+    } catch (err) {
+        console.warn('[Risk] computeRiskMetricsWithBenchmark a échoué :', err);
+        m = null;
+    }
+    if (!m) {
+        m = computeRiskMetricsFromAssets(assets);
+    }
+
     if (!m) {
         ids.forEach(id => { els[id].innerText = 'N/A'; });
         document.getElementById('risk-bar-systematic').style.width = '0%';
@@ -586,15 +826,19 @@ function calculateRiskMetrics() {
         return;
     }
 
+    // L'astérisque * indique un ratio basé sur l'hypothèse de corrélation 0.7
+    // (ancienne méthode). Avec le benchmark réel, plus d'astérisque.
+    const star = m.usedRealBenchmark ? '' : '*';
+
     els.volatility.innerText      = (m.volatility * 100).toFixed(1) + '%';
     els.sharpe.innerText          = m.sharpe.toFixed(2);
-    els.beta.innerText            = m.beta.toFixed(2) + '*';
-    els.alpha.innerText           = (m.alpha >= 0 ? '+' : '') + (m.alpha * 100).toFixed(2) + '%*';
+    els.beta.innerText            = m.beta.toFixed(2) + star;
+    els.alpha.innerText           = (m.alpha >= 0 ? '+' : '') + (m.alpha * 100).toFixed(2) + '%' + star;
     els.sortino.innerText         = m.sortino.toFixed(2);
     els.maxdrawdown.innerText     = '-' + (m.maxdrawdown * 100).toFixed(1) + '%';
-    els.trackingerror.innerText   = (m.trackingerror * 100).toFixed(1) + '%*';
-    els.informationratio.innerText = m.informationratio.toFixed(2) + '*';
-    els.treynor.innerText         = (m.treynor >= 0 ? '+' : '') + (m.treynor * 100).toFixed(2) + '%*';
+    els.trackingerror.innerText   = (m.trackingerror * 100).toFixed(1) + '%' + star;
+    els.informationratio.innerText = m.informationratio.toFixed(2) + star;
+    els.treynor.innerText         = (m.treynor >= 0 ? '+' : '') + (m.treynor * 100).toFixed(2) + '%' + star;
     els.var95.innerText           = '-' + (m.var95Pct * 100).toFixed(1) + '%';
 
     const sysPct = Math.round(m.systematicRiskPct * 100);
@@ -605,9 +849,23 @@ function calculateRiskMetrics() {
 
     const sourceEl = document.getElementById('risk-data-source');
     if (sourceEl) {
-        sourceEl.innerHTML = m.usedRealReturns
-            ? `<i class="fa-solid fa-circle-check text-emerald-400"></i> Volatilité/Sharpe/Sortino calculés sur des <b>cours réels</b> (CoinGecko/Frankfurter, couverture ${(m.coverageRatio * 100).toFixed(0)}% de la valeur du portefeuille)`
-            : `<i class="fa-solid fa-circle-info text-gray-500"></i> Volatilité/Sharpe/Sortino estimés depuis l'historique de valorisation du portefeuille (pas de cours réels suffisants — cliquez "Historique de prix")`;
+        if (m.usedRealBenchmark) {
+            const benchLabel = `${escapeHTML(m.benchSymbol)} (${escapeHTML(m.benchSource)})`;
+            const aligned = m.alignedDays || 0;
+            const corr = Number.isFinite(m.correlation) ? (m.correlation * 100).toFixed(0) : '—';
+            sourceEl.innerHTML = `
+                <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                <b>Benchmark réel ${benchLabel}</b> ·
+                Bêta, Alpha, Tracking Error, Ratio d'Information et Treynor calculés par appariement jour par jour
+                sur <b>${aligned} jours communs</b>.
+                Corrélation observée : <b>${corr} %</b>
+                ${m.usedRealReturns ? ` · cours réels du portefeuille (couverture ${((m.coverageRatio || 0) * 100).toFixed(0)} %)` : ''}
+            `;
+        } else if (m.usedRealReturns) {
+            sourceEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> Volatilité/Sharpe/Sortino calculés sur des <b>cours réels</b> (CoinGecko/Frankfurter, couverture ${((m.coverageRatio || 0) * 100).toFixed(0)} % de la valeur du portefeuille). <span class="text-amber-400">Bêta/Alpha/TE basés sur l'hypothèse de corrélation 0.7*</span> — cliquez « Télécharger le benchmark » pour affiner.`;
+        } else {
+            sourceEl.innerHTML = `<i class="fa-solid fa-circle-info text-gray-500"></i> Volatilité/Sharpe/Sortino estimés depuis l'historique de valorisation du portefeuille (pas de cours réels suffisants — cliquez « Historique de prix »). <span class="text-amber-400">Bêta/Alpha/TE basés sur l'hypothèse de corrélation 0.7*</span>`;
+        }
     }
 
     lastRiskMetrics = m;

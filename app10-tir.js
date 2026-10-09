@@ -11,7 +11,9 @@
 const _tirCache = new Map();
 
 function _tirCacheKey(asset) {
-    return asset.id + '|' + (asset.value || 0) + '|' + (asset.qty || 0) + '|' + ((asset.buys || []).length);
+    return asset.id + '|' + (asset.value || 0) + '|' + (asset.qty || 0)
+         + '|' + ((asset.buys || []).length)
+         + '|' + ((asset.dividends || []).length);
 }
 
 function invalidateTIRCache() {
@@ -102,6 +104,17 @@ function getAssetCashflows(asset, includeTerminal = true) {
         const d = asset.purchaseDate ? parseFlexDate(asset.purchaseDate) : null;
         if (d) flows.push({ date: d, amount: -(asset.invested || 0) });
     }
+
+    // --- Chantier 1.1 : dividendes & coupons = flux POSITIFS (avant la valeur terminale) ---
+    // On déduit la retenue à la source (taxWithheld) car elle n'a pas été
+    // encaissée par l'investisseur (elle est prélevée à la source dans
+    // de nombreux pays : US, CH, etc.).
+    (asset.dividends || []).forEach(div => {
+        const d = parseFlexDate(div.date);
+        if (!d) return;
+        const netAmount = (Number(div.amount) || 0) - (Number(div.taxWithheld) || 0);
+        if (netAmount > 0) flows.push({ date: d, amount: netAmount });
+    });
 
     if (includeTerminal && (asset.value || 0) > 0) {
         flows.push({ date: new Date(), amount: asset.value });
@@ -216,4 +229,123 @@ function renderGlobalTIRKPI() {
 function refreshTIR() {
     invalidateTIRCache();
     renderGlobalTIRKPI();
+}
+
+// =====================================================================
+// DIVIDENDES — Helpers de calcul (Chantier 1.1)
+// =====================================================================
+
+// Somme des dividendes nets perçus sur les N derniers mois.
+// Retourne { net, gross, withheld, count, entries }.
+function getAssetDividendsSinceMonths(asset, months = 12) {
+    const cutoff = Date.now() - months * 30.44 * 864e5;
+    let net = 0, gross = 0, withheld = 0;
+    const entries = [];
+    (asset.dividends || []).forEach(d => {
+        const dt = parseFlexDate(d.date);
+        if (!dt || dt.getTime() < cutoff) return;
+        const g = Number(d.amount) || 0;
+        const w = Number(d.taxWithheld) || 0;
+        const n = g - w;
+        if (n <= 0) return;
+        net += n;
+        gross += g;
+        withheld += w;
+        entries.push({ ...d, _date: dt, _net: n });
+    });
+    return { net, gross, withheld, count: entries.length, entries };
+}
+
+// Rendement annuel (%) d'un actif : (dividendes 12 mois nets) / valeur actuelle.
+// Retourne null si non applicable (pas de dividendes, pas de valeur exploitable).
+function getAssetDividendYield(asset) {
+    if (!asset) return null;
+    const list = asset.dividends || [];
+    if (list.length === 0) return null;
+    const value = asset.value || 0;
+    if (value <= 0) return null;
+    const d12 = getAssetDividendsSinceMonths(asset, 12);
+    return (d12.net / value) * 100;
+}
+
+// Rendement global du portefeuille : sommes(nets 12m) / sommes(valeurs).
+function getPortfolioDividendYield(assetList) {
+    const list = (assetList || assets).filter(a => !isPaperAsset(a));
+    const totalValue = list.reduce((s, a) => s + (a.value || 0), 0);
+    if (totalValue <= 0) return 0;
+    const totalNet = list.reduce((s, a) => s + getAssetDividendsSinceMonths(a, 12).net, 0);
+    return (totalNet / totalValue) * 100;
+}
+
+// Cellule HTML "Rendement" pour une ligne d'inventaire / une carte mobile.
+// Retourne "—" si l'actif n'a aucun dividende enregistré.
+function dividendYieldCellHTML(asset) {
+    const list = asset.dividends || [];
+    if (list.length === 0) return '<span class="text-gray-600" title="Aucun dividende/coupon enregistré">—</span>';
+    const y = getAssetDividendYield(asset);
+    if (y === null) return '<span class="text-gray-600">—</span>';
+    const cls = y >= 3 ? 'text-emerald-400' : y >= 1 ? 'text-amber-400' : 'text-gray-300';
+    return `<span class="${cls}" title="${list.length} versement(s) enregistré(s)">${y.toFixed(2)}%</span>`;
+}
+
+// =====================================================================
+// KPI BANDEAU — Revenus passifs (Chantier 1.1)
+// =====================================================================
+// Calcule et affiche les 4 KPI de la nouvelle section :
+//   - Revenus 12 mois glissants (net)
+//   - Rendement moyen du portefeuille
+//   - Revenus bruts + retenue à la source
+//   - Fiscalité estimée (PFU 30% par défaut, exonération PEA si applicable)
+function renderDividendsKPIs() {
+    const realAssets = assets.filter(a => !isPaperAsset(a));
+
+    // Agrégation
+    let totalNet = 0, totalGross = 0, totalWithheld = 0, totalCount = 0;
+    let taxEstimate = 0;
+
+    realAssets.forEach(a => {
+        const d12 = getAssetDividendsSinceMonths(a, 12);
+        if (d12.count === 0) return;
+        totalNet      += d12.net;
+        totalGross    += d12.gross;
+        totalWithheld += d12.withheld;
+        totalCount    += d12.count;
+
+        // Estimation fiscale : PEA exonéré d'IR (PS 17,2% restent dus),
+        // AV/PER non traités ici (trop dépendants du mode de sortie),
+        // CTO/Crypto = PFU 30% par défaut ou barème selon taxRegimeMode.
+        const env = a.envelope || 'CTO';
+        if (env === 'PEA' || env === 'PEA_PME') {
+            taxEstimate += d12.net * 0.172;
+        } else if (taxRegimeMode === 'PFU') {
+            taxEstimate += d12.net * 0.30;
+        } else {
+            // Barème : approximation TMI + PS - CSG déductible
+            taxEstimate += d12.net * (taxTMI + 0.172 - 0.068 * taxTMI);
+        }
+    });
+
+    const yieldPct = getPortfolioDividendYield(realAssets);
+
+    // Rendu
+    const el12m = document.getElementById('stat-dividends-12m');
+    if (el12m) countUp(el12m, totalNet, formatEUR);
+
+    const elCount = document.getElementById('stat-dividends-count');
+    if (elCount) elCount.innerText = `${totalCount} versement(s) sur 12 mois`;
+
+    const elYield = document.getElementById('stat-dividends-yield');
+    if (elYield) {
+        countUp(elYield, yieldPct, v => v.toFixed(2) + ' %');
+        elYield.className = `text-2xl font-bold font-mono ${yieldPct >= 3 ? 'text-emerald-400' : yieldPct >= 1 ? 'text-amber-400' : 'text-white'}`;
+    }
+
+    const elGross = document.getElementById('stat-dividends-gross');
+    if (elGross) countUp(elGross, totalGross, formatEUR);
+
+    const elW = document.getElementById('stat-dividends-withheld');
+    if (elW) elW.innerText = formatEUR(totalWithheld);
+
+    const elTax = document.getElementById('stat-dividends-tax');
+    if (elTax) countUp(elTax, taxEstimate, formatEUR);
 }

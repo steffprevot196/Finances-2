@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="Content-Security-Policy"
+                <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
                    script-src 'self' 'unsafe-inline'
                               https://cdn.tailwindcss.com
@@ -30,9 +30,30 @@
                             https://cdnjs.cloudflare.com;
                    frame-ancestors 'none';
                    base-uri 'self';
-                   worker-src 'self';">>
+                   worker-src 'self';">
+                            
         <title>PatriMonial - Gestion & Suivi de Patrimoine</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+
+    <!-- === PWA — Chantier #12 === -->
+    <!-- Manifest : métadonnées d'installation (nom, icônes, raccourcis) -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Couleur de la barre système (Android Chrome, Edge, Brave) : accordée au fond sombre de l'app -->
+    <meta name="theme-color" content="#0a0e17">
+
+    <!-- Meta iOS Safari : installation sur l'écran d'accueil -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="PatriMonial">
+    <link rel="apple-touch-icon" href="icon.svg">
+
+    <!-- Meta Android / Chrome : installation via le menu "Ajouter à l'écran d'accueil" -->
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- Fallback universel : titre court utilisé par les launchers d'apps -->
+    <meta name="application-name" content="PatriMonial">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -74,6 +95,9 @@
     <!-- HEADER GLOBAL -->
     <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-gray-800 pb-4">
         <div class="flex items-center gap-3">
+            <button type="button" onclick="openSidebarMobile()" class="lg:hidden w-9 h-9 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0" title="Ouvrir le menu" aria-label="Ouvrir le menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
             <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-emerald-900/30">
                 <i class="fa-solid fa-chart-pie"></i>
             </div>
@@ -95,9 +119,14 @@
                 </button>
             </div>
 
-            <!-- TOGGLE THÈME CLAIR / SOMBRE -->
-            <button onclick="toggleLightMode()" id="theme-toggle-btn" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0" title="Basculer thème clair / sombre">
-                <i id="theme-toggle-icon" class="fa-solid fa-sun"></i>
+            <!-- TOGGLE THÈME : sombre → clair → auto (Chantier 2.2) -->
+            <button onclick="toggleLightMode()" id="theme-toggle-btn" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0" title="Thème : Sombre · Cliquez pour passer en Clair">
+                <i id="theme-toggle-icon" class="fa-solid fa-moon"></i>
+            </button>
+
+            <!-- TOGGLE DENSITÉ : confort ⇄ compact (Chantier 2.6) -->
+            <button onclick="toggleDensityMode()" id="density-toggle-btn" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0" title="Densité : Confort · Cliquez pour passer en Compacte">
+                <i id="density-toggle-icon" class="fa-solid fa-expand"></i>
             </button>
 
             <!-- TOGGLE PAPER TRADING + SÉLECTEUR DE SCÉNARIO -->
@@ -212,100 +241,37 @@
         </div>
     </div>
 
-        <!-- METRICS / KPI BANNER — Positions actuelles -->
-    <div class="mb-3">
-        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">📊 Positions actuelles</div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">Capital Investi</div>
-                <div class="text-2xl font-bold text-white font-mono" id="stat-total-invested">0,00 €</div>
-                <div class="text-xs text-gray-500 mt-1 flex items-center justify-between">
-                    <span>Frais totaux :</span>
-                    <span class="font-mono text-gray-400" id="stat-total-frais">0,00 €</span>
+    <!-- BANNIÈRE DCA PLANIFIÉ (Chantier §6) — visible uniquement quand un rappel est déclenché -->
+    <div id="dca-banner" class="hidden mb-4 bg-emerald-950/30 border border-emerald-800/50 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-emerald-950 border border-emerald-700/60 flex items-center justify-center text-emerald-300">
+                <i class="fa-solid fa-coins"></i>
+            </div>
+            <div class="min-w-0">
+                <div id="dca-banner-title" class="text-sm font-bold text-emerald-200">
+                    DCA mensuel · à placer
                 </div>
-                <div class="absolute right-3 bottom-2 text-blue-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-vault"></i></div>
-            </div>
-
-            <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">Valeur de Marché</div>
-                <div class="text-2xl font-bold text-white font-mono" id="stat-total-value">0,00 €</div>
-                <div class="text-xs text-emerald-400 mt-1 flex items-center gap-1">
-                    <i class="fa-solid fa-circle-check text-[10px]"></i> Mis à jour en temps réel
+                <div id="dca-banner-detail" class="text-[11px] text-gray-400">
+                    Suggestion de répartition en cours de calcul…
                 </div>
-                <div class="absolute right-3 bottom-2 text-emerald-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-chart-line"></i></div>
             </div>
-
-            <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">Gain / Perte Potentiel</div>
-                <div class="text-2xl font-bold font-mono" id="stat-pnl">0,00 €</div>
-                <div class="text-xs font-semibold mt-1 font-mono" id="stat-pnl-pct">+0.00%</div>
-                <div class="absolute right-3 bottom-2 text-amber-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-arrow-trend-up"></i></div>
-            </div>
-
-            <div class="bg-gray-900/80 border border-teal-900/40 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">Gain / Perte hors frais</div>
-                <div class="text-2xl font-bold font-mono" id="stat-pnl-hf">0,00 €</div>
-                <div class="text-xs font-semibold mt-1 font-mono" id="stat-pnl-hf-pct">+0.00%</div>
-                <div class="text-[10px] text-gray-500 mt-0.5" id="stat-pnl-hf-detail">frais neutralisés : 0,00 €</div>
-                <div class="absolute right-3 bottom-2 text-teal-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-filter-circle-dollar"></i></div>
-            </div>
-
-            <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">Composition</div>
-                <div class="text-2xl font-bold text-white font-mono" id="stat-asset-count">0 Actifs</div>
-                <div class="text-xs text-purple-400 mt-1 flex justify-between gap-2">
-                    <span>Gave : <b id="stat-gave-count">0</b></span>
-                    <span>Crypto : <b id="stat-crypto-count">0</b></span>
-                    <span>Hors : <b id="stat-hors-gave-count">0</b></span>
-                </div>
-                <div class="absolute right-3 bottom-2 text-purple-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-layer-group"></i></div>
-            </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
+            <button onclick="openDcaQuickAdd()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium transition flex items-center gap-1.5 shadow-lg shadow-emerald-900/40">
+                <i class="fa-solid fa-plus text-[10px]"></i> Enregistrer l'achat
+            </button>
+            <button onclick="dismissDcaBanner()" class="w-8 h-8 rounded-lg bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 hover:bg-emerald-900/70 transition flex items-center justify-center flex-shrink-0" title="Ignorer pour cette session">
+                <i class="fa-solid fa-xmark text-[11px]"></i>
+            </button>
         </div>
     </div>
 
-    <!-- METRICS / KPI BANNER — Performance globale -->
-    <div class="mb-6">
-        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">🎯 Performance globale</div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div class="bg-gray-900/80 border border-indigo-900/40 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">Cessions Réalisées</div>
-                <div class="text-2xl font-bold text-white font-mono" id="stat-realized-gross">0,00 €</div>
-                <div class="text-xs text-gray-500 mt-1" id="stat-realized-count">0 opération(s)</div>
-                <div class="absolute right-3 bottom-2 text-indigo-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-right-left"></i></div>
-            </div>
-
-            <div class="bg-gray-900/80 border border-emerald-900/40 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">Gain / Perte Réalisé</div>
-                <div class="text-2xl font-bold font-mono" id="stat-realized-pnl">0,00 €</div>
-                <div class="text-xs text-gray-500 mt-1 font-mono" id="stat-realized-pnl-pct">+0.00%</div>
-                <div class="absolute right-3 bottom-2 text-emerald-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-check-double"></i></div>
-            </div>
-
-            <div class="bg-gray-900/80 border border-cyan-900/40 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">TRI Global (annualisé)</div>
-                <div class="text-2xl font-bold font-mono" id="stat-tir-global">—</div>
-                <div class="text-xs text-gray-500 mt-1" id="stat-tir-detail">pondéré par les flux</div>
-                <div class="absolute right-3 bottom-2 text-cyan-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-percent"></i></div>
-            </div>
-
-            <div class="bg-gray-900/80 border border-rose-900/40 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-gray-400 mb-1">Impôt Estimé</div>
-                <div class="text-2xl font-bold text-white font-mono" id="stat-total-tax">0,00 €</div>
-                <div class="text-xs text-gray-500 mt-1">Net après impôt : <span class="font-mono text-gray-300" id="stat-realized-net">0,00 €</span></div>
-                <div class="absolute right-3 bottom-2 text-rose-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-receipt"></i></div>
-            </div>
-
-            <div class="bg-gradient-to-br from-indigo-950/60 to-purple-950/40 border border-indigo-800/50 rounded-xl p-4 relative overflow-hidden">
-                <div class="text-xs font-medium text-indigo-300 mb-1">Gain / Perte Total</div>
-                <div class="text-2xl font-bold font-mono text-white" id="stat-total-pnl">0,00 €</div>
-                <div class="text-xs text-indigo-300 mt-1 font-mono" id="stat-total-pnl-pct">+0.00%</div>
-                <div class="absolute right-3 bottom-2 text-indigo-400/10 text-5xl pointer-events-none"><i class="fa-solid fa-trophy"></i></div>
-            </div>
-        </div>
-    </div>
-    <!-- NAVIGATION TABS -->
+        <!-- NAVIGATION TABS -->
     <nav class="flex items-center gap-2 md:gap-6 border-b border-gray-800 mb-6 overflow-x-auto text-sm pb-1">
-        <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="nav-tab active py-3 px-2 flex items-center gap-2 whitespace-nowrap text-gray-400 hover:text-gray-200">
+        <button onclick="switchTab('tab-accueil')" id="btn-tab-accueil" class="nav-tab active py-3 px-2 flex items-center gap-2 whitespace-nowrap text-gray-400 hover:text-gray-200">
+            <i class="fa-solid fa-house"></i> Accueil
+        </button>
+        <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-gray-400 hover:text-gray-200">
             <i class="fa-solid fa-gauge-high"></i> Vue d'ensemble
         </button>
         <button onclick="switchTab('tab-inventaire')" id="btn-tab-inventaire" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-gray-400 hover:text-gray-200">
@@ -332,13 +298,204 @@
         <button onclick="switchTab('tab-objectifs')" id="btn-tab-objectifs" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-cyan-400 hover:text-cyan-300">
             <i class="fa-solid fa-bullseye text-cyan-400"></i> Objectifs &amp; Projections
         </button>
+        <button onclick="switchTab('tab-watchlist')" id="btn-tab-watchlist" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-amber-400 hover:text-amber-300 relative">
+            <i class="fa-solid fa-binoculars text-amber-400"></i> Watchlist
+            <span id="watchlist-nav-badge" class="hidden absolute -top-0.5 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center border border-gray-900">0</span>
+        </button>
+        <button onclick="switchTab('tab-ledger')" id="btn-tab-ledger" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-slate-300 hover:text-white">
+            <i class="fa-solid fa-scroll text-slate-400"></i> Historique
+        </button>
     </nav>
 
     <!-- MAIN CONTENT AREA -->
     <main class="flex-grow">
 
-        <!-- TAB 0 : VUE D'ENSEMBLE -->
-        <section id="tab-dashboard" class="tab-content space-y-6">
+        <!-- TAB 0 : ACCUEIL (KPI synthèse — page d'atterrissage) -->
+        <section id="tab-accueil" class="tab-content space-y-6">
+
+            <!-- KPI BANNER — Positions actuelles -->
+            <div>
+                <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">📊 Positions actuelles</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Capital Investi</div>
+                        <div class="text-2xl font-bold text-white font-mono" id="stat-total-invested">0,00 €</div>
+                        <div class="text-xs text-gray-500 mt-1 flex items-center justify-between">
+                            <span>Frais totaux :</span>
+                            <span class="font-mono text-gray-400" id="stat-total-frais">0,00 €</span>
+                        </div>
+                        <div class="absolute right-3 bottom-2 text-blue-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-vault"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Valeur de Marché</div>
+                        <div class="text-2xl font-bold text-white font-mono" id="stat-total-value">0,00 €</div>
+                        <div class="text-xs text-emerald-400 mt-1 flex items-center gap-1">
+                            <i class="fa-solid fa-circle-check text-[10px]"></i> Mis à jour en temps réel
+                        </div>
+                        <div class="absolute right-3 bottom-2 text-emerald-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-chart-line"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Gain / Perte Potentiel</div>
+                        <div class="text-2xl font-bold font-mono" id="stat-pnl">0,00 €</div>
+                        <div class="text-xs font-semibold mt-1 font-mono" id="stat-pnl-pct">+0.00%</div>
+                        <div class="absolute right-3 bottom-2 text-amber-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-teal-900/40 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Gain / Perte hors frais</div>
+                        <div class="text-2xl font-bold font-mono" id="stat-pnl-hf">0,00 €</div>
+                        <div class="text-xs font-semibold mt-1 font-mono" id="stat-pnl-hf-pct">+0.00%</div>
+                        <div class="text-[10px] text-gray-500 mt-0.5" id="stat-pnl-hf-detail">frais neutralisés : 0,00 €</div>
+                        <div class="absolute right-3 bottom-2 text-teal-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-filter-circle-dollar"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Composition</div>
+                        <div class="text-2xl font-bold text-white font-mono" id="stat-asset-count">0 Actifs</div>
+                        <div class="text-xs text-purple-400 mt-1 flex justify-between gap-2">
+                            <span>Gave : <b id="stat-gave-count">0</b></span>
+                            <span>Crypto : <b id="stat-crypto-count">0</b></span>
+                            <span>Hors : <b id="stat-hors-gave-count">0</b></span>
+                        </div>
+                        <div class="absolute right-3 bottom-2 text-purple-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-layer-group"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI BANNER — Performance globale -->
+            <div>
+                <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">🎯 Performance globale</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-gray-900/80 border border-indigo-900/40 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Cessions Réalisées</div>
+                        <div class="text-2xl font-bold text-white font-mono" id="stat-realized-gross">0,00 €</div>
+                        <div class="text-xs text-gray-500 mt-1" id="stat-realized-count">0 opération(s)</div>
+                        <div class="absolute right-3 bottom-2 text-indigo-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-right-left"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-emerald-900/40 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Gain / Perte Réalisé</div>
+                        <div class="text-2xl font-bold font-mono" id="stat-realized-pnl">0,00 €</div>
+                        <div class="text-xs text-gray-500 mt-1 font-mono" id="stat-realized-pnl-pct">+0.00%</div>
+                        <div class="absolute right-3 bottom-2 text-emerald-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-check-double"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-cyan-900/40 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">TRI Global (annualisé)</div>
+                        <div class="text-2xl font-bold font-mono" id="stat-tir-global">—</div>
+                        <div class="text-xs text-gray-500 mt-1" id="stat-tir-detail">pondéré par les flux</div>
+                        <div class="absolute right-3 bottom-2 text-cyan-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-percent"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-rose-900/40 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Impôt Estimé</div>
+                        <div class="text-2xl font-bold text-white font-mono" id="stat-total-tax">0,00 €</div>
+                        <div class="text-xs text-gray-500 mt-1">Net après impôt : <span class="font-mono text-gray-300" id="stat-realized-net">0,00 €</span></div>
+                        <div class="absolute right-3 bottom-2 text-rose-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-receipt"></i></div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-indigo-950/60 to-purple-950/40 border border-indigo-800/50 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-indigo-300 mb-1">Gain / Perte Total</div>
+                        <div class="text-2xl font-bold font-mono text-white" id="stat-total-pnl">0,00 €</div>
+                        <div class="text-xs text-indigo-300 mt-1 font-mono" id="stat-total-pnl-pct">+0.00%</div>
+                        <div class="absolute right-3 bottom-2 text-indigo-400/10 text-5xl pointer-events-none"><i class="fa-solid fa-trophy"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI BANNER — Revenus passifs (Chantier 1.1) -->
+            <div>
+                <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">💰 Revenus passifs (dividendes & coupons)</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-gray-900/80 border border-emerald-900/40 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Revenus 12 mois glissants</div>
+                        <div class="text-2xl font-bold text-white font-mono" id="stat-dividends-12m">0,00 €</div>
+                        <div class="text-xs text-gray-500 mt-1" id="stat-dividends-count">0 versement(s)</div>
+                        <div class="absolute right-3 bottom-2 text-emerald-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-sack-dollar"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Rendement moyen du portefeuille</div>
+                        <div class="text-2xl font-bold text-white font-mono" id="stat-dividends-yield">0.00 %</div>
+                        <div class="text-xs text-gray-500 mt-1">sur capital investi actuel</div>
+                        <div class="absolute right-3 bottom-2 text-blue-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-percent"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-teal-900/40 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Revenus bruts (avant retenue)</div>
+                        <div class="text-2xl font-bold text-white font-mono" id="stat-dividends-gross">0,00 €</div>
+                        <div class="text-xs text-gray-500 mt-1">retenue à la source : <span class="font-mono text-gray-400" id="stat-dividends-withheld">0,00 €</span></div>
+                        <div class="absolute right-3 bottom-2 text-teal-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-coins"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-amber-900/40 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Fiscalité estimée dividendes</div>
+                        <div class="text-2xl font-bold text-white font-mono" id="stat-dividends-tax">0,00 €</div>
+                        <div class="text-xs text-gray-500 mt-1">PFU 30 % par défaut (hors PEA/AV)</div>
+                        <div class="absolute right-3 bottom-2 text-amber-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-receipt"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI BANNER — Exposition devise (Chantier 1.2) -->
+            <div>
+                <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">🌍 Exposition devise</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Devise dominante</div>
+                        <div class="text-2xl font-bold text-white font-mono flex items-center gap-2" id="stat-fx-dominant">
+                            <span>—</span>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1" id="stat-fx-dominant-pct">— % du portefeuille</div>
+                        <div class="absolute right-3 bottom-2 text-indigo-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-flag"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Exposition hors EUR</div>
+                        <div class="text-2xl font-bold text-white font-mono" id="stat-fx-foreign-pct">0.0 %</div>
+                        <div class="text-xs text-gray-500 mt-1">valeur convertie au taux courant</div>
+                        <div class="absolute right-3 bottom-2 text-blue-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-globe"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-1">Devises utilisées</div>
+                        <div class="text-2xl font-bold text-white font-mono" id="stat-fx-count">0</div>
+                        <div class="text-xs text-gray-500 mt-1">nombre de devises distinctes</div>
+                        <div class="absolute right-3 bottom-2 text-purple-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-coins"></i></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
+                        <div class="text-xs font-medium text-gray-400 mb-2">Répartition (top 3)</div>
+                        <div id="stat-fx-breakdown" class="space-y-1.5">
+                            <div class="text-[11px] text-gray-500 italic">Aucune devise étrangère</div>
+                        </div>
+                        <div class="absolute right-3 bottom-2 text-teal-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-chart-simple"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- THÈSES À REVOIR (Chantier §10) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-scroll text-indigo-400"></i> Thèses d'investissement à revoir
+                        </h3>
+                        <p class="text-[11px] text-gray-400 mt-0.5">
+                            Positions en perte (&lt; -20 %) dont la thèse n'a pas été revue depuis plus d'un an.
+                            Un garde-fou contre les décisions émotionnelles.
+                        </p>
+                    </div>
+                </div>
+                <div id="theses-review-wrap"></div>
+            </div>
+        </section>
+
+        <!-- TAB 1 : VUE D'ENSEMBLE (graphiques, analyses, scoring) -->
+        <section id="tab-dashboard" class="tab-content hidden space-y-6">
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div id="dashboard-alloc-card" class="lg:col-span-1 bg-gray-900/60 border border-gray-800 rounded-xl p-5 flex flex-col">
                     <div class="flex justify-between items-start gap-3 mb-3">
@@ -348,12 +505,17 @@
                             </h3>
                             <p class="text-xs text-gray-400">Aperçu visuel de l'ensemble des actifs</p>
                         </div>
-                        <div class="flex rounded-lg bg-gray-950 border border-gray-800 p-0.5 text-[10px] flex-shrink-0">
-                            <button id="dashboard-alloc-btn-donut" onclick="setDashboardAllocView('donut')" class="px-2 py-1 rounded flex items-center gap-1 transition">
-                                <i class="fa-solid fa-chart-pie"></i> Donut
-                            </button>
-                            <button id="dashboard-alloc-btn-treemap" onclick="setDashboardAllocView('treemap')" class="px-2 py-1 rounded flex items-center gap-1 transition">
-                                <i class="fa-solid fa-table-cells"></i> Treemap
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <div class="flex rounded-lg bg-gray-950 border border-gray-800 p-0.5 text-[10px]">
+                                <button id="dashboard-alloc-btn-donut" onclick="setDashboardAllocView('donut')" class="px-2 py-1 rounded flex items-center gap-1 transition">
+                                    <i class="fa-solid fa-chart-pie"></i> Donut
+                                </button>
+                                <button id="dashboard-alloc-btn-treemap" onclick="setDashboardAllocView('treemap')" class="px-2 py-1 rounded flex items-center gap-1 transition">
+                                    <i class="fa-solid fa-table-cells"></i> Treemap
+                                </button>
+                            </div>
+                            <button onclick="document.getElementById('waterfallChart')?.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="px-2 py-1 rounded-lg bg-gray-950 border border-gray-800 text-gray-400 hover:text-cyan-300 hover:border-cyan-700/60 text-[10px] flex items-center gap-1 transition" title="Voir la décomposition du P&L par actif">
+                                <i class="fa-solid fa-chart-column"></i> P&amp;L
                             </button>
                         </div>
                     </div>
@@ -440,6 +602,170 @@
                 </div>
             </div>
 
+            <!-- RAPPORT DE PERFORMANCE MENSUEL (Chantier §4) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-check text-emerald-400"></i> Rapport de performance mensuel
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Historique automatique des performances mensuelles (MoM / YoY).
+                            Un snapshot est créé au début de chaque mois et mis à jour en continu.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <button onclick="renderMonthlySnapshotsSection()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 flex items-center gap-1.5 whitespace-nowrap" title="Rafraîchir le tableau et le graphique">
+                            <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Rafraîchir
+                        </button>
+                        <button onclick="document.getElementById('modal-monthly-help').classList.remove('hidden')" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 flex items-center gap-1.5 whitespace-nowrap transition" title="Comment fonctionne le rapport mensuel ?">
+                            <i class="fa-solid fa-circle-question text-[10px]"></i> Aide
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tableau historique -->
+                <div id="monthly-history-table-wrap" class="mb-4">
+                    <div class="text-center text-gray-500 italic text-xs py-4">Chargement…</div>
+                </div>
+
+                <!-- Bar chart "Performance mensuelle" -->
+                <div>
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
+                        Variations mensuelles (MoM, en €)
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 h-64">
+                        <canvas id="monthlyPerformanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MATRICE DE CORRÉLATION DES ACTIFS (Chantier §5) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-diagram-project text-purple-400"></i> Matrice de corrélation des actifs
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Corrélation de Pearson calculée sur les rendements journaliers réels (30 jours communs minimum).
+                            Détecte les <b>concentrations cachées</b> — plusieurs actifs qui évoluent en réalité comme un seul.
+                        </p>
+                    </div>
+                    <button onclick="if (typeof invalidateCorrelationCache === 'function') invalidateCorrelationCache(); renderCorrelationSection();" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 flex items-center gap-1.5 whitespace-nowrap" title="Recalculer la matrice">
+                        <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Recalculer
+                    </button>
+                </div>
+
+                <!-- KPIs de couverture -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Actifs corrélables</div>
+                        <div class="font-mono font-bold text-white">
+                            <span id="correlation-stat-count">0</span> / <span id="correlation-stat-total" class="text-gray-500">0</span>
+                        </div>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Corrélation moyenne</div>
+                        <div class="text-lg font-bold font-mono text-gray-400" id="correlation-stat-avg">—</div>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Clusters détectés</div>
+                        <div class="text-lg font-bold font-mono text-white" id="correlation-stat-clusters">0</div>
+                        <div class="text-[9px] text-gray-500">≥ 3 actifs corrélés &gt; 0.85</div>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Seuils</div>
+                        <div class="text-[10px] font-mono text-gray-400 leading-tight mt-1">
+                            <span class="text-rose-400">■</span> Fort (&gt; 0.85)<br>
+                            <span class="text-blue-400">■</span> Négatif (&lt; 0)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alerte "concentration cachée" -->
+                <div id="correlation-clusters-alert" class="mb-4"></div>
+
+                <!-- Heatmap SVG -->
+                <div class="bg-gray-950 border border-gray-800 rounded-xl p-4 overflow-auto">
+                    <div class="flex items-center justify-center min-h-[200px]">
+                        <svg id="correlationHeatmapSvg" class="block"></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WATERFALL DU P&L (Chantier §7) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-column text-cyan-400"></i> Décomposition du P&amp;L
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Comment chaque actif contribue-t-il à votre plus-value latente totale ?
+                            Les <b>6 plus gros contributeurs</b> sont affichés individuellement,
+                            le reste est regroupé sous « Autres ».
+                        </p>
+                    </div>
+                    <button onclick="renderWaterfallSection()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 flex items-center gap-1.5 whitespace-nowrap" title="Recalculer le waterfall">
+                        <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Recalculer
+                    </button>
+                </div>
+
+                <!-- KPIs récapitulatifs -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                    <div class="bg-gray-950 border border-cyan-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">P&amp;L Total</div>
+                        <div class="text-lg font-bold font-mono text-white" id="waterfall-stat-total">0,00 €</div>
+                        <div class="text-[9px] text-gray-500" id="waterfall-stat-count">0 actif(s)</div>
+                    </div>
+                    <div class="bg-gray-950 border border-emerald-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Meilleur contributeur</div>
+                        <div class="font-mono font-bold text-emerald-400" id="waterfall-stat-best">—</div>
+                        <div class="text-[9px] text-gray-500 font-mono" id="waterfall-stat-best-label">—</div>
+                    </div>
+                    <div class="bg-gray-950 border border-rose-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Pire contributeur</div>
+                        <div class="font-mono font-bold text-rose-400" id="waterfall-stat-worst">—</div>
+                        <div class="text-[9px] text-gray-500 font-mono" id="waterfall-stat-worst-label">—</div>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Répartition</div>
+                        <div class="text-[11px] font-mono leading-tight mt-0.5">
+                            <span class="text-emerald-400">▲</span> <span id="waterfall-stat-positive">0</span> en gain<br>
+                            <span class="text-rose-400">▼</span> <span id="waterfall-stat-negative">0</span> en perte
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphique waterfall -->
+                <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 h-80 relative">
+                    <canvas id="waterfallChart"></canvas>
+                    <!-- État vide -->
+                    <div id="waterfall-empty" class="hidden absolute inset-0 flex flex-col items-center justify-center text-gray-500 text-xs gap-2">
+                        <i class="fa-solid fa-chart-column text-3xl text-gray-700"></i>
+                        <div>Aucun actif à décomposer.</div>
+                        <div class="text-[10px] italic">Ajoutez des actifs pour voir leur contribution au P&amp;L.</div>
+                    </div>
+                </div>
+
+                <!-- Légende interprétative -->
+                <div class="mt-3 flex flex-wrap items-center gap-3 text-[10px] text-gray-500">
+                    <span class="flex items-center gap-1">
+                        <span class="inline-block w-3 h-3 rounded" style="background:rgba(16,185,129,0.80);"></span> Gain
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span class="inline-block w-3 h-3 rounded" style="background:rgba(244,63,94,0.80);"></span> Perte
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span class="inline-block w-3 h-3 rounded" style="background:rgba(59,130,246,0.75);"></span> Total
+                    </span>
+                    <span class="italic ml-auto">
+                        <i class="fa-solid fa-mouse-pointer text-[9px] mr-1"></i>Cliquez sur une barre pour ouvrir le détail de l'actif
+                    </span>
+                </div>
+            </div>
+
             <!-- ANALYSE DE RISQUE -->
             <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
                 <div class="flex justify-between items-center mb-4">
@@ -447,9 +773,14 @@
                         <h3 class="text-base font-bold text-white flex items-center gap-2">
                             <i class="fa-solid fa-shield-halved text-purple-400"></i> Analyse de Risque & Ratios
                         </h3>
-                        <p class="text-xs text-gray-400">Cliquez sur un indicateur pour son explication détaillée · Benchmark MSCI World @ 8.0% / 15% vol.</p>
+                        <p class="text-xs text-gray-400">Cliquez sur un indicateur pour son explication détaillée · Benchmark réel CW8.PA (MSCI World).</p>
                     </div>
-                    <span class="bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs px-2.5 py-1 rounded-full font-mono">Modèle CAPM</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="downloadBenchmarkAndRecalc()" id="btn-download-benchmark" class="px-3 py-1.5 rounded-lg bg-purple-950/60 text-purple-300 border border-purple-700/50 hover:bg-purple-900/80 text-[11px] font-medium transition flex items-center gap-1.5" title="Télécharger l'historique réel du benchmark (CW8.PA) pour affiner Bêta, Alpha, Tracking Error et Treynor">
+                            <i class="fa-solid fa-download text-[10px]" id="icon-download-benchmark"></i> Télécharger le benchmark
+                        </button>
+                        <span class="bg-purple-950/80 text-purple-300 border border-purple-800/50 text-xs px-2.5 py-1 rounded-full font-mono">CAPM</span>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -507,6 +838,187 @@
                 </div>
                 <p id="risk-data-source" class="text-[11px] mt-3"></p>
                 <p class="text-[10px] text-gray-500 mt-1">Volatilité, Sharpe, Sortino et Max Drawdown sont calculés à partir de l'historique réel de votre portefeuille (ou des cours réels quand disponibles, voir ci-dessus). Le benchmark (Bêta, Alpha, Tracking Error, Ratio d'Information, Treynor, décomposition du risque) utilise la moyenne et la volatilité <b>réelles</b> du MSCI World sur 2014-2024 (données historiques publiques indicatives) ; * la corrélation de 0,7 entre votre portefeuille et ce benchmark reste en revanche une <b>hypothèse</b>, faute de série de cours appariée.</p>
+            </div>
+
+            <!-- COMPARATEUR CW8 — « ET SI J'AVAIS TOUT MIS SUR LE MSCI WORLD ? » (Chantier §3) -->
+            <div id="cw8-compare-card" class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-code-compare text-fuchsia-400"></i> Et si j'avais tout mis sur CW8 ?
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Simulation buy-and-hold équivalent : chaque euro investi l'aurait été sur <b id="cw8-symbol-label">CW8.PA</b>
+                            (Amundi MSCI World) au cours du jour de l'achat réel.
+                        </p>
+                    </div>
+                    <button onclick="refreshCw8Comparison()" class="px-3 py-1.5 rounded-lg bg-fuchsia-950/60 text-fuchsia-300 border border-fuchsia-700/50 hover:bg-fuchsia-900/80 text-[11px] font-medium transition flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Recalculer
+                    </button>
+                </div>
+
+                <!-- État vide (pas de benchmark / pas assez d'historique) -->
+                <div id="cw8-empty-state" class="hidden bg-gray-950/60 border border-dashed border-gray-700 rounded-xl p-6 text-center">
+                    <i class="fa-solid fa-cloud-arrow-down text-3xl text-fuchsia-500/40 mb-2 block"></i>
+                    <div class="text-sm font-bold text-gray-300 mb-1">Comparateur indisponible</div>
+                    <div id="cw8-empty-reason" class="text-[11px] text-gray-500 mb-3">—</div>
+                    <button onclick="downloadBenchmarkAndRecalc()" class="px-3 py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-[11px] font-medium transition inline-flex items-center gap-1.5">
+                        <i class="fa-solid fa-download text-[10px]"></i> Télécharger le benchmark CW8
+                    </button>
+                </div>
+
+                <!-- Contenu principal (rempli dynamiquement) -->
+                <div id="cw8-content" class="hidden space-y-4">
+
+                    <!-- Bandeau verdict -->
+                    <div id="cw8-verdict-banner" class="rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div class="flex items-start gap-3 min-w-0">
+                            <div id="cw8-verdict-icon" class="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-trophy"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <div id="cw8-verdict-title" class="font-bold text-base text-white">—</div>
+                                <div id="cw8-verdict-subtitle" class="text-xs text-gray-300 mt-0.5">—</div>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <div class="text-[10px] uppercase tracking-wider text-gray-400">Différentiel</div>
+                            <div id="cw8-verdict-delta" class="text-2xl font-bold font-mono">—</div>
+                            <div id="cw8-verdict-delta-pct" class="text-[11px] font-mono">—</div>
+                        </div>
+                    </div>
+
+                    <!-- KPIs côte à côte -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="bg-gray-950 border border-emerald-900/40 rounded-xl p-3">
+                            <div class="text-[10px] text-emerald-300 uppercase tracking-wider mb-1">
+                                <i class="fa-solid fa-user text-[9px] mr-1"></i>Votre portefeuille
+                            </div>
+                            <div id="cw8-kpi-real-value" class="text-xl font-bold font-mono text-white">—</div>
+                            <div id="cw8-kpi-real-return" class="text-[11px] font-mono mt-1">—</div>
+                            <div id="cw8-kpi-real-cagr" class="text-[10px] text-gray-500 font-mono mt-0.5">—</div>
+                        </div>
+                        <div class="bg-gray-950 border border-fuchsia-900/40 rounded-xl p-3">
+                            <div class="text-[10px] text-fuchsia-300 uppercase tracking-wider mb-1">
+                                <i class="fa-solid fa-globe text-[9px] mr-1"></i>100 % CW8 équivalent
+                            </div>
+                            <div id="cw8-kpi-cw8-value" class="text-xl font-bold font-mono text-white">—</div>
+                            <div id="cw8-kpi-cw8-return" class="text-[11px] font-mono mt-1">—</div>
+                            <div id="cw8-kpi-cw8-cagr" class="text-[10px] text-gray-500 font-mono mt-0.5">—</div>
+                        </div>
+                        <div class="bg-gray-950 border border-gray-800 rounded-xl p-3">
+                            <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Capital investi</div>
+                            <div id="cw8-kpi-invested" class="text-xl font-bold font-mono text-white">—</div>
+                            <div id="cw8-kpi-flows" class="text-[10px] text-gray-500 mt-1">—</div>
+                        </div>
+                        <div class="bg-gray-950 border border-gray-800 rounded-xl p-3">
+                            <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Période comparée</div>
+                            <div id="cw8-kpi-period" class="text-sm font-bold font-mono text-white">—</div>
+                            <div id="cw8-kpi-span" class="text-[10px] text-gray-500 mt-1">—</div>
+                        </div>
+                    </div>
+
+                    <!-- Graphique -->
+                    <div>
+                        <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
+                            Trajectoires superposées (valeur totale du portefeuille dans le temps)
+                        </div>
+                        <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 h-72">
+                            <canvas id="cw8CompareChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Note explicative -->
+                    <div class="bg-fuchsia-950/15 border border-fuchsia-800/30 rounded-xl p-3 text-[11px] text-fuchsia-100 leading-relaxed">
+                        <i class="fa-solid fa-circle-info text-fuchsia-400 mr-1"></i>
+                        <b>Lecture :</b> la courbe CW8 suppose que chaque versement (achat réel, DCA, renforcement)
+                        a été placé intégralement sur <b id="cw8-symbol-label-inline">CW8.PA</b> au cours du jour
+                        correspondant, puis conservé jusqu'à aujourd'hui sans arbitrage ni vente. Aucun frais de
+                        courtage n'est modélisé de part et d'autre. L'écart final reflète donc <b>uniquement vos
+                        choix de sélection d'actifs</b>, indépendamment des frais et de la fiscalité.
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCORING ESG DU PORTEFEUILLE (Chantier §3) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-leaf text-emerald-400"></i> Empreinte ESG du portefeuille
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Score moyen pondéré par valeur, basé sur un catalogue statique (MSCI ESG Ratings / Sustainalytics, valeurs indicatives 2024)
+                            et vos éventuelles saisies manuelles. Cliquez sur un actif pour ajuster son score.
+                        </p>
+                    </div>
+                    <button onclick="openEsgMethodModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 flex items-center gap-1.5 whitespace-nowrap transition">
+                        <i class="fa-solid fa-circle-question text-[10px]"></i> Méthode ESG
+                    </button>
+                </div>
+
+                <!-- État vide -->
+                <div id="esg-empty-state" class="hidden bg-gray-950/60 border border-dashed border-gray-700 rounded-xl p-6 text-center">
+                    <i class="fa-solid fa-leaf text-3xl text-emerald-500/40 mb-2 block"></i>
+                    <div class="text-sm font-bold text-gray-300 mb-1">Aucun score ESG disponible</div>
+                    <div class="text-[11px] text-gray-500">
+                        Ajoutez des actifs ou saisissez un score manuellement dans le formulaire d'édition.
+                    </div>
+                </div>
+
+                <!-- Contenu principal -->
+                <div id="esg-content" class="space-y-4">
+
+                    <!-- KPI globaux -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="bg-gradient-to-br from-emerald-950/40 to-teal-950/30 border border-emerald-800/50 rounded-xl p-4">
+                            <div class="text-[10px] text-emerald-300 uppercase tracking-wider mb-1">Score composite du portefeuille</div>
+                            <div id="esg-kpi-score" class="text-3xl font-bold font-mono text-white">—</div>
+                            <div id="esg-kpi-grade" class="text-xs mt-1 font-bold">—</div>
+                        </div>
+                        <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
+                            <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Couverture ESG</div>
+                            <div id="esg-kpi-coverage" class="text-2xl font-bold font-mono text-white">—</div>
+                            <div id="esg-kpi-coverage-detail" class="text-[10px] text-gray-500 mt-1">—</div>
+                        </div>
+                        <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
+                            <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Actifs notés</div>
+                            <div id="esg-kpi-count" class="text-2xl font-bold font-mono text-white">—</div>
+                            <div id="esg-kpi-count-detail" class="text-[10px] text-gray-500 mt-1">—</div>
+                        </div>
+                    </div>
+
+                    <!-- Répartition par grade -->
+                    <div>
+                        <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Répartition par grade ESG</div>
+                        <div id="esg-grade-breakdown" class="space-y-2"></div>
+                    </div>
+
+                    <!-- Top 3 / Flop 3 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-arrow-up text-[10px]"></i> Meilleurs scores ESG (top 3)
+                            </div>
+                            <div id="esg-top3" class="space-y-1.5"></div>
+                        </div>
+                        <div>
+                            <div class="text-[11px] font-bold text-rose-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-arrow-down text-[10px]"></i> Scores ESG les plus faibles (top 3)
+                            </div>
+                            <div id="esg-flop3" class="space-y-1.5"></div>
+                        </div>
+                    </div>
+
+                    <!-- Note méthodologique -->
+                    <div class="bg-blue-950/15 border border-blue-800/30 rounded-xl p-3 text-[10px] text-blue-100 leading-relaxed">
+                        <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i>
+                        <b>Lecture :</b> le score composite est la <b>moyenne pondérée par la valeur</b> de chaque actif noté.
+                        Il donne un ordre de grandeur — les méthodologies ESG divergent fortement entre agences.
+                        Un score AAA ne garantit pas une absence d'impact, et un score CCC ne signifie pas absence d'effort
+                        de la part de l'émetteur. À utiliser comme <b>signal indicatif</b>, pas comme label absolu.
+                    </div>
+                </div>
             </div>
 
             <!-- SUGGESTIONS INTELLIGENTES (Chantier L) -->
@@ -661,8 +1173,36 @@
                     <button data-cat="CADRAN_PETROLE" onclick="filterCategory('CADRAN_PETROLE')" class="filter-btn filter-btn-cadran px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800" id="inv-filter-CADRAN_PETROLE">Cadran Pétrole</button>
                     <button data-cat="CADRAN_ALL4" onclick="filterCategory('CADRAN_ALL4')" class="filter-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">4 Cadrans de Gave</button>
                 </div>
-                <div class="flex items-center gap-2 w-full md:w-auto">
-                    <input type="text" id="inventory-search" oninput="searchInventory()" placeholder="Rechercher un actif..." class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-emerald-500 flex-1 md:w-64">
+                <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
+                    <input type="text" id="inventory-search" oninput="searchInventory()" placeholder="Rechercher un actif... (Ctrl+P pour global)" class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-emerald-500 flex-1 md:w-64">
+
+                    <!-- FILTRES SAUVEGARDÉS (Chantier §9) -->
+                    <div class="relative">
+                        <button type="button" onclick="toggleSavedFiltersMenu(event)" class="px-2 py-1 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-400 hover:text-teal-300 hover:border-teal-800/60 transition flex items-center gap-1.5" title="Filtres sauvegardés (jeux de critères réutilisables)">
+                            <i class="fa-solid fa-filter text-[11px]"></i>
+                            <span class="hidden sm:inline">Filtres</span>
+                        </button>
+                        <div id="saved-filters-menu" class="hidden absolute right-0 top-full mt-2 w-80 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-[60]">
+                            <div class="p-2.5 border-b border-gray-800 bg-gray-950 flex items-center justify-between">
+                                <div>
+                                    <div class="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Filtres sauvegardés</div>
+                                    <div class="text-[10px] text-gray-600 mt-0.5">Jeux de critères réutilisables en 1 clic</div>
+                                </div>
+                                <button type="button" onclick="event.stopPropagation(); promptCreateSavedFilter();" class="px-2 py-1 rounded bg-teal-950/60 text-teal-300 border border-teal-800/50 hover:bg-teal-900/70 text-[10px] font-medium flex items-center gap-1 transition" title="Sauvegarder les filtres actuels">
+                                    <i class="fa-solid fa-plus text-[9px]"></i> Nouveau
+                                </button>
+                            </div>
+                            <div id="saved-filters-menu-list" class="max-h-72 overflow-y-auto">
+                                <div class="p-3 text-[11px] text-gray-500 italic text-center">Aucun filtre sauvegardé.</div>
+                            </div>
+                            <div class="p-2 border-t border-gray-800 bg-gray-950">
+                                <button type="button" onclick="event.stopPropagation(); promptCreateSavedFilter(); closeSavedFiltersMenu();" class="w-full px-3 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-medium transition flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-floppy-disk"></i> Sauvegarder les filtres actuels
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <label class="flex items-center gap-1.5 text-[11px] text-gray-500 whitespace-nowrap" title="Badge ⚠ sur tout actif dépassant ce poids dans le portefeuille">
                         <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
                         Seuil&nbsp;:
@@ -692,6 +1232,8 @@
                                 <th class="p-3 text-right">Total Investi</th>
                                 <th class="p-3 text-right">Valeur Actuelle</th>
                                 <th class="p-3 text-right">Plus / Moins-Value</th>
+                                <th class="p-3 text-center" title="Score ESG (Environnement, Social, Gouvernance) — cliquez sur un actif pour ajuster manuellement">ESG</th>
+                                <th class="p-3 text-right" title="Rendement annuel des dividendes/coupons nets sur les 12 derniers mois, rapporté à la valeur actuelle de l'actif">Rendement</th>
                                 <th class="p-3 text-right">Tendance 30j</th>
                                 <th class="p-3 text-right" title="Taux de Rendement Interne annualisé — intègre le moment de chaque versement">TRI estimé</th>
                                 <th class="p-3 text-center" title="Score 0-100 — synthèse TRI, Sharpe, frais, ancienneté, alpha, concentration">Score ★</th>
@@ -722,6 +1264,71 @@
                     <div class="text-[11px] font-bold text-gray-400 uppercase mb-2">Sauvegardes locales automatiques (7 dernières)</div>
                     <div id="local-backup-list" class="space-y-1.5 max-h-32 overflow-y-auto"></div>
                     <button onclick="createSnapshot('Manuelle'); renderDriveBackupList();" class="mt-2 text-[11px] text-indigo-400 hover:text-indigo-300"><i class="fa-solid fa-plus"></i> Créer une sauvegarde locale maintenant</button>
+                </div>
+
+                <!-- SECTION INDEXEDDB (Chantier 5.2 — dette technique) -->
+                <div class="border-t border-gray-800 pt-4">
+                    <div class="text-[11px] font-bold text-gray-400 uppercase mb-2 flex items-center justify-between">
+                        <span>Miroir IndexedDB (secours)</span>
+                        <span id="idb-status-badge" class="text-[9px] px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 text-gray-500 font-normal">—</span>
+                    </div>
+                    <p class="text-[10px] text-gray-500 mb-2 leading-relaxed">
+                        IndexedDB n'a pas la limite de 5 Mo de localStorage. Un snapshot de secours est écrit automatiquement après chaque modification.
+                    </p>
+                    <div id="idb-snapshot-info" class="bg-gray-950 border border-gray-800 rounded-lg p-2.5 text-[11px] mb-2 space-y-1">
+                        <div class="text-gray-500 italic">Chargement…</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="restoreFromIdbManual()" class="flex-1 px-3 py-2 rounded-lg bg-gray-800 hover:bg-amber-900/60 text-gray-300 hover:text-amber-200 text-[11px] font-medium transition flex items-center justify-center gap-1.5" title="Restaurer le snapshot IndexedDB (écrase les données actuelles)">
+                            <i class="fa-solid fa-rotate-left text-[10px]"></i> Restaurer
+                        </button>
+                        <button onclick="forceIdbSnapshotNow()" class="flex-1 px-3 py-2 rounded-lg bg-gray-800 hover:bg-teal-900/60 text-gray-300 hover:text-teal-200 text-[11px] font-medium transition flex items-center justify-center gap-1.5" title="Forcer une écriture immédiate dans IndexedDB">
+                            <i class="fa-solid fa-floppy-disk text-[10px]"></i> Snapshot maintenant
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SECTION COMPACTION D'HISTORIQUE (Chantier 5.2 — dette technique) -->
+                <div class="border-t border-gray-800 pt-4">
+                    <div class="text-[11px] font-bold text-gray-400 uppercase mb-2 flex items-center justify-between">
+                        <span>Compaction d'historique</span>
+                        <span id="compaction-size-badge" class="text-[9px] px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 text-gray-500 font-normal">—</span>
+                    </div>
+                    <p class="text-[10px] text-gray-500 mb-3 leading-relaxed">
+                        L'historique de valorisation quotidien peut peser lourd sur plusieurs années.
+                        La compaction supprime les points de plus de N années — sans toucher aux <b>lots</b>, <b>achats</b> ni <b>cessions</b> (données fiscales irremplaçables).
+                    </p>
+
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-3 space-y-3 mb-3">
+                        <div>
+                            <div class="flex justify-between items-baseline mb-1.5">
+                                <label class="text-[11px] text-gray-400">Conserver les points des N dernières années :</label>
+                                <span id="compaction-years-label" class="text-sm font-bold font-mono text-white">2 ans</span>
+                            </div>
+                            <input type="range" id="compaction-years-slider" min="1" max="10" step="1" value="2"
+                                   oninput="onCompactionYearsChange(this.value)"
+                                   class="w-full accent-amber-500">
+                            <div class="flex justify-between text-[9px] text-gray-600 mt-0.5">
+                                <span>1 an</span>
+                                <span>5 ans</span>
+                                <span>10 ans</span>
+                            </div>
+                        </div>
+
+                        <!-- Aperçu -->
+                        <div id="compaction-preview" class="bg-gray-900/60 border border-gray-800 rounded-lg p-2.5 text-[11px] space-y-1">
+                            <div class="text-gray-500 italic">Chargement…</div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button onclick="applyCompaction()" id="compaction-apply-btn" class="flex-1 px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-medium transition flex items-center justify-center gap-1.5 shadow-lg shadow-amber-900/30" title="Appliquer la compaction (réversible via Ctrl+Z)">
+                            <i class="fa-solid fa-broom text-[10px]"></i> Compacter maintenant
+                        </button>
+                        <button onclick="refreshCompactionPreview()" class="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium transition" title="Recalculer l'aperçu">
+                            <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="border-t border-gray-800 pt-4">
@@ -1400,6 +2007,59 @@
                 </div>
             </div>
 
+            <!-- OPTIMISEUR FISCAL / RÉCOLTE DE MOINS-VALUES (Chantier 1.8) -->
+            <div class="bg-gray-900/60 border border-emerald-800/40 rounded-xl p-5">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-leaf text-emerald-400"></i> Optimiseur fiscal — Récolte de moins-values
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            Identifie les lots en moins-value latente pour compenser vos plus-values réalisées de l'année.
+                            Imputation <b>par nature fiscale</b> : Titres ↔ Titres, Crypto ↔ Crypto (jamais croisés).
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <label class="flex items-center gap-1.5 text-[11px] text-gray-400 whitespace-nowrap">
+                            Seuil MV :
+                            <input type="number" min="1" max="90" step="1" id="tax-optimizer-threshold" onchange="onTaxOptimizerThresholdChange(this.value)" value="10" class="w-14 bg-gray-950 border border-gray-800 rounded-lg px-1.5 py-1 text-xs text-white font-mono text-right focus:outline-none focus:border-emerald-500">
+                            <span>%</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Bandeau d'économie totale -->
+                <div class="bg-gradient-to-br from-emerald-950/60 to-teal-950/40 border border-emerald-800/50 rounded-xl p-4 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                        <div class="text-[10px] text-emerald-300 uppercase tracking-wider">Économie d'impôt potentielle (année en cours)</div>
+                        <div class="text-2xl font-bold font-mono text-white" id="tax-optimizer-saving-total">0,00 €</div>
+                        <div class="text-[10px] text-gray-400 mt-1" id="tax-optimizer-saving-detail">—</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[10px] text-gray-500 uppercase tracking-wider">Taux marginal appliqué</div>
+                        <div class="text-lg font-bold font-mono text-white" id="tax-optimizer-rate">—</div>
+                        <div class="text-[10px] text-gray-500" id="tax-optimizer-year">—</div>
+                    </div>
+                </div>
+
+                <!-- Grille à 2 colonnes : Titres / Crypto -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <!-- POOL TITRES -->
+                    <div id="tax-optimizer-pool-TITRES" class="bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3"></div>
+                    <!-- POOL CRYPTO -->
+                    <div id="tax-optimizer-pool-CRYPTO" class="bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3"></div>
+                </div>
+
+                <!-- Note pédagogique -->
+                <div class="mt-4 bg-blue-950/20 border border-blue-800/40 rounded-lg p-3 text-[10px] text-blue-200 leading-relaxed">
+                    <i class="fa-solid fa-circle-info mr-1 text-blue-400"></i>
+                    <b>Comment ça marche :</b> une moins-value latente ne devient déductible qu'au moment de la <b>vente effective</b>.
+                    Cliquez sur « Simuler » pour visualiser la vente, puis enregistrez-la via le formulaire de cession habituel.
+                    Les moins-values non utilisées cette année sont <b>reportables 10 ans</b> sur des plus-values de même nature.
+                    Les enveloppes PEA / Assurance-Vie / PER et les métaux précieux ont des régimes distincts et n'apparaissent donc pas dans cet outil.
+                </div>
+            </div>
+
             <!-- REGISTRE DES CESSIONS -->
             <div class="bg-gray-900/60 border border-gray-800 rounded-xl overflow-hidden shadow-xl">
                 <div class="p-4 border-b border-gray-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
@@ -1468,6 +2128,212 @@
 
                 <div class="p-4 bg-gray-950 rounded-xl border border-gray-800 font-mono text-xs space-y-2" id="sim-result-box">
                     <!-- Injected by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB : WATCHLIST / ACTIFS SURVEILLÉS (Chantier 1.4) -->
+        <section id="tab-watchlist" class="tab-content hidden space-y-6">
+
+            <!-- EN-TÊTE -->
+            <div class="bg-amber-950/20 border border-amber-800/40 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div>
+                    <div class="flex items-center gap-2 text-amber-300 text-sm font-bold mb-1">
+                        <i class="fa-solid fa-binoculars"></i> Watchlist — Actifs surveillés
+                    </div>
+                    <p class="text-xs text-gray-300">
+                        Liste d'idées d'investissement indépendante de votre portefeuille. Suivez les cours,
+                        fixez des prix d'entrée cibles, et promouvez une idée en actif réel en un clic.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                    <button onclick="refreshWatchlistPrices()" id="btn-refresh-watchlist" class="px-3 py-1.5 rounded-lg bg-amber-950/60 text-amber-300 border border-amber-700/50 hover:bg-amber-900/80 text-xs font-medium transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrows-rotate" id="icon-refresh-watchlist"></i> Actualiser les cours
+                    </button>
+                    <button onclick="openAddWatchlistModal()" class="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium shadow-lg shadow-amber-900/40 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus text-[10px]"></i> Ajouter une idée
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="bg-gray-900/60 border border-amber-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Idées surveillées</div>
+                    <div class="text-lg font-bold font-mono text-amber-400" id="watchlist-stat-count">0</div>
+                    <div class="text-[10px] text-gray-500" id="watchlist-stat-with-target">0 avec cible</div>
+                </div>
+                <div class="bg-gray-900/60 border border-emerald-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Cibles atteintes</div>
+                    <div class="text-lg font-bold font-mono text-emerald-400" id="watchlist-stat-triggered">0</div>
+                    <div class="text-[10px] text-gray-500">opportunités détectées</div>
+                </div>
+                <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Dernier refresh</div>
+                    <div class="text-sm font-bold font-mono text-white" id="watchlist-stat-last-refresh">—</div>
+                    <div class="text-[10px] text-gray-500">actualisation des cours</div>
+                </div>
+                <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Valeur simulée totale</div>
+                    <div class="text-lg font-bold font-mono text-white" id="watchlist-stat-total-value">0,00 €</div>
+                    <div class="text-[10px] text-gray-500">si vous investissiez 1 unité de chaque</div>
+                </div>
+            </div>
+
+            <!-- Filtres -->
+            <div class="flex flex-wrap items-center gap-1.5">
+                <button data-filter="ALL" onclick="filterWatchlist('ALL')" class="watchlist-filter-btn px-3 py-1.5 rounded-lg bg-gray-800 text-white text-xs border border-gray-700 font-medium">Toutes</button>
+                <button data-filter="TRIGGERED" onclick="filterWatchlist('TRIGGERED')" class="watchlist-filter-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">
+                    <i class="fa-solid fa-bullseye text-[10px] text-emerald-400"></i> Cibles atteintes
+                </button>
+                <button data-filter="WITH_TARGET" onclick="filterWatchlist('WITH_TARGET')" class="watchlist-filter-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">Avec cible</button>
+                <button data-filter="NO_TARGET" onclick="filterWatchlist('NO_TARGET')" class="watchlist-filter-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">Sans cible</button>
+                <button data-filter="CRYPTO" onclick="filterWatchlist('CRYPTO')" class="watchlist-filter-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">
+                    <i class="fa-brands fa-bitcoin text-[10px] text-purple-400"></i> Crypto
+                </button>
+                <button data-filter="STOCK" onclick="filterWatchlist('STOCK')" class="watchlist-filter-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">
+                    <i class="fa-solid fa-chart-line text-[10px] text-emerald-400"></i> Actions / ETF
+                </button>
+            </div>
+
+            <!-- Grille des entrées watchlist -->
+            <div id="watchlist-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+
+        </section>
+
+        <!-- TAB : HISTORIQUE UNIFIÉ (LEDGER CHRONOLOGIQUE) — Chantier 1.10 -->
+        <section id="tab-ledger" class="tab-content hidden space-y-6">
+
+            <!-- EN-TÊTE -->
+            <div class="bg-slate-950/30 border border-slate-700/50 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div>
+                    <div class="flex items-center gap-2 text-slate-200 text-sm font-bold mb-1">
+                        <i class="fa-solid fa-scroll"></i> Historique unifié du portefeuille
+                    </div>
+                    <p class="text-xs text-gray-300">
+                        Vue chronologique de <b>tous</b> les événements : achats, ventes, dividendes, splits, frais et arbitrages.
+                        Exportable en CSV pour votre comptable ou votre déclaration fiscale.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                    <button onclick="downloadCurrentLedgerCSV()" class="px-3 py-1.5 rounded-lg bg-teal-950/60 text-teal-300 border border-teal-700/50 hover:bg-teal-900/80 text-xs font-medium transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-csv text-[10px]"></i> Exporter en CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="bg-gray-900/60 border border-slate-800 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Événements totaux</div>
+                    <div class="text-lg font-bold font-mono text-slate-200" id="ledger-stat-count">0</div>
+                    <div class="text-[10px] text-gray-500" id="ledger-stat-period">—</div>
+                </div>
+                <div class="bg-gray-900/60 border border-emerald-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Total entrées (€)</div>
+                    <div class="text-lg font-bold font-mono text-emerald-400" id="ledger-stat-in">0,00 €</div>
+                    <div class="text-[10px] text-gray-500">ventes, dividendes, coupons</div>
+                </div>
+                <div class="bg-gray-900/60 border border-rose-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Total sorties (€)</div>
+                    <div class="text-lg font-bold font-mono text-rose-400" id="ledger-stat-out">0,00 €</div>
+                    <div class="text-[10px] text-gray-500">achats, frais</div>
+                </div>
+                <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Flux net</div>
+                    <div class="text-lg font-bold font-mono" id="ledger-stat-net">0,00 €</div>
+                    <div class="text-[10px] text-gray-500" id="ledger-stat-net-detail">entrées − sorties</div>
+                </div>
+            </div>
+
+            <!-- Filtres -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-3 space-y-3">
+                <div class="flex flex-wrap items-center gap-1.5" id="ledger-kind-filters">
+                    <button data-kind="ALL" onclick="filterLedgerByKind('ALL')" class="ledger-kind-btn px-3 py-1.5 rounded-lg bg-gray-800 text-white text-xs border border-gray-700 font-medium">Tous</button>
+                    <button data-kind="ACHAT" onclick="filterLedgerByKind('ACHAT')" class="ledger-kind-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">
+                        <i class="fa-solid fa-cart-shopping text-[10px] text-emerald-400"></i> Achats
+                    </button>
+                    <button data-kind="VENTE" onclick="filterLedgerByKind('VENTE')" class="ledger-kind-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">
+                        <i class="fa-solid fa-hand-holding-dollar text-[10px] text-rose-400"></i> Ventes
+                    </button>
+                    <button data-kind="DIVIDENDE" onclick="filterLedgerByKind('DIVIDENDE')" class="ledger-kind-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">
+                        <i class="fa-solid fa-sack-dollar text-[10px] text-emerald-400"></i> Dividendes
+                    </button>
+                    <button data-kind="COUPON" onclick="filterLedgerByKind('COUPON')" class="ledger-kind-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">
+                        <i class="fa-solid fa-landmark text-[10px] text-teal-400"></i> Coupons
+                    </button>
+                    <button data-kind="SPLIT" onclick="filterLedgerByKind('SPLIT')" class="ledger-kind-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">
+                        <i class="fa-solid fa-scissors text-[10px] text-cyan-400"></i> Splits
+                    </button>
+                    <button data-kind="ARBITRAGE" onclick="filterLedgerByKind('ARBITRAGE')" class="ledger-kind-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">
+                        <i class="fa-solid fa-right-left text-[10px] text-indigo-400"></i> Arbitrages
+                    </button>
+                    <button data-kind="FRAIS" onclick="filterLedgerByKind('FRAIS')" class="ledger-kind-btn px-3 py-1.5 rounded-lg bg-gray-900 text-gray-400 hover:text-white text-xs border border-gray-800">
+                        <i class="fa-solid fa-receipt text-[10px] text-amber-400"></i> Frais
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <input type="text" id="ledger-search" oninput="renderLedgerTab()" placeholder="Rechercher (nom, ticker, note)..." class="bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-teal-500">
+                    <select id="ledger-year" onchange="renderLedgerTab()" class="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500">
+                        <option value="">Toutes les années</option>
+                    </select>
+                    <select id="ledger-pool" onchange="renderLedgerTab()" class="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500">
+                        <option value="ALL">Tous les pools fiscaux</option>
+                        <option value="TITRES">Titres (CTO)</option>
+                        <option value="CRYPTO">Cryptomonnaies</option>
+                        <option value="AUTRE">Hors pool / Autres</option>
+                    </select>
+                    <div class="text-[10px] text-gray-500 flex items-center justify-end" id="ledger-filtered-count">—</div>
+                </div>
+            </div>
+
+            <!-- BASCULE VUE TABLEAU / TIMELINE (Chantier §3) -->
+            <div class="flex justify-between items-center gap-3 flex-wrap">
+                <div class="text-[11px] text-gray-500">
+                    <i class="fa-solid fa-eye text-gray-400 mr-1"></i>
+                    Choisissez la vue :
+                </div>
+                <div class="flex rounded-lg bg-gray-950 border border-gray-800 p-0.5 text-[11px]">
+                    <button id="ledger-view-btn-table" onclick="setLedgerView('table')" class="px-2.5 py-1 rounded transition bg-emerald-950 text-emerald-300">
+                        <i class="fa-solid fa-table text-[10px] mr-1"></i> Tableau
+                    </button>
+                    <button id="ledger-view-btn-timeline" onclick="setLedgerView('timeline')" class="px-2.5 py-1 rounded transition text-gray-400 hover:text-white">
+                        <i class="fa-solid fa-stream text-[10px] mr-1"></i> Timeline
+                    </button>
+                </div>
+            </div>
+
+            <!-- VUE TABLEAU (par défaut) -->
+            <div id="ledger-view-table" class="bg-gray-900/60 border border-gray-800 rounded-xl overflow-hidden shadow-xl">
+                <div class="overflow-x-auto max-h-[600px]">
+                    <table class="w-full text-left text-xs text-gray-300">
+                        <thead class="bg-gray-950 text-gray-400 uppercase font-medium border-b border-gray-800 sticky top-0 z-10">
+                            <tr>
+                                <th class="p-3 whitespace-nowrap">Date</th>
+                                <th class="p-3">Type</th>
+                                <th class="p-3">Actif / Source</th>
+                                <th class="p-3 text-right">Quantité</th>
+                                <th class="p-3 text-right">Prix unitaire</th>
+                                <th class="p-3 text-right">Flux (€)</th>
+                                <th class="p-3">Référence</th>
+                                <th class="p-3">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-ledger-body" class="divide-y divide-gray-800/60 font-mono"></tbody>
+                    </table>
+                </div>
+                <div id="ledger-empty" class="hidden p-8 text-center text-gray-500 text-xs italic">
+                    Aucun événement ne correspond aux filtres sélectionnés.
+                </div>
+            </div>
+
+            <!-- VUE TIMELINE (Chantier §3) -->
+            <div id="ledger-view-timeline" class="hidden">
+                <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5 shadow-xl">
+                    <div id="timeline-container" class="max-h-[600px] overflow-y-auto pr-2">
+                        <!-- Injected by JS -->
+                    </div>
                 </div>
             </div>
         </section>
@@ -1583,31 +2449,375 @@
             </button>
         </div>
 
-        <!-- KPIs globaux objectifs -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Objectifs actifs</div>
-                <div class="text-lg font-bold font-mono text-cyan-400" id="goal-stat-count">0</div>
-                <div class="text-[10px] text-gray-500" id="goal-stat-atteints">0 atteint(s)</div>
+        <!-- PANNEAU DCA PLANIFIÉ (Chantier §6) -->
+        <div id="dca-panel" class="bg-gradient-to-br from-emerald-950/40 to-teal-950/30 border border-emerald-800/50 rounded-xl p-5">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+                <div>
+                    <div class="flex items-center gap-2 text-emerald-300 text-base font-bold">
+                        <i class="fa-solid fa-coins"></i> DCA planifié
+                    </div>
+                    <p class="text-xs text-gray-300 mt-0.5">
+                        Rappel mensuel automatique du montant à investir + suggestion du cadran
+                        le plus sous-pondéré (cible 25 %).
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button id="dca-toggle-btn" onclick="toggleDcaEnabled()" class="px-3 py-1.5 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-800/50 hover:bg-emerald-900/70 text-xs font-medium transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-play text-[10px]"></i> Activer
+                    </button>
+                    <button onclick="openDcaConfigModal()" class="px-3 py-1.5 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-700/50 hover:bg-emerald-900/80 text-xs font-medium transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-sliders text-[10px]"></i> Configurer
+                    </button>
+                </div>
             </div>
-            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Patrimoine actuel</div>
-                <div class="text-lg font-bold font-mono text-white" id="goal-stat-current">0,00 €</div>
-                <div class="text-[10px] text-gray-500">total hors positions papier</div>
+
+            <!-- KPIs DCA -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div class="bg-gray-950/60 border border-emerald-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Montant mensuel</div>
+                    <div class="text-lg font-bold font-mono text-white" id="dca-stat-amount">500,00 €</div>
+                    <div class="text-[10px] text-gray-500" id="dca-stat-label">—</div>
+                </div>
+                <div class="bg-gray-950/60 border border-emerald-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Jour du mois</div>
+                    <div class="text-lg font-bold font-mono text-white" id="dca-stat-day">5 du mois</div>
+                    <div class="text-[10px] text-gray-500">tolérance : jours suivants</div>
+                </div>
+                <div class="bg-gray-950/60 border border-emerald-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Dernier rappel</div>
+                    <div class="text-lg font-bold font-mono text-white" id="dca-stat-last">—</div>
+                    <div class="text-[10px] text-gray-500">cooldown 1 mois</div>
+                </div>
+                <div class="bg-gray-950/60 border border-emerald-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Statut</div>
+                    <div class="text-lg font-bold font-mono text-white" id="dca-stat-status">Désactivé</div>
+                    <div class="text-[10px] text-gray-500">rappels automatiques</div>
+                </div>
             </div>
-            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Épargne mensuelle de référence</div>
-                <div class="text-lg font-bold font-mono text-emerald-400" id="goal-stat-monthly">0,00 €</div>
-                <div class="text-[10px] text-gray-500">paramétrable par objectif</div>
+
+            <!-- Suggestion de cadran -->
+            <div class="bg-gray-950/60 border border-emerald-900/40 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div class="flex items-start gap-3 min-w-0">
+                    <i class="fa-solid fa-lightbulb text-emerald-400 mt-0.5 flex-shrink-0"></i>
+                    <div class="min-w-0">
+                        <div class="text-[10px] text-emerald-300 uppercase tracking-wider font-bold mb-1">Suggestion de placement</div>
+                        <div id="dca-suggestion-text" class="text-[11px] text-gray-300 leading-relaxed">
+                            Ajoutez des actifs pour activer la suggestion.
+                        </div>
+                    </div>
+                </div>
+                <div id="dca-suggestion-badge" class="hidden px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/50 text-[9px] font-bold flex-shrink-0"></div>
             </div>
-            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
-                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Probabilité de succès moyenne</div>
-                <div class="text-lg font-bold font-mono text-amber-400" id="goal-stat-success">—</div>
-                <div class="text-[10px] text-gray-500">Monte-Carlo, 5 000 tirages</div>
+        </div>
+
+        <!-- PANNEAU FIRE / INDÉPENDANCE FINANCIÈRE (Chantier 1.9) -->
+        <div id="fire-panel" class="bg-gradient-to-br from-orange-950/40 to-amber-950/30 border border-orange-800/50 rounded-xl p-5">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+                <div>
+                    <div class="flex items-center gap-2 text-orange-300 text-base font-bold">
+                        <i class="fa-solid fa-fire"></i> Indépendance financière (FIRE)
+                    </div>
+                    <p class="text-xs text-gray-300 mt-0.5">
+                        Règle des retraits : capital cible = revenus annuels souhaités ÷ taux de retrait.
+                        Projection Monte-Carlo basée sur la volatilité réelle de votre portefeuille.
+                    </p>
+                </div>
+                <button onclick="openFireConfigModal()" class="px-3 py-1.5 rounded-lg bg-orange-950/60 text-orange-300 border border-orange-700/50 hover:bg-orange-900/80 text-xs font-medium transition flex items-center gap-1.5 flex-shrink-0">
+                    <i class="fa-solid fa-sliders text-[10px]"></i> Configurer
+                </button>
+            </div>
+
+            <!-- KPIs FIRE -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                <div class="bg-gray-950/60 border border-orange-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Capital cible</div>
+                    <div class="text-lg font-bold font-mono text-white" id="fire-stat-target">0,00 €</div>
+                    <div class="text-[10px] text-gray-500" id="fire-stat-target-detail">—</div>
+                </div>
+                <div class="bg-gray-950/60 border border-orange-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Patrimoine actuel</div>
+                    <div class="text-lg font-bold font-mono text-white" id="fire-stat-current">0,00 €</div>
+                    <div class="text-[10px] text-gray-500" id="fire-stat-current-pct">— % de la cible</div>
+                </div>
+                <div class="bg-gray-950/60 border border-orange-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Revenus passifs couverts</div>
+                    <div class="text-lg font-bold font-mono text-amber-400" id="fire-stat-safe-income">0,00 € / an</div>
+                    <div class="text-[10px] text-gray-500" id="fire-stat-coverage">0 % des revenus cibles</div>
+                </div>
+                <div class="bg-gray-950/60 border border-orange-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Horizon estimé</div>
+                    <div class="text-lg font-bold font-mono text-orange-400" id="fire-stat-horizon">—</div>
+                    <div class="text-[10px] text-gray-500" id="fire-stat-horizon-detail">—</div>
+                </div>
+            </div>
+
+            <!-- Barre de progression FIRE -->
+            <div class="bg-gray-950/60 border border-orange-900/40 rounded-xl p-4 mb-4">
+                <div class="flex justify-between items-baseline mb-2">
+                    <span class="text-[11px] font-bold text-orange-300 uppercase tracking-wider">Progression vers l'indépendance</span>
+                    <span class="text-xs font-mono text-white font-bold" id="fire-progress-pct">0.0 %</span>
+                </div>
+                <div class="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
+                    <div id="fire-progress-bar" class="h-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-700" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-gray-500 mt-1.5">
+                    <span id="fire-progress-current">0,00 €</span>
+                    <span id="fire-progress-remaining">Restant : 0,00 €</span>
+                    <span id="fire-progress-target">0,00 €</span>
+                </div>
+            </div>
+
+
+            <!-- Monte-Carlo -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div class="lg:col-span-2 bg-gray-950/60 border border-orange-900/40 rounded-xl p-4">
+                    <div class="text-[11px] font-bold text-orange-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span><i class="fa-solid fa-chart-line text-[10px] mr-1"></i> Distribution des scénarios Monte-Carlo</span>
+                        <button onclick="renderFireMonteCarloChart()" class="text-[10px] text-orange-400 hover:text-orange-300 normal-case" title="Relancer la simulation (5 000 tirages)">
+                            <i class="fa-solid fa-arrows-rotate text-[9px]"></i> Relancer
+                        </button>
+                    </div>
+                    <div class="h-56">
+                        <canvas id="fireMonteCarloChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-gray-950/60 border border-orange-900/40 rounded-xl p-4 space-y-3">
+                    <div class="text-[11px] font-bold text-orange-300 uppercase tracking-wider">Résultats Monte-Carlo</div>
+                    <div>
+                        <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Probabilité d'atteindre le FIRE</div>
+                        <div class="text-2xl font-bold font-mono" id="fire-mc-success">— %</div>
+                        <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden mt-1.5">
+                            <div id="fire-mc-success-bar" class="h-full transition-all" style="width:0%;background:#f97316;"></div>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 text-[11px] font-mono pt-2 border-t border-gray-800">
+                        <div class="flex justify-between">
+                            <span class="text-emerald-400"><i class="fa-solid fa-arrow-up text-[9px]"></i> P10 (rapide)</span>
+                            <span class="text-gray-300" id="fire-mc-p10">— ans</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-amber-400"><i class="fa-solid fa-equals text-[9px]"></i> Médiane (P50)</span>
+                            <span class="text-gray-300 font-bold" id="fire-mc-median">— ans</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-rose-400"><i class="fa-solid fa-arrow-down text-[9px]"></i> P90 (lent)</span>
+                            <span class="text-gray-300" id="fire-mc-p90">— ans</span>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-gray-500 leading-relaxed pt-2 border-t border-gray-800">
+                        <i class="fa-solid fa-circle-info mr-1"></i>
+                        Simulation de <b>5 000 trajectoires</b> sur 50 ans max, avec la <b>volatilité réelle</b> de votre portefeuille
+                        (<span id="fire-mc-vol">—</span>). Rendement réel attendu : <span id="fire-mc-return">—</span>.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIMULATEUR DE SORTIE PROGRESSIVE (Chantier §9) -->
+        <div id="withdrawal-panel" class="bg-gradient-to-br from-violet-950/40 to-indigo-950/30 border border-violet-800/50 rounded-xl p-5">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+                <div>
+                    <div class="flex items-center gap-2 text-violet-300 text-base font-bold">
+                        <i class="fa-solid fa-wallet"></i> Simulateur de sortie progressive
+                    </div>
+                    <p class="text-xs text-gray-300 mt-0.5">
+                        « Puis-je retirer X €/mois à la retraite et tenir sur N années ? »
+                        Monte-Carlo sur 5 000 trajectoires avec la volatilité réelle de votre portefeuille.
+                    </p>
+                </div>
+                <button onclick="openWithdrawalConfigModal()" class="px-3 py-1.5 rounded-lg bg-violet-950/60 text-violet-300 border border-violet-700/50 hover:bg-violet-900/80 text-xs font-medium transition flex items-center gap-1.5 flex-shrink-0">
+                    <i class="fa-solid fa-sliders text-[10px]"></i> Configurer
+                </button>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                <div class="bg-gray-950/60 border border-violet-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Probabilité de survie</div>
+                    <div id="withdrawal-stat-success" class="text-2xl font-bold font-mono text-white">— %</div>
+                    <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden mt-2">
+                        <div id="withdrawal-stat-success-bar" class="h-full transition-all" style="width:0%;background:#8b5cf6;"></div>
+                    </div>
+                    <div class="text-[10px] text-gray-500 mt-1">sur la durée configurée</div>
+                </div>
+                <div class="bg-gray-950/60 border border-violet-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Capital de départ</div>
+                    <div class="text-lg font-bold font-mono text-white" id="withdrawal-stat-capital">0,00 €</div>
+                    <div class="text-[10px] text-gray-500 mt-1">patrimoine réel actuel</div>
+                </div>
+                <div class="bg-gray-950/60 border border-violet-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Retrait mensuel</div>
+                    <div class="text-lg font-bold font-mono text-white" id="withdrawal-stat-monthly">0,00 € / mois</div>
+                    <div class="text-[10px] text-gray-500 mt-1">en euros constants (inflation ajustée)</div>
+                </div>
+                <div class="bg-gray-950/60 border border-violet-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Taux de retrait implicite</div>
+                    <div class="text-lg font-bold font-mono text-white" id="withdrawal-stat-rate">— % / an</div>
+                    <div class="text-[10px] text-gray-500 mt-1">sanity check vs règle des 4 %</div>
+                </div>
+            </div>
+
+            <!-- Diagnostic + percentiles -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div class="lg:col-span-2 bg-gray-950/60 border border-violet-900/40 rounded-xl p-4 space-y-3">
+                    <div class="text-[11px] font-bold text-violet-300 uppercase tracking-wider">Distribution du capital à échéance</div>
+                    <div class="grid grid-cols-3 gap-2 text-[11px] font-mono">
+                        <div class="bg-gray-900/60 border border-rose-900/40 rounded-lg p-2">
+                            <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">P10 (pessimiste)</div>
+                            <div class="font-bold text-gray-300" id="withdrawal-stat-p10">—</div>
+                        </div>
+                        <div class="bg-gray-900/60 border border-violet-900/40 rounded-lg p-2">
+                            <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Médiane (P50)</div>
+                            <div class="font-bold text-white" id="withdrawal-stat-median">—</div>
+                        </div>
+                        <div class="bg-gray-900/60 border border-emerald-900/40 rounded-lg p-2">
+                            <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">P90 (optimiste)</div>
+                            <div class="font-bold text-gray-300" id="withdrawal-stat-p90">—</div>
+                        </div>
+                    </div>
+                    <div id="withdrawal-diagnostic" class="text-[11px] leading-relaxed text-gray-500 italic">Ajoutez des actifs pour lancer la simulation.</div>
+                    <div id="withdrawal-depletion-alert" class="hidden bg-rose-950/40 border border-rose-800/50 rounded-lg p-2.5 text-[11px] text-rose-200"></div>
+                </div>
+
+                <!-- Méthodologie -->
+                <div class="bg-gray-950/60 border border-violet-900/40 rounded-xl p-4 space-y-2.5">
+                    <div class="text-[11px] font-bold text-violet-300 uppercase tracking-wider">Hypothèses</div>
+                    <div class="flex justify-between text-[11px]">
+                        <span class="text-gray-500">Volatilité retenue</span>
+                        <span class="font-mono text-gray-300" id="withdrawal-stat-vol">—</span>
+                    </div>
+                    <div class="flex justify-between text-[11px]">
+                        <span class="text-gray-500">Rendement réel</span>
+                        <span class="font-mono text-gray-300" id="withdrawal-stat-real">—</span>
+                    </div>
+                    <div class="text-[10px] text-gray-500 leading-relaxed pt-2 border-t border-gray-800">
+                        <i class="fa-solid fa-circle-info mr-1"></i>
+                        Simulation Monte-Carlo · 5 000 trajectoires · méthode Fisher exacte pour le rendement réel
+                        (retraits en euros constants).
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIMULATEUR PER (Chantier §3) -->
+        <div id="per-panel" class="bg-gradient-to-br from-indigo-950/40 to-blue-950/30 border border-indigo-800/50 rounded-xl p-5">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+                <div>
+                    <div class="flex items-center gap-2 text-indigo-300 text-base font-bold">
+                        <i class="fa-solid fa-piggy-bank"></i> Simulateur PER — Plan Épargne Retraite
+                    </div>
+                    <p class="text-xs text-gray-300 mt-0.5">
+                        Projetez votre capital retraite, comparez les 3 modes de sortie (capital / rente / mixte) et mesurez l'avantage fiscal du PER par rapport à un CTO équivalent.
+                    </p>
+                </div>
+                <button onclick="openPerConfigModal()" class="px-3 py-1.5 rounded-lg bg-indigo-950/60 text-indigo-300 border border-indigo-700/50 hover:bg-indigo-900/80 text-xs font-medium transition flex items-center gap-1.5 flex-shrink-0">
+                    <i class="fa-solid fa-sliders text-[10px]"></i> Configurer
+                </button>
+            </div>
+
+            <!-- KPIs principaux -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                <div class="bg-gray-950/60 border border-indigo-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Capital à la retraite</div>
+                    <div class="text-lg font-bold font-mono text-white" id="per-kpi-final">0,00 €</div>
+                    <div class="text-[10px] text-gray-500" id="per-kpi-years">—</div>
+                </div>
+                <div class="bg-gray-950/60 border border-emerald-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Économie d'impôt immédiate</div>
+                    <div class="text-lg font-bold font-mono text-emerald-400" id="per-kpi-economy">0,00 €</div>
+                    <div class="text-[10px] text-gray-500" id="per-kpi-economy-detail">—</div>
+                </div>
+                <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Net après fiscalité</div>
+                    <div class="text-lg font-bold font-mono text-white" id="per-kpi-net">0,00 €</div>
+                    <div class="text-[10px] text-gray-500" id="per-kpi-net-detail">—</div>
+                </div>
+                <div class="bg-gray-950/60 border border-amber-900/40 rounded-xl p-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Avantage PER vs CTO</div>
+                    <div class="text-lg font-bold font-mono" id="per-kpi-advantage">0,00 €</div>
+                    <div class="text-[10px] text-gray-500" id="per-kpi-advantage-detail">—</div>
+                </div>
+            </div>
+
+            <!-- Sélecteur mode de sortie -->
+            <div class="mb-4">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Mode de sortie</div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button data-per-mode="capital" onclick="setPerExitMode('capital')" class="per-mode-btn p-3 rounded-xl border text-left transition">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-coins text-amber-400"></i>
+                            <span class="font-bold text-white text-[12px]">Capital</span>
+                        </div>
+                        <div class="text-[10px] text-gray-500 leading-relaxed">Retrait unique, imposition immédiate.</div>
+                    </button>
+                    <button data-per-mode="rente" onclick="setPerExitMode('rente')" class="per-mode-btn p-3 rounded-xl border text-left transition">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-calendar-check text-emerald-400"></i>
+                            <span class="font-bold text-white text-[12px]">Rente viagère</span>
+                        </div>
+                        <div class="text-[10px] text-gray-500 leading-relaxed">Revenu à vie, fiscalité étalée.</div>
+                    </button>
+                    <button data-per-mode="mixte" onclick="setPerExitMode('mixte')" class="per-mode-btn p-3 rounded-xl border text-left transition">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-scale-balanced text-cyan-400"></i>
+                            <span class="font-bold text-white text-[12px]">Mixte</span>
+                        </div>
+                        <div class="text-[10px] text-gray-500 leading-relaxed">Un peu des deux — répartition ajustable.</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Détail fiscal du mode sélectionné -->
+            <div id="per-detail-block" class="bg-gray-950/60 border border-indigo-900/40 rounded-xl p-4 mb-4 space-y-2 text-[11px]">
+                <div class="text-[10px] text-indigo-300 uppercase tracking-wider font-bold mb-2" id="per-detail-title">Détail fiscal — Sortie en capital</div>
+                <div id="per-detail-content" class="space-y-1.5 font-mono"></div>
+            </div>
+
+            <!-- Graphique trajectoire -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div class="lg:col-span-2 bg-gray-950/60 border border-indigo-900/40 rounded-xl p-4">
+                    <div class="text-[11px] font-bold text-indigo-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span><i class="fa-solid fa-chart-line text-[10px] mr-1"></i> Trajectoire du capital PER jusqu'à la retraite</span>
+                        <button onclick="renderPerChart()" class="text-[10px] text-indigo-400 hover:text-indigo-300 normal-case" title="Redessiner le graphique">
+                            <i class="fa-solid fa-arrows-rotate text-[9px]"></i>
+                        </button>
+                    </div>
+                    <div class="h-56">
+                        <canvas id="perTrajectoryChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-gray-950/60 border border-indigo-900/40 rounded-xl p-4 space-y-3">
+                    <div class="text-[11px] font-bold text-indigo-300 uppercase tracking-wider">Distribution Monte-Carlo</div>
+                    <div class="space-y-2 text-[11px] font-mono">
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-rose-400"><i class="fa-solid fa-arrow-down text-[9px]"></i> P10 (pessimiste)</span>
+                            <span class="text-gray-300" id="per-mc-p10">—</span>
+                        </div>
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-amber-400"><i class="fa-solid fa-equals text-[9px]"></i> P50 (médian)</span>
+                            <span class="text-gray-300 font-bold" id="per-mc-p50">—</span>
+                        </div>
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-emerald-400"><i class="fa-solid fa-arrow-up text-[9px]"></i> P90 (optimiste)</span>
+                            <span class="text-gray-300" id="per-mc-p90">—</span>
+                        </div>
+                        <div class="flex justify-between items-baseline pt-2 border-t border-gray-800">
+                            <span class="text-gray-400">Moyenne</span>
+                            <span class="text-white font-bold" id="per-mc-mean">—</span>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-gray-500 leading-relaxed pt-2 border-t border-gray-800">
+                        <i class="fa-solid fa-circle-info mr-1"></i>
+                        5 000 trajectoires avec volatilité <b>12 %/an</b>. Percentiles du capital à la retraite.
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Grille des objectifs -->
+
         <div id="goals-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
 
         <!-- Détail d'un objectif (rendu à la volée) -->
@@ -1665,7 +2875,388 @@
         </div>
     </div>
 
+    <!-- MODAL : CONFIGURATION DCA PLANIFIÉ (Chantier §6) -->
+    <div id="modal-dca-config" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-coins text-emerald-400"></i> Configuration DCA planifié
+                </h3>
+                <button onclick="closeModal('modal-dca-config')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleSaveDcaConfig(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
+                <div>
+                    <label class="block text-gray-400 mb-1">Nom du plan *</label>
+                    <input type="text" id="dca-input-label" required placeholder="ex: DCA mensuel, Épargne retraite…" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Montant mensuel (€) *</label>
+                        <input type="number" step="any" id="dca-input-amount" required value="500" oninput="updateDcaPreview()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Jour du mois * <span class="text-gray-600 text-[10px]">(1-28)</span></label>
+                        <input type="number" min="1" max="28" id="dca-input-day" required value="5" oninput="updateDcaPreview()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-400 mb-1">
+                        Cadran cible
+                        <span class="text-gray-600 text-[10px] ml-1">— laissez sur « Auto » pour une suggestion dynamique</span>
+                    </label>
+                    <select id="dca-input-cadran" onchange="updateDcaPreview()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
+                        <option value="">Auto — Suggestion dynamique (cadran le plus sous-pondéré)</option>
+                        <option value="OR">Cadran 1 : OR</option>
+                        <option value="MONNAIES">Cadran 2 : MONNAIES / DEVISES</option>
+                        <option value="ASIE">Cadran 3 : ACTIONS / ASIE</option>
+                        <option value="PETROLE">Cadran 4 : PÉTROLE / COMMODITIES</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-400 mb-1">Notes (optionnel)</label>
+                    <textarea id="dca-input-notes" rows="2" placeholder="ex: à ajuster selon les revenus du mois…" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500"></textarea>
+                </div>
+
+                <!-- Aperçu -->
+                <div class="bg-emerald-950/30 border border-emerald-800/50 rounded-lg p-3 space-y-2">
+                    <div class="text-[10px] text-emerald-300 uppercase tracking-wider font-bold">Aperçu</div>
+                    <div class="flex justify-between items-baseline">
+                        <span class="text-[11px] text-gray-300">Effort annuel :</span>
+                        <span class="text-lg font-mono font-bold text-white" id="dca-preview-annual">—</span>
+                    </div>
+                    <div class="text-[10px] text-gray-400 leading-relaxed" id="dca-preview-suggestion">
+                        Suggestion de répartition en cours de calcul…
+                    </div>
+                </div>
+
+                <div class="bg-blue-950/20 border border-blue-800/40 rounded-lg p-2.5 text-[10px] text-blue-200 leading-relaxed">
+                    <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i>
+                    <b>Fonctionnement :</b> à partir du jour configuré, un rappel est envoyé (toast + notification système) une fois par mois.
+                    Le bouton « Enregistrer l'achat » ouvre le formulaire d'ajout pré-rempli avec le montant, le cadran suggéré et un bandeau contextuel.
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2 border-t border-gray-800">
+                    <button type="button" onclick="closeModal('modal-dca-config')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium">
+                        <i class="fa-solid fa-check text-[10px] mr-1"></i> Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL : CONFIGURATION FIRE (Chantier 1.9) -->
+    <div id="modal-fire-config" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-fire text-orange-400"></i> Configuration FIRE
+                </h3>
+                <button onclick="closeModal('modal-fire-config')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleSaveFireConfig(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
+                <div>
+                    <label class="block text-gray-400 mb-1">Revenus annuels souhaités (€/an) *</label>
+                    <input type="number" step="any" id="fire-input-income" required placeholder="ex: 30000" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-orange-500">
+                    <p class="text-[10px] text-gray-500 mt-1">Ce que vous voulez pouvoir retirer chaque année, en euros constants (d'aujourd'hui).</p>
+                </div>
+
+                <div>
+                    <label class="block text-gray-400 mb-1">Taux de retrait annuel *</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex items-center gap-2 p-2.5 rounded-lg border border-gray-800 cursor-pointer hover:border-orange-600 transition has-[:checked]:border-orange-500 has-[:checked]:bg-orange-950/20">
+                            <input type="radio" name="fire-rate" value="0.03" onchange="updateFirePreview()" class="accent-orange-500">
+                            <span>
+                                <span class="block font-bold text-white text-[11px]">3 %</span>
+                                <span class="block text-[9px] text-gray-500">Prudent</span>
+                            </span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 rounded-lg border border-gray-800 cursor-pointer hover:border-orange-600 transition has-[:checked]:border-orange-500 has-[:checked]:bg-orange-950/20">
+                            <input type="radio" name="fire-rate" value="0.04" checked onchange="updateFirePreview()" class="accent-orange-500">
+                            <span>
+                                <span class="block font-bold text-white text-[11px]">4 %</span>
+                                <span class="block text-[9px] text-gray-500">Standard</span>
+                            </span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 rounded-lg border border-gray-800 cursor-pointer hover:border-orange-600 transition has-[:checked]:border-orange-500 has-[:checked]:bg-orange-950/20">
+                            <input type="radio" name="fire-rate" value="0.05" onchange="updateFirePreview()" class="accent-orange-500">
+                            <span>
+                                <span class="block font-bold text-white text-[11px]">5 %</span>
+                                <span class="block text-[9px] text-gray-500">Agressif</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Épargne mensuelle (€)</label>
+                        <input type="number" step="any" id="fire-input-monthly" placeholder="1000" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-orange-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Rendement attendu (%/an)</label>
+                        <input type="number" step="any" id="fire-input-return" placeholder="7" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-orange-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Inflation attendue (%/an)</label>
+                        <input type="number" step="any" id="fire-input-inflation" placeholder="2" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-orange-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Marge de sécurité (×)</label>
+                        <input type="number" step="any" id="fire-input-buffer" placeholder="1.0" min="0.5" max="3" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-orange-500">
+                        <p class="text-[10px] text-gray-500 mt-1">× 1.0 = cible stricte, × 1.2 = +20 % de marge.</p>
+                    </div>
+                </div>
+
+                <!-- Aperçu en temps réel -->
+                <div class="bg-orange-950/30 border border-orange-800/50 rounded-lg p-3 space-y-1.5">
+                    <div class="text-[10px] text-orange-300 uppercase tracking-wider font-bold">Aperçu du capital cible</div>
+                    <div class="flex justify-between items-baseline">
+                        <span class="text-[11px] text-gray-300">Capital requis :</span>
+                        <span class="text-lg font-mono font-bold text-white" id="fire-preview-target">—</span>
+                    </div>
+                    <div class="text-[10px] text-gray-500 leading-relaxed" id="fire-preview-formula">—</div>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2 border-t border-gray-800">
+                    <button type="button" onclick="closeModal('modal-fire-config')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-medium">
+                        <i class="fa-solid fa-fire text-[10px] mr-1"></i> Enregistrer la config
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+        <!-- MODAL : ONBOARDING WIZARD (Chantier 2.3) -->
+    <div id="modal-onboarding" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+
+            <!-- En-tête -->
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gradient-to-r from-emerald-950/40 to-teal-950/30">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white text-lg shadow-lg shadow-emerald-900/30">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                            Bienvenue dans PatriMonial
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/50 font-medium">Assistant de démarrage</span>
+                        </h3>
+                        <p class="text-[11px] text-gray-400 mt-0.5">4 étapes rapides pour configurer votre portefeuille</p>
+                    </div>
+                </div>
+                <button onclick="skipOnboardingForever()" class="text-[11px] text-gray-500 hover:text-gray-300 flex items-center gap-1 transition" title="Passer définitivement">
+                    Passer <i class="fa-solid fa-xmark text-[10px]"></i>
+                </button>
+            </div>
+
+            <!-- Indicateur d'étapes -->
+            <div class="px-6 pt-4 pb-2 bg-gray-950/40">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="onboarding-step-label" class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Étape 1 sur 4</span>
+                    <span id="onboarding-step-percent" class="text-[11px] font-mono text-gray-500">25 %</span>
+                </div>
+                <div class="flex gap-1.5">
+                    <div id="onboarding-progress-0" class="flex-1 h-1.5 rounded-full bg-gray-800 transition-all"></div>
+                    <div id="onboarding-progress-1" class="flex-1 h-1.5 rounded-full bg-gray-800 transition-all"></div>
+                    <div id="onboarding-progress-2" class="flex-1 h-1.5 rounded-full bg-gray-800 transition-all"></div>
+                    <div id="onboarding-progress-3" class="flex-1 h-1.5 rounded-full bg-gray-800 transition-all"></div>
+                </div>
+            </div>
+
+            <!-- Contenu dynamique de l'étape (rempli par renderOnboardingStep) -->
+            <div id="onboarding-step-content" class="p-6 overflow-y-auto flex-grow text-xs">
+                <!-- Injected by JS -->
+            </div>
+
+            <!-- Pied de page -->
+            <div class="p-4 border-t border-gray-800 bg-gray-950/60 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <button onclick="skipOnboardingOnce()" class="text-[11px] text-gray-500 hover:text-gray-300 transition order-2 sm:order-1" title="Fermer et reprendre plus tard">
+                    <i class="fa-solid fa-clock-rotate-left text-[10px] mr-1"></i> Reprendre plus tard
+                </button>
+                <div class="flex gap-2 order-1 sm:order-2">
+                    <button type="button" id="onboarding-prev-btn" onclick="prevOnboardingStep()" class="hidden px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-medium transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrow-left text-[10px]"></i> Précédent
+                    </button>
+                    <button type="button" onclick="nextOnboardingStep()" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition flex items-center gap-1.5">
+                        <span id="onboarding-next-label">Suivant</span>
+                        <i id="onboarding-next-icon" class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : CONFIGURATION DU SIMULATEUR DE SORTIE PROGRESSIVE (Chantier §9) -->
+    <div id="modal-withdrawal-config" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-wallet text-violet-400"></i> Configuration — Sortie progressive
+                </h3>
+                <button onclick="closeModal('modal-withdrawal-config')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleSaveWithdrawalConfig(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
+
+                <div>
+                    <label class="block text-gray-400 mb-1">Retrait mensuel souhaité (€ constants) *</label>
+                    <input type="number" step="any" id="wd-input-monthly" required value="2500" oninput="updateWithdrawalPreview()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-violet-500">
+                    <p class="text-[10px] text-gray-500 mt-1">Ce que vous voulez retirer chaque mois, exprimé en euros d'aujourd'hui (ajusté à l'inflation chaque année).</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Horizon (années) *</label>
+                        <input type="number" min="1" max="60" id="wd-input-years" required value="30" oninput="updateWithdrawalPreview()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Rendement nominal (%/an)</label>
+                        <input type="number" step="any" id="wd-input-return" value="5.00" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-violet-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Inflation (%/an)</label>
+                        <input type="number" step="any" id="wd-input-inflation" value="2.00" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Volatilité (%/an)</label>
+                        <input type="number" step="any" id="wd-input-vol" placeholder="vide = vol. réelle" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-violet-500">
+                        <p class="text-[10px] text-gray-500 mt-1">Vide = utilise la volatilité réelle calculée depuis votre portefeuille.</p>
+                    </div>
+                </div>
+
+                <!-- Aperçu -->
+                <div class="bg-violet-950/30 border border-violet-800/50 rounded-lg p-3 space-y-2">
+                    <div class="text-[10px] text-violet-300 uppercase tracking-wider font-bold">Aperçu naïf (sans rendement)</div>
+                    <div class="flex justify-between items-baseline">
+                        <span class="text-[11px] text-gray-300">Retraits nominaux bruts :</span>
+                        <span class="text-lg font-mono font-bold text-white" id="wd-preview-total">—</span>
+                    </div>
+                    <div class="text-[10px] text-gray-500 leading-relaxed" id="wd-preview-detail">
+                        Retraits nominaux bruts sur la durée configurée (sans prise en compte du rendement ni de l'inflation)
+                    </div>
+                </div>
+
+                <div class="bg-blue-950/20 border border-blue-800/40 rounded-lg p-2.5 text-[10px] text-blue-200 leading-relaxed">
+                    <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i>
+                    <b>Méthode :</b> Monte-Carlo sur 5 000 trajectoires mensuelles. Le rendement réel (Fisher exact)
+                    est appliqué mois par mois avec un tirage gaussien calé sur la volatilité réelle. Les retraits
+                    sont constants en euros d'aujourd'hui — ils ne sont donc jamais « mangés » par l'inflation.
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2 border-t border-gray-800">
+                    <button type="button" onclick="closeModal('modal-withdrawal-config')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium">
+                        <i class="fa-solid fa-check text-[10px] mr-1"></i> Enregistrer & simuler
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL : CONFIGURATION PER (Chantier §3) -->
+    <div id="modal-per-config" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-piggy-bank text-indigo-400"></i> Configuration PER
+                </h3>
+                <button onclick="closeModal('modal-per-config')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleSavePerConfig(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
+
+                <!-- Profil actuel -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Âge actuel *</label>
+                        <input type="number" min="18" max="80" id="per-input-current-age" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Âge de retraite *</label>
+                        <input type="number" min="40" max="85" id="per-input-retirement-age" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Solde PER actuel (€)</label>
+                        <input type="number" step="any" id="per-input-balance" placeholder="0" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Versement mensuel (€)</label>
+                        <input type="number" step="any" id="per-input-monthly" placeholder="300" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Rendement attendu (%/an)</label>
+                        <input type="number" step="any" id="per-input-return" placeholder="5" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Taux d'annuité viagère (%)</label>
+                        <input type="number" step="any" id="per-input-annuity" placeholder="4" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">TMI actuelle</label>
+                        <select id="per-input-tmi-entry" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500">
+                            <option value="0">0 %</option>
+                            <option value="0.11">11 %</option>
+                            <option value="0.30" selected>30 %</option>
+                            <option value="0.41">41 %</option>
+                            <option value="0.45">45 %</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">TMI estimée à la retraite</label>
+                        <select id="per-input-tmi-retirement" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500">
+                            <option value="0">0 %</option>
+                            <option value="0.11" selected>11 %</option>
+                            <option value="0.30">30 %</option>
+                            <option value="0.41">41 %</option>
+                            <option value="0.45">45 %</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-400 mb-1">Répartition capital / rente (mode mixte)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="range" id="per-input-mixed" min="0" max="100" step="5" value="50" class="flex-1 accent-indigo-500" oninput="document.getElementById('per-mixed-label').innerText = this.value + ' % capital / ' + (100-this.value) + ' % rente';">
+                        <span id="per-mixed-label" class="w-40 text-[10px] text-right text-gray-300 font-mono">50 % capital / 50 % rente</span>
+                    </div>
+                </div>
+
+                <div class="bg-indigo-950/20 border border-indigo-800/40 rounded-lg p-2.5 text-[10px] text-indigo-200 leading-relaxed">
+                    <i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>
+                    <b>Rappel fiscal :</b> les versements PER sont déductibles du revenu imposable (économie immédiate = versement × TMI).
+                    À la sortie, la part « versements » est imposée au barème IR (avec abattement 10 %), la part « plus-values » au PFU 30 %.
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2 border-t border-gray-800">
+                    <button type="button" onclick="closeModal('modal-per-config')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium">
+                        <i class="fa-solid fa-piggy-bank text-[10px] mr-1"></i> Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL : GESTION DES ALERTES -->
+
     <div id="modal-alerts" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
@@ -2066,6 +3657,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button onclick="openSplitModal(currentAssetDetailId)" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:text-cyan-400" title="Enregistrer un split ou reverse split (neutre fiscalement)"><i class="fa-solid fa-scissors"></i></button>
                     <button id="modal-asset-edit-btn" onclick="openEditAssetModal(currentAssetDetailId); closeModal('modal-asset-detail');" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:text-indigo-400"><i class="fa-solid fa-pen"></i></button>
                     <button onclick="closeModal('modal-asset-detail')" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
                 </div>
@@ -2118,6 +3710,378 @@
                             <tbody id="modal-asset-lots-body" class="divide-y divide-gray-800/60 font-mono"></tbody>
                         </table>
                     </div>
+                </div>
+
+                <!-- HISTORIQUE DES SPLITS / REVERSE SPLITS (Chantier 1.3) -->
+                <div>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                        <div class="text-xs font-bold text-gray-300 uppercase flex items-center gap-2">
+                            <i class="fa-solid fa-scissors text-cyan-400"></i>
+                            Historique des splits &amp; regroupements
+                            <span id="asset-splits-count-badge" class="hidden px-1.5 py-0.5 rounded bg-cyan-950 border border-cyan-700/50 text-cyan-300 text-[9px] font-mono">0</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-[11px]">
+                            <span id="asset-splits-summary" class="text-gray-500 font-mono">—</span>
+                            <button type="button" onclick="openSplitModal(currentAssetDetailId)" class="px-2.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-medium flex items-center gap-1.5 transition" title="Enregistrer un nouveau split">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Split
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border border-gray-800">
+                        <table class="w-full text-left text-xs text-gray-300">
+                            <thead class="bg-gray-950 text-gray-400 uppercase font-medium">
+                                <tr>
+                                    <th class="p-2.5">Date d'effet</th>
+                                    <th class="p-2.5">Opération</th>
+                                    <th class="p-2.5 text-right">Ratio</th>
+                                    <th class="p-2.5">Note</th>
+                                    <th class="p-2.5 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-asset-splits-body" class="divide-y divide-gray-800/60 font-mono"></tbody>
+                        </table>
+                    </div>
+                    <div id="asset-splits-empty" class="hidden text-center text-gray-500 text-xs py-4 italic">
+                        Aucun split enregistré pour cet actif.
+                    </div>
+                </div>
+
+                <!-- DÉTAIL DES DIVIDENDES / COUPONS (Chantier 1.1) -->
+                <div>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                        <div class="text-xs font-bold text-gray-300 uppercase flex items-center gap-2">
+                            <i class="fa-solid fa-sack-dollar text-emerald-400"></i>
+                            Dividendes &amp; coupons perçus
+                            <span id="asset-dividends-count-badge" class="hidden px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-700/50 text-emerald-300 text-[9px] font-mono">0</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-[11px]">
+                            <span id="asset-dividends-summary" class="text-gray-500 font-mono">—</span>
+                            <button type="button" onclick="openAddDividendModal(currentAssetDetailId)" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium flex items-center gap-1.5 transition" title="Enregistrer un nouveau dividende / coupon">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Ajouter
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border border-gray-800">
+                        <table class="w-full text-left text-xs text-gray-300">
+                            <thead class="bg-gray-950 text-gray-400 uppercase font-medium">
+                                <tr>
+                                    <th class="p-2.5 cursor-pointer hover:text-white select-none" onclick="sortDividends('date')">Date <i id="dividends-sort-icon-date" class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                                    <th class="p-2.5">Type</th>
+                                    <th class="p-2.5">Source / Libellé</th>
+                                    <th class="p-2.5 text-right">Montant brut</th>
+                                    <th class="p-2.5 text-right">Retenue</th>
+                                    <th class="p-2.5 text-right">Net perçu</th>
+                                    <th class="p-2.5 text-right">Cumul 12m</th>
+                                    <th class="p-2.5 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-asset-dividends-body" class="divide-y divide-gray-800/60 font-mono"></tbody>
+                        </table>
+                    </div>
+                    <div id="asset-dividends-empty" class="hidden text-center text-gray-500 text-xs py-4 italic">
+                        Aucun dividende enregistré pour cet actif — cliquez sur « Ajouter » ci-dessus.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : AJOUTER / ÉDITER UN DIVIDENDE -->
+    <div id="modal-add-dividend" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 id="modal-dividend-title" class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-sack-dollar text-emerald-400"></i> Nouveau dividende
+                </h3>
+                <button onclick="closeModal('modal-add-dividend')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleAddDividend(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
+                <input type="hidden" id="dividend-edit-id">
+                <input type="hidden" id="dividend-asset-id">
+                <div>
+                    <label class="block text-gray-400 mb-1">Date de versement *</label>
+                    <input type="date" id="dividend-date" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1">Type *</label>
+                    <select id="dividend-kind" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
+                        <option value="DIVIDENDE">Dividende (action, ETF distribuant)</option>
+                        <option value="COUPON">Coupon (obligation)</option>
+                        <option value="INTERET">Intérêt (livret, cash, staking)</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Montant brut *</label>
+                        <input type="number" step="any" id="dividend-amount" required placeholder="25.00" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Devise</label>
+                        <select id="dividend-currency" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
+                            <option value="EUR">EUR €</option>
+                            <option value="USD">USD $</option>
+                            <option value="GBP">GBP £</option>
+                            <option value="CHF">CHF</option>
+                            <option value="JPY">JPY ¥</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1">Retenue à la source (€) <span class="text-gray-600">— prélevée par le pays émetteur, avant versement</span></label>
+                    <input type="number" step="any" id="dividend-withheld" value="0" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-1">Source / Libellé (optionnel)</label>
+                    <input type="text" id="dividend-source" placeholder="ex: Boursorama, Trade Republic, Binance…" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="bg-emerald-950/30 border border-emerald-800/50 rounded-lg p-2.5 text-[10px] text-emerald-200 leading-relaxed">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    Le montant <b>net perçu</b> (brut − retenue) est ajouté comme flux positif dans le calcul du TRI. La fiscalité (PFU 30 % ou exonération PEA) est estimée dans le bandeau « Revenus passifs ».
+                </div>
+                <div class="pt-2 flex justify-end gap-2 border-t border-gray-800">
+                    <button type="button" onclick="closeModal('modal-add-dividend')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL : ENREGISTRER UN SPLIT / REVERSE SPLIT (Chantier 1.3) -->
+    <div id="modal-add-split" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-scissors text-cyan-400"></i> Enregistrer un split
+                </h3>
+                <button onclick="closeModal('modal-add-split')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleAddSplit(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
+                <input type="hidden" id="split-asset-id">
+
+                <!-- Récap de l'actif ciblé -->
+                <div class="bg-gray-950 border border-gray-800 rounded-lg p-3 space-y-1">
+                    <div id="split-asset-name" class="font-bold text-white text-sm">—</div>
+                    <div class="text-[11px] text-gray-400 font-mono">
+                        Qté actuelle : <span id="split-asset-qty" class="text-gray-200">—</span>
+                        · PRU actuel : <span id="split-asset-pru" class="text-blue-300">—</span>
+                    </div>
+                </div>
+
+                <!-- Type de split -->
+                <div>
+                    <label class="block text-gray-400 mb-1">Type d'opération *</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-start gap-2 p-2.5 rounded-lg border border-gray-800 cursor-pointer hover:border-cyan-600 transition has-[:checked]:border-cyan-500 has-[:checked]:bg-cyan-950/20">
+                            <input type="radio" name="split-type" value="SPLIT" checked onchange="onSplitTypeChange()" class="mt-0.5 accent-cyan-500">
+                            <span>
+                                <span class="block font-bold text-white text-[11px]">Split (division)</span>
+                                <span class="block text-[10px] text-gray-500 mt-0.5">Ex : 10:1 → 1 action devient 10.</span>
+                            </span>
+                        </label>
+                        <label class="flex items-start gap-2 p-2.5 rounded-lg border border-gray-800 cursor-pointer hover:border-rose-600 transition has-[:checked]:border-rose-500 has-[:checked]:bg-rose-950/20">
+                            <input type="radio" name="split-type" value="REVERSE" onchange="onSplitTypeChange()" class="mt-0.5 accent-rose-500">
+                            <span>
+                                <span class="block font-bold text-white text-[11px]">Reverse split</span>
+                                <span class="block text-[10px] text-gray-500 mt-0.5">Ex : 1:10 → 10 actions deviennent 1.</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Ratio -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1"><span id="split-label-a">Nouveau</span></label>
+                        <input type="number" step="any" min="0.000001" id="split-ratio-a" value="10" oninput="updateSplitPreview()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1"><span id="split-label-b">Ancien</span></label>
+                        <input type="number" step="any" min="0.000001" id="split-ratio-b" value="1" oninput="updateSplitPreview()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+
+                <!-- Date d'effet -->
+                <div>
+                    <label class="block text-gray-400 mb-1">Date d'effet *</label>
+                    <input type="date" id="split-date" required class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <!-- Note libre -->
+                <div>
+                    <label class="block text-gray-400 mb-1">Note (optionnel)</label>
+                    <input type="text" id="split-note" placeholder="ex: Split 10:1 NVDA annoncé le 07/06/2024" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <!-- Aperçu avant / après -->
+                <div class="bg-gray-950 border border-cyan-800/40 rounded-lg p-3 space-y-2">
+                    <div class="text-[10px] text-cyan-300 uppercase tracking-wider font-bold">Aperçu de l'opération</div>
+                    <div class="grid grid-cols-2 gap-3 text-[11px] font-mono">
+                        <div>
+                            <div class="text-gray-500 text-[9px] uppercase mb-0.5">Avant</div>
+                            <div class="text-gray-300">Qté : <span id="split-preview-qty-before">—</span></div>
+                            <div class="text-gray-300">PRU/u : <span id="split-preview-pru-before">—</span></div>
+                            <div class="text-gray-300">Investi : <span id="split-preview-inv-before">—</span></div>
+                        </div>
+                        <div>
+                            <div class="text-cyan-400 text-[9px] uppercase mb-0.5">Après</div>
+                            <div class="text-white font-bold">Qté : <span id="split-preview-qty-after">—</span></div>
+                            <div class="text-white font-bold">PRU/u : <span id="split-preview-pru-after">—</span></div>
+                            <div class="text-gray-400">Investi : <span id="split-preview-inv-after">—</span></div>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-gray-500 leading-relaxed border-t border-gray-800 pt-2">
+                        <i class="fa-solid fa-circle-info mr-1"></i>
+                        Le split est <b>neutre fiscalement</b> : la valeur totale (EUR) et le capital investi
+                        restent identiques. Seuls la quantité, le PRU unitaire et la valeur unitaire sont ajustés.
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2 border-t border-gray-800">
+                    <button type="button" onclick="closeModal('modal-add-split')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">
+                        <i class="fa-solid fa-scissors text-[10px] mr-1"></i> Appliquer le split
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL : AJOUTER / ÉDITER UNE IDÉE WATCHLIST (Chantier 1.4) -->
+    <div id="modal-add-watchlist" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 id="modal-watchlist-title" class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-binoculars text-amber-400"></i> Ajouter une idée d'investissement
+                </h3>
+                <button onclick="closeModal('modal-add-watchlist')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleAddWatchlist(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
+                <input type="hidden" id="wl-edit-id">
+
+                <div>
+                    <label class="block text-gray-400 mb-1">Nom de l'actif *</label>
+                    <input type="text" id="wl-name" required placeholder="ex: TotalEnergies, Bitcoin, CW8…" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Ticker / Symbole *</label>
+                        <input type="text" id="wl-ticker" required placeholder="ex: TTE, BTC, CW8" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono uppercase focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">Devise</label>
+                        <select id="wl-currency" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500"></select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Ticker Yahoo <span class="text-gray-600 text-[10px]">(actions/ETF)</span></label>
+                        <input type="text" id="wl-yahoo-ticker" placeholder="ex: CW8.PA, NVDA" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-1">ID CoinGecko <span class="text-gray-600 text-[10px]">(crypto)</span></label>
+                        <input type="text" id="wl-coingecko-id" placeholder="ex: bitcoin, ethereum" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+                <p class="text-[10px] text-gray-500 -mt-1.5">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    Renseignez l'un ou l'autre pour que les cours se mettent à jour automatiquement. Sans l'un des deux, saisie manuelle uniquement.
+                </p>
+
+                <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-3 space-y-2">
+                    <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
+                        <i class="fa-solid fa-bullseye text-[10px]"></i> Prix d'entrée cible (optionnel)
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-gray-400 mb-1 text-[10px]">Type de déclenchement</label>
+                            <select id="wl-target-kind" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white text-[11px] focus:outline-none focus:border-amber-500">
+                                <option value="BELOW">Acheter si le cours descend à…</option>
+                                <option value="ABOVE">Acheter si le cours monte à…</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 mb-1 text-[10px]">Prix cible</label>
+                            <input type="number" step="any" id="wl-target-price" placeholder="ex: 45.00" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-400 mb-1">Catégories <span class="text-gray-600">(pour pré-remplir le futur actif)</span></label>
+                    <div id="wl-tags-wrap" class="flex flex-wrap gap-1.5"></div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-400 mb-1">Cadran Gave envisagé</label>
+                    <select id="wl-cadran" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
+                        <option value="OR">Cadran 1 : OR</option>
+                        <option value="MONNAIES">Cadran 2 : MONNAIES / DEVISES</option>
+                        <option value="ASIE">Cadran 3 : ACTIONS / ASIE</option>
+                        <option value="PETROLE">Cadran 4 : PETROLE</option>
+                        <option value="CRYPTO">Cryptomonnaies</option>
+                        <option value="HORS_GAVE" selected>Hors-Cadran &amp; Divers</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-400 mb-1">Notes de recherche (optionnel)</label>
+                    <textarea id="wl-notes" rows="2" placeholder="ex: attendre repli post-résultats, secteur cyclique…" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500"></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2 border-t border-gray-800">
+                    <button type="button" onclick="closeModal('modal-add-watchlist')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL : IMPORT DEPUIS API BROKER (Chantier 1.7) -->
+    <div id="modal-broker-import" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+
+            <!-- En-tête -->
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <div>
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-plug text-purple-400"></i> Import automatique depuis un exchange
+                    </h3>
+                    <p class="text-[11px] text-gray-500 mt-0.5">Connexion sécurisée en <b>lecture seule</b> — vos clés ne quittent jamais votre appareil.</p>
+                </div>
+                <button onclick="closeModal('modal-broker-import')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Indicateur d'étapes -->
+            <div class="px-6 pt-3 pb-2 bg-gray-950/40 border-b border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="broker-step-label" class="text-[11px] font-bold text-purple-300 uppercase tracking-wider">Étape 1 · Choix du broker</span>
+                    <span id="broker-step-percent" class="text-[11px] font-mono text-gray-500">33 %</span>
+                </div>
+                <div class="flex gap-1.5">
+                    <div id="broker-progress-0" class="flex-1 h-1 rounded-full bg-purple-500 transition-all"></div>
+                    <div id="broker-progress-1" class="flex-1 h-1 rounded-full bg-gray-800 transition-all"></div>
+                    <div id="broker-progress-2" class="flex-1 h-1 rounded-full bg-gray-800 transition-all"></div>
+                </div>
+            </div>
+
+            <!-- Contenu dynamique -->
+            <div id="broker-step-content" class="p-6 overflow-y-auto flex-grow text-xs">
+                <!-- Injected by JS -->
+            </div>
+
+            <!-- Pied de page -->
+            <div class="p-4 border-t border-gray-800 bg-gray-950/60 flex justify-between items-center gap-3">
+                <button id="broker-prev-btn" onclick="brokerImportPrevStep()" class="hidden px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-left text-[10px]"></i> Retour
+                </button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeModal('modal-broker-import')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs">Annuler</button>
+                    <button id="broker-next-btn" onclick="brokerImportNextStep()" class="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium shadow-lg shadow-purple-900/40 transition flex items-center gap-1.5">
+                        <span id="broker-next-label">Continuer</span>
+                        <i id="broker-next-icon" class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -2367,6 +4331,46 @@
                             <input type="hidden" id="add-broker" value="">
                         </div>
                     </div>
+
+                    <!-- DEVISE (Chantier 1.2) -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-gray-400 mb-1">Devise de cotation</label>
+                            <select id="add-currency" onchange="onCurrencyChange()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
+                                <option value="EUR">EUR € (euro)</option>
+                                <option value="USD">USD $ (dollar américain)</option>
+                                <option value="GBP">GBP £ (livre sterling)</option>
+                                <option value="CHF">CHF (franc suisse)</option>
+                                <option value="JPY">JPY ¥ (yen japonais)</option>
+                            </select>
+                        </div>
+                        <div id="add-fx-rate-wrap" class="hidden">
+                            <label class="block text-gray-400 mb-1">
+                                Taux de change à l'achat
+                                <span class="text-gray-600 text-[10px] ml-1">— 1 devise = ? €</span>
+                            </label>
+                            <input type="number" step="any" id="add-fx-rate" placeholder="ex: 0.92" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                            <p id="add-fx-rate-hint" class="text-[10px] text-gray-500 mt-1">
+                                <i class="fa-solid fa-spinner fa-spin text-[9px]"></i> Récupération du taux…
+                            </p>
+                        </div>
+                    </div>
+                    <div id="add-currency-warning" class="hidden text-amber-300 text-[11px] space-y-1 bg-amber-950/30 border border-amber-800/50 rounded-lg p-2.5"></div>
+
+                    <!-- Score ESG manuel (Chantier §3) -->
+                    <div>
+                        <label class="block text-gray-400 mb-1">
+                            Score ESG (optionnel)
+                            <span class="text-gray-600 text-[10px] ml-1">— laissez vide pour utiliser le catalogue automatique</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" min="0" max="100" step="1" id="add-esg-score" placeholder="ex: 72" class="w-24 bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                            <span class="text-[11px] text-gray-500">/ 100</span>
+                            <span id="add-esg-preview" class="text-[11px] font-bold text-gray-500 ml-2"></span>
+                        </div>
+                        <p id="add-esg-catalog-hint" class="text-[10px] text-gray-500 mt-1"></p>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-3">
                         <div id="add-value-wrap" class="hidden">
                             <label class="block text-gray-400 mb-1">Valeur Actuelle Unitaire (€) *</label>
@@ -2624,6 +4628,139 @@
         </div>
     </div>
 
+    <!-- MODAL : DÉTAIL D'UNE PAIRE DE CORRÉLATION (Chantier §5) -->
+    <div id="modal-correlation-pair" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 id="correlation-modal-title" class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-code-compare text-purple-400"></i> Corrélation
+                </h3>
+                <button onclick="closeModal('modal-correlation-pair')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="correlation-modal-body" class="p-5 space-y-4 overflow-y-auto text-xs text-gray-300"></div>
+        </div>
+    </div>
+
+    <!-- MODAL : AIDE SUR LE RAPPORT MENSUEL (Chantier §4) -->
+    <div id="modal-monthly-help" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-check text-emerald-400"></i> Rapport de performance mensuel
+                </h3>
+                <button onclick="closeModal('modal-monthly-help')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-4 overflow-y-auto text-xs text-gray-300 leading-relaxed">
+
+                <div>
+                    <div class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-1">À quoi ça sert ?</div>
+                    <p>
+                        Suivre l'évolution de votre portefeuille <b>mois par mois</b> sur le long terme.
+                        Répond à des questions simples : « Combien j'ai gagné en octobre ? », « Suis-je en progression sur 12 mois ? », « Quel mois a été le pire ? »
+                    </p>
+                </div>
+
+                <div>
+                    <div class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-1">Comment ça marche ?</div>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Le <b>snapshot du mois en cours</b> est créé automatiquement au premier démarrage du mois.</li>
+                        <li>Il est ensuite <b>mis à jour en continu</b> (throttlé à 1× / 30 min pour ne pas saturer localStorage).</li>
+                        <li>Au début du mois suivant, le snapshot précédent est <b>automatiquement figé</b> : il garde la valeur du dernier refresh du mois.</li>
+                        <li>Les <b>60 derniers mois</b> (5 ans) sont conservés.</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <div class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-1">MoM et YoY</div>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><b>MoM</b> (Month-over-Month) : variation vs le mois précédent.</li>
+                        <li><b>YoY</b> (Year-over-Year) : variation vs le même mois l'an dernier.</li>
+                        <li>Le <b>premier mois</b> n'a pas de MoM, et les <b>12 premiers mois</b> n'ont pas de YoY — ce sont des références.</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <div class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-1">Limites</div>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Les <b>snapshots sont liés au portefeuille courant</b>. Changer de portefeuille affiche un historique différent.</li>
+                        <li>Les positions <b>papier (paper trading)</b> sont exclues des snapshots (seul le portefeuille réel est archivé).</li>
+                        <li>Un snapshot est un <b>instantané de la valeur</b>, pas du contenu. Si vous vendez tout puis rachetez autre chose, l'historique n'est pas affecté (seule la valeur totale compte).</li>
+                    </ul>
+                </div>
+
+                <div class="bg-blue-950/20 border border-blue-800/40 rounded-lg p-3 text-[11px] text-blue-200">
+                    <i class="fa-solid fa-lightbulb text-blue-400 mr-1"></i>
+                    <b>Astuce :</b> vous pouvez créer un snapshot manuellement via <kbd class="bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[10px] font-mono">Ctrl+K</kbd> → « Créer un snapshot manuellement ».
+                    Utile juste avant de faire une grosse vente ou d'importer des données.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : ÉDITION DE THÈSE D'INVESTISSEMENT (Chantier §10) -->
+    <div id="modal-thesis-edit" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h3 id="thesis-modal-title" class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-scroll text-indigo-400"></i> Thèse d'investissement
+                </h3>
+                <button onclick="closeModal('modal-thesis-edit')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleThesisSubmit(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
+                <input type="hidden" id="thesis-asset-id">
+                <div id="thesis-modal-info" class="bg-gray-950 border border-gray-800 rounded-lg p-2.5 text-[10px] text-gray-400 leading-relaxed">
+                    <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Décrivez en quelques phrases pourquoi vous détenez cette position.
+                </div>
+                <div>
+                    <div class="flex justify-between items-baseline mb-1">
+                        <label class="block text-gray-400">Votre thèse</label>
+                        <span id="thesis-char-count" class="text-[10px] font-mono text-gray-500">0 / 500</span>
+                    </div>
+                    <textarea id="thesis-text-input" rows="8"
+                              oninput="updateThesisCharCount()"
+                              placeholder="Ex : Je détiens NVDA car je crois à la domination durable de son écosystème CUDA dans l'IA entraînement. Je vendrais si (1) la marge brute passe sous 60 % deux trimestres de suite, (2) un concurrent crédible émerge sur les GPU IA, (3) la valorisation dépasse 50x le chiffre d'affaires."
+                              class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2.5 text-white font-sans leading-relaxed focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+                </div>
+                <div class="bg-blue-950/20 border border-blue-800/40 rounded-lg p-2.5 text-[10px] text-blue-100 leading-relaxed">
+                    <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i>
+                    <b>Rappel automatique :</b> si la position perd plus de 20 % et que la thèse n'a pas été revue depuis plus d'un an, un bandeau d'alerte s'affiche dans le détail de l'actif.
+                </div>
+                <div class="pt-2 flex justify-between gap-2 border-t border-gray-800">
+                    <button type="button" id="thesis-delete-btn" onclick="deleteThesisConfirm()" class="px-3 py-2 rounded-lg bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70 text-[11px] font-medium transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash text-[10px]"></i> Supprimer
+                    </button>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="closeModal('modal-thesis-edit')" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700">Annuler</button>
+                        <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium">
+                            <i class="fa-solid fa-check text-[10px] mr-1"></i> Enregistrer
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL : RECHERCHE RAPIDE Ctrl+P (Chantier §9) -->
+    <div id="modal-quick-search" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-[10vh] z-[70] hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col">
+            <div class="flex items-center gap-3 p-3 border-b border-gray-800 bg-gray-950">
+                <i class="fa-solid fa-magnifying-glass text-teal-400"></i>
+                <input type="text" id="quick-search-input"
+                       oninput="renderQuickSearchResults(this.value)"
+                       onkeydown="handleQuickSearchKey(event)"
+                       placeholder="Rechercher un actif par nom ou ticker…"
+                       autocomplete="off" spellcheck="false"
+                       class="flex-1 bg-transparent text-white text-sm focus:outline-none font-sans placeholder-gray-500">
+                <kbd class="text-[10px] text-gray-500 bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 font-mono">Échap</kbd>
+            </div>
+            <div id="quick-search-results" class="max-h-[60vh] overflow-y-auto"></div>
+            <div class="px-3 py-2 border-t border-gray-800 bg-gray-950 text-[10px] text-gray-500 flex justify-between">
+                <span><kbd class="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 font-mono">↑</kbd> <kbd class="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 font-mono">↓</kbd> naviguer</span>
+                <span><kbd class="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 font-mono">Entrée</kbd> ouvrir · <kbd class="bg-gray-800 border border-gray-700 rounded px-1 py-0.5 font-mono">Échap</kbd> fermer</span>
+            </div>
+        </div>
+    </div>
+
     <!-- CONTENEUR D'IMPRESSION PDF (caché à l'écran, rempli au clic « Exporter en PDF ») -->
     <div id="print-fiscal-recap"></div>
 
@@ -2770,6 +4907,33 @@
     <script src="app13-excel-export.js"></script>
     <script src="app14-suggestions.js"></script>
     <script src="app15-notifications.js"></script>
+    <script src="app16-watchlist.js"></script>
+    <script src="app17-tax-optimizer.js"></script>
+    <script src="app18-ledger.js"></script>
+    <script src="app19-fire.js"></script>
+    <script src="app20-chart-export.js"></script>
+    <script src="app21-haptics.js"></script>
+    <script src="app22-toasts.js"></script>
+    <script src="app23-session-badges.js"></script>
+    <script src="app24-onboarding.js"></script>
+    <script src="app25-mobile-nav.js"></script>
+    <script src="app26-sidebar.js"></script>
+    <script src="app27-broker-import.js"></script>
+    <script src="app28-csp-audit.js"></script>
+    <script src="app29-benchmark-compare.js"></script>
+    <script src="app30-timeline.js"></script>
+    <script src="app31-esg.js"></script>
+    <script src="app32-per.js"></script>
+    <script src="app33-monthly-snapshots.js"></script>
+    <script src="app34-correlation.js"></script>
+    <script src="app35-dca.js"></script>
+    <script src="app36-waterfall.js"></script>
+    <script src="app37-slide-panel.js"></script>
+    <script src="app38-filters.js"></script>
+    <script src="app39-thesis.js"></script>
+    <script src="app40-withdrawal.js"></script>
+    <script src="app41-pwa.js"></script>
+    <script src="tests.js"></script>
     <script src="app7-init.js"></script>
 </body>
 </html>

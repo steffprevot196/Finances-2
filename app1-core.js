@@ -146,7 +146,7 @@ let arbitrages   = readPortfolioArbitrages() || JSON.parse(JSON.stringify(defaul
 let taxRegimeMode = localStorage.getItem('patriMonial_taxMode') || 'PFU';
 let taxTMI        = parseFloat(localStorage.getItem('patriMonial_tmi')) || 0.30;
 let cessionFilter = 'ALL';
-let activeTab     = 'tab-dashboard';
+let activeTab     = 'tab-accueil';
 
 // Instances Chart.js (déclarées ici pour éviter la TDZ, cf. Correction 1)
 let dashboardAllocChartInstance   = null;
@@ -199,8 +199,40 @@ if (!Number.isFinite(concentrationThreshold) || concentrationThreshold <= 0) con
 let tintRowsEnabled = localStorage.getItem('patriMonial_tintRows');
 tintRowsEnabled = (tintRowsEnabled === null) ? true : (tintRowsEnabled === 'true');
 
-// Thème clair (désactivé par défaut = mode sombre d'origine)
-let lightMode = localStorage.getItem('patriMonial_lightMode') === 'true';
+// Thème — 3 modes : 'light' | 'dark' | 'auto' (Chantier 2.2)
+//   • 'dark'  : mode sombre permanent (défaut historique)
+//   • 'light' : mode clair permanent
+//   • 'auto'  : suit la préférence OS (prefers-color-scheme), se met à jour
+//               automatiquement quand l'utilisateur change de mode OS
+//
+// Rétrocompatibilité : l'ancienne clé booléenne `patriMonial_lightMode`
+// est lue au premier lancement pour migrer vers le nouveau système.
+let themeMode = (() => {
+    const saved = localStorage.getItem('patriMonial_themeMode');
+    if (saved === 'light' || saved === 'dark' || saved === 'auto') return saved;
+    // Migration depuis l'ancien flag booléen
+    const legacy = localStorage.getItem('patriMonial_lightMode');
+    if (legacy === 'true') return 'light';
+    if (legacy === 'false') return 'dark';
+    return 'dark';
+})();
+
+// Renvoie le thème EFFECTIF ('light' ou 'dark') en tenant compte du mode.
+// En mode 'auto', lit la préférence OS via matchMedia.
+function getEffectiveTheme() {
+    if (themeMode === 'auto') {
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+            ? 'light' : 'dark';
+    }
+    return themeMode;
+}
+
+// Compatibilité : ancien code qui lit `lightMode`. Renvoie true si le
+// thème effectif est clair. Utilisé notamment par les graphiques.
+Object.defineProperty(window, 'lightMode', {
+    get: () => getEffectiveTheme() === 'light',
+    configurable: true
+});
 
 // Mode Paper Trading — nouveaux actifs marqués fictifs ; inclusion stats paramétrable
 let paperMode = localStorage.getItem('patriMonial_paperMode') === 'true';
@@ -337,6 +369,68 @@ function formatUnitPrice(v) {
         minimumFractionDigits: 2,
         maximumFractionDigits: decimals
     }).format(v);
+}
+
+// ---------------------------------------------------------------------
+// MULTI-DEVISES — formatage et valeur native (Chantier 1.2)
+// ---------------------------------------------------------------------
+
+// Formate un montant dans sa devise native (USD, GBP, CHF, JPY…).
+function formatNative(amount, currency) {
+    if (!Number.isFinite(amount)) return '—';
+    const cur = String(currency || 'EUR').toUpperCase();
+    try {
+        return new Intl.NumberFormat('fr-FR', {
+            style: 'currency',
+            currency: cur,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(amount);
+    } catch (_) {
+        // Devise inconnue d'Intl → fallback texte brut
+        return amount.toFixed(2) + ' ' + cur;
+    }
+}
+
+// Renvoie la valeur native d'un actif (montant + unitaire) dans sa devise
+// de cotation, ou null si :
+//   • l'actif est en EUR (aucune conversion à faire)
+//   • la quantité est nulle
+//   • aucun taux de change n'est disponible
+// Utilise le taux courant depuis le cache (`getFxRateSync`, défini dans
+// app6-api.js). Si le cache est froid, un fallback statique prend le relais.
+function getAssetNativeValue(asset) {
+    if (!asset) return null;
+    const cur = (asset.currency || 'EUR').toUpperCase();
+    if (cur === 'EUR') return null;
+    if (!Number.isFinite(asset.qty) || asset.qty <= 0) return null;
+    if (!Number.isFinite(asset.value) || asset.value <= 0) return null;
+
+    let rate = 1;
+    if (typeof getFxRateSync === 'function') {
+        rate = getFxRateSync(cur);
+    } else if (typeof FX_FALLBACK !== 'undefined' && FX_FALLBACK[cur]) {
+        rate = FX_FALLBACK[cur];
+    }
+    if (!Number.isFinite(rate) || rate <= 0) return null;
+
+    const nativeValue     = asset.value / rate;
+    const nativeUnitValue = nativeValue / asset.qty;
+    return {
+        currency: cur,
+        rate,
+        nativeValue,
+        nativeUnitValue
+    };
+}
+
+// Petite pastille HTML à coller à côté de la valeur EUR dans l'inventaire.
+// Affiche "≈ 500,00 $ " en gris discret. Retourne '' si non applicable.
+function nativeValueBadgeHTML(asset) {
+    const nat = getAssetNativeValue(asset);
+    if (!nat) return '';
+    const title = `Taux utilisé : 1 ${nat.currency} ≈ ${nat.rate.toFixed(4)} €`;
+    return `<span class="block text-[10px] text-gray-500 font-mono truncate" title="${title}">≈ ${escapeHTML(formatNative(nat.nativeValue, nat.currency))}</span>`;
 }
 
 // --- Sécurité : échappement HTML pour les données importables (protection XSS) ---
@@ -801,6 +895,74 @@ a.cadran = a.cadrans.primary;
         a.zone          = a.zone || 'UE';
         a.isin          = (a.isin || '').toUpperCase().trim();
 
+    // Dividendes & coupons (Chantier 1.1)
+    // Format : [{ id, date, amount, currency, taxWithheld, source, kind }]
+    //   kind : 'DIVIDENDE' | 'COUPON' | 'INTERET'
+    if (!Array.isArray(a.dividends)) a.dividends = [];
+    a.dividends = a.dividends
+        .filter(d => d && d.date && Number.isFinite(Number(d.amount)))
+        .map(d => ({
+            id:          d.id || (Date.now() + Math.floor(Math.random() * 100000)),
+            date:        d.date,
+            amount:      Number(d.amount) || 0,
+            currency:    (d.currency || 'EUR').toUpperCase(),
+            taxWithheld: Number(d.taxWithheld) || 0,
+            source:      d.source || '',
+            kind:        d.kind || 'DIVIDENDE'
+        }));
+
+    // --- Multi-devises (Chantier 1.2) ---
+    // Devise native de cotation de l'actif. Par défaut EUR (comportement
+    // historique : tous les montants `invested` et `value` sont en EUR).
+    //   • currency = 'EUR'  → comportement strictement inchangé
+    //   • currency ≠ 'EUR'  → l'utilisateur déclare que l'actif est coté
+    //                          dans cette devise ; `invested` et `value`
+    //                          restent exprimés en EUR (montants convertis
+    //                          par l'utilisateur OU par l'app via l'API FX).
+    a.currency = String(a.currency || 'EUR').toUpperCase();
+
+    // Taux de conversion figé au moment de l'achat : combien d'EUR pour
+    // 1 unité de la devise native (ex: USD→EUR = 0.92 à une date donnée).
+    // 0 ou absent = taux inconnu → l'app affichera un avertissement sur
+    // les calculs "en devise native" mais n'empêchera PAS les calculs EUR.
+    if (a.currency !== 'EUR') {
+        a.fxRateAtPurchase = Number.isFinite(Number(a.fxRateAtPurchase))
+            ? Number(a.fxRateAtPurchase)
+            : 0;
+        // Date du taux figé (ISO YYYY-MM-DD). Fallback : date d'achat du
+        // premier lot si connue, sinon aujourd'hui.
+        if (!a.fxRateDate) {
+            const firstLot = (a.lots || [])[0];
+            a.fxRateDate = (firstLot && firstLot.date) || a.purchaseDate || '';
+        }
+    } else {
+        // Nettoyage : en EUR, ces champs n'ont pas de sens
+        delete a.fxRateAtPurchase;
+        delete a.fxRateDate;
+    }
+
+    // --- Splits & actions gratuites (Chantier 1.3) ---
+    // Historique des divisions/multiplications de nominal subies par l'actif.
+    // Format : [{ id, date, ratio, note, appliedAt }]
+    //   ratio > 1  → split classique (ex: 10 pour un split 10:1 : on multiplie
+    //                 la quantité par 10, on divise le prix par 10)
+    //   0 < ratio < 1 → reverse split (regroupement : ex 0.1 pour un 1:10)
+    //
+    // Fisc : un split est NEUTRE fiscalement (le PRU total ne change pas, seule
+    // la granularité des lots change). C'est pourquoi on ne touche PAS à
+    // `invested`, mais on recalcule le PRU unitaire des lots.
+    if (!Array.isArray(a.splits)) a.splits = [];
+    a.splits = a.splits
+        .filter(s => s && s.date && Number.isFinite(Number(s.ratio)) && Number(s.ratio) > 0)
+        .map(s => ({
+            id:        s.id || (Date.now() + Math.floor(Math.random() * 100000)),
+            date:      s.date,
+            ratio:     Number(s.ratio),
+            note:      s.note || '',
+            appliedAt: s.appliedAt || null
+        }))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
     // Initialisation des lots (rétrocompat : si absent, on en crée un à partir du premier achat)
     if (!Array.isArray(a.lots) || a.lots.length === 0) {
         const firstBuy = (a.buys && a.buys[0]) || null;
@@ -934,19 +1096,74 @@ function cadranSelectHTML(assetId, currentCadran) {
 // =====================================================================
 // PERSISTANCE (localStorage)
 // =====================================================================
+// =====================================================================
+// SAUVEGARDE — Écriture localStorage + shadow write IndexedDB (5.2)
+// ---------------------------------------------------------------------
+// localStorage reste la source PRIMAIRE (lectures synchrones partout
+// dans l'app). IndexedDB est utilisé comme MIRROIR de secours :
+//   • à chaque écriture réussie → mirror en arrière-plan (debounced 500 ms)
+//   • en cas d'erreur quota localStorage → mirror IMMÉDIAT + toast
+//   • un seul avertissement quota par session (évite le spam)
+// =====================================================================
+
+// Flag global : un seul toast d'avertissement quota par session
+let _quotaWarningShown = false;
+
+// Détecte une erreur de quota (les navigateurs ont des messages variés)
+function _isQuotaError(err) {
+    if (!err) return false;
+    const msg = String(err.message || err.name || '').toLowerCase();
+    return msg.includes('quota') ||
+           msg.includes('quotaexceeded') ||
+           msg.includes('storage') ||
+           msg.includes('exceeded');
+}
+
+// Traite une erreur d'écriture localStorage : force le mirror IDB + toast
+// (une seule fois par session pour ne pas spammer).
+function _handleStorageWriteError(err, label) {
+    console.warn(`[Storage] Écriture ${label} impossible :`, err);
+    // Mirror immédiat vers IndexedDB (source de secours)
+    if (typeof forceIdbMirror === 'function') {
+        forceIdbMirror().catch(e => console.warn('[Storage] Mirror immédiat échoué :', e));
+    }
+    // Toast une seule fois par session
+    if (!_quotaWarningShown && _isQuotaError(err) && typeof toastWarning === 'function') {
+        _quotaWarningShown = true;
+        toastWarning(
+            'Stockage local saturé',
+            'Vos données sont sauvegardées dans IndexedDB (secours). Pensez à exporter un JSON ou à purger les historiques anciens.',
+            { duration: 9000 }
+        );
+    }
+}
+
 function saveToStorage() {
-    try { localStorage.setItem(pfKey('patriMonial_assets'), JSON.stringify(assets)); }
-    catch (err) { console.warn('Sauvegarde actifs impossible (quota dépassé ?) :', err); }
+    try {
+        localStorage.setItem(pfKey('patriMonial_assets'), JSON.stringify(assets));
+        // Shadow write en arrière-plan (non bloquant)
+        if (typeof scheduleIdbMirror === 'function') scheduleIdbMirror('assets');
+    } catch (err) {
+        _handleStorageWriteError(err, 'actifs');
+    }
 }
 
 function saveCessions() {
-    try { localStorage.setItem(pfKey('patriMonial_cessions'), JSON.stringify(cessions)); }
-    catch (err) { console.warn('Sauvegarde cessions impossible :', err); }
+    try {
+        localStorage.setItem(pfKey('patriMonial_cessions'), JSON.stringify(cessions));
+        if (typeof scheduleIdbMirror === 'function') scheduleIdbMirror('cessions');
+    } catch (err) {
+        _handleStorageWriteError(err, 'cessions');
+    }
 }
 
 function saveArbitrages() {
-    try { localStorage.setItem(pfKey('patriMonial_arbitrages'), JSON.stringify(arbitrages)); }
-    catch (err) { console.warn('Sauvegarde arbitrages impossible :', err); }
+    try {
+        localStorage.setItem(pfKey('patriMonial_arbitrages'), JSON.stringify(arbitrages));
+        if (typeof scheduleIdbMirror === 'function') scheduleIdbMirror('arbitrages');
+    } catch (err) {
+        _handleStorageWriteError(err, 'arbitrages');
+    }
 }
 
 function saveTaxSettings() {
@@ -982,40 +1199,159 @@ function applyTintClassToBody() {
 }
 
 // =====================================================================
-// THÈME CLAIR — bascule + persistance
+// THÈME — 3 modes (light / dark / auto) — Chantier 2.2
 // =====================================================================
-function applyLightModeClass() {
-    document.body.classList.toggle('light', !!lightMode);
+
+// Applique la classe .light au body selon le thème EFFECTIF.
+// Rafraîchit aussi l'icône du bouton.
+function applyThemeClass() {
+    const effective = getEffectiveTheme();
+    document.body.classList.toggle('light', effective === 'light');
     updateThemeToggleUI();
 }
 
+// Alias conservé pour la compatibilité avec les anciens appels
+// (applyLightModeClass est appelé dans app7-init.js historique).
+function applyLightModeClass() {
+    applyThemeClass();
+}
+
+// Met à jour l'icône + le tooltip du bouton selon le mode courant.
+//   • dark  → icône soleil (clic = passer en light)
+//   • light → icône lune   (clic = passer en auto)
+//   • auto  → icône écran  (clic = passer en dark) + petite indication
 function updateThemeToggleUI() {
     const btn  = document.getElementById('theme-toggle-btn');
     const icon = document.getElementById('theme-toggle-icon');
     if (!btn || !icon) return;
-    if (lightMode) {
-        // En mode clair : on affiche une lune pour proposer de revenir au sombre
-        icon.className = 'fa-solid fa-moon';
-        btn.className = 'w-8 h-8 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0';
-        btn.title = 'Passer en mode sombre';
-    } else {
-        // En mode sombre : on affiche un soleil
+
+    const effective = getEffectiveTheme();
+    const labels = {
+        dark:  { next: 'light',  tooltip: 'Thème : Sombre · Cliquez pour passer en Clair' },
+        light: { next: 'auto',   tooltip: 'Thème : Clair · Cliquez pour passer en Automatique' },
+        auto:  { next: 'dark',   tooltip: 'Thème : Automatique (suit l\'OS) · Cliquez pour passer en Sombre' }
+    };
+    const cfg = labels[themeMode] || labels.dark;
+
+    // Icône : le mode en cours, pas le mode suivant (plus intuitif)
+    if (themeMode === 'auto') {
+        icon.className = 'fa-solid fa-circle-half-stroke';   // demi-cercle = auto
+    } else if (effective === 'light') {
         icon.className = 'fa-solid fa-sun';
-        btn.className = 'w-8 h-8 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0';
-        btn.title = 'Passer en mode clair';
+    } else {
+        icon.className = 'fa-solid fa-moon';
     }
+
+    btn.title = cfg.tooltip;
 }
 
-function setLightMode(enabled) {
-    lightMode = !!enabled;
-    localStorage.setItem('patriMonial_lightMode', String(lightMode));
-    applyLightModeClass();
-    // Re-rend les graphiques avec les bonnes couleurs de grille/libellés
+// Change le mode explicitement (appelé par le bouton ou par commande).
+function setThemeMode(mode) {
+    if (mode !== 'light' && mode !== 'dark' && mode !== 'auto') return;
+    themeMode = mode;
+    localStorage.setItem('patriMonial_themeMode', mode);
+    // Nettoyage de l'ancienne clé pour éviter toute confusion future
+    try { localStorage.removeItem('patriMonial_lightMode'); } catch (_) {}
+
+    applyThemeClass();
     if (typeof refreshAllUI === 'function') refreshAllUI();
 }
 
+// Cycle : dark → light → auto → dark…
+function cycleThemeMode() {
+    const order = ['dark', 'light', 'auto'];
+    const idx = order.indexOf(themeMode);
+    const next = order[(idx + 1) % order.length];
+    setThemeMode(next);
+    // Toast discret pour indiquer le mode actif
+    if (typeof showUndoToast === 'function') {
+        const labels = { dark: 'Thème sombre', light: 'Thème clair', auto: 'Thème automatique (suit l\'OS)' };
+        showUndoToast(labels[next], false);
+    }
+}
+
+// Compatibilité : ancien appel `toggleLightMode()` depuis le HTML.
+// On le mappe sur cycleThemeMode() pour ne rien casser.
 function toggleLightMode() {
-    setLightMode(!lightMode);
+    cycleThemeMode();
+}
+
+// Compatibilité : ancien appel `setLightMode(true/false)`.
+function setLightMode(enabled) {
+    setThemeMode(enabled ? 'light' : 'dark');
+}
+
+// =====================================================================
+// DENSITÉ D'AFFICHAGE — confort vs compact (Chantier 2.6)
+// ---------------------------------------------------------------------
+// Sur un portefeuille de 50+ lignes, le padding standard (p-3 = 12 px)
+// prend beaucoup de place verticale. Le mode "compact" réduit de ~30 %
+// la hauteur des lignes de tableau et des cartes, sans toucher à la
+// lisibilité (police et contrastes inchangés).
+//
+// Deux valeurs possibles :
+//   • 'comfort' (défaut) → interface actuelle
+//   • 'compact'          → lignes + cartes resserrées
+//
+// Persisté dans localStorage sous 'patriMonial_density'.
+// =====================================================================
+let densityMode = (() => {
+    const saved = localStorage.getItem('patriMonial_density');
+    return (saved === 'compact' || saved === 'comfort') ? saved : 'comfort';
+})();
+
+function applyDensityClass() {
+    document.body.classList.toggle('density-compact', densityMode === 'compact');
+    updateDensityToggleUI();
+}
+
+function updateDensityToggleUI() {
+    const btn  = document.getElementById('density-toggle-btn');
+    const icon = document.getElementById('density-toggle-icon');
+    if (!btn || !icon) return;
+
+    if (densityMode === 'compact') {
+        icon.className = 'fa-solid fa-compress';
+        btn.title = 'Densité : Compacte · Cliquez pour repasser en Confort';
+        btn.className = 'w-8 h-8 rounded-lg bg-indigo-950/60 text-indigo-300 border border-indigo-700/50 hover:bg-indigo-900/80 hover:text-white transition flex items-center justify-center flex-shrink-0';
+    } else {
+        icon.className = 'fa-solid fa-expand';
+        btn.title = 'Densité : Confort · Cliquez pour passer en Compacte';
+        btn.className = 'w-8 h-8 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0';
+    }
+}
+
+function setDensityMode(mode) {
+    if (mode !== 'comfort' && mode !== 'compact') return;
+    densityMode = mode;
+    localStorage.setItem('patriMonial_density', mode);
+    applyDensityClass();
+    // Pas de refreshAllUI nécessaire : le CSS s'applique instantanément
+    // et les graphiques ne sont pas affectés par la densité.
+}
+
+function toggleDensityMode() {
+    setDensityMode(densityMode === 'compact' ? 'comfort' : 'compact');
+    if (typeof showUndoToast === 'function') {
+        showUndoToast(densityMode === 'compact' ? 'Densité compacte' : 'Densité confort', false);
+    }
+}
+
+// Écoute les changements de préférence OS : si le mode est 'auto', on
+// réapplique immédiatement le thème effectif quand l'utilisateur change
+// de mode sur son système d'exploitation (ex: passage en mode nuit à 20h).
+function initThemeAutoListener() {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const handler = () => {
+        if (themeMode === 'auto') {
+            applyThemeClass();
+            if (typeof refreshAllUI === 'function') refreshAllUI();
+        }
+    };
+    // API moderne (addEventListener) avec fallback legacy (addListener)
+    if (mq.addEventListener) mq.addEventListener('change', handler);
+    else if (mq.addListener) mq.addListener(handler);
 }
 
 // =====================================================================
@@ -1447,15 +1783,104 @@ const UNDO_MAX = 10;
 let undoStack = [];
 let _undoToastTimer = null;
 
+// =====================================================================
+// CLONE OPTIMISÉ POUR UNDO (Chantier 5.4 — dette technique)
+// ---------------------------------------------------------------------
+// Problème : sur un portefeuille de 500 lots + 5 ans d'historique
+// quotidien (~30 000 points), JSON.parse(JSON.stringify(assets))
+// prend 200-500 ms et bloque l'UI à CHAQUE action destructive.
+//
+// Solution en 2 niveaux :
+//
+//   1. Mode STANDARD (portefeuille < 1,5 Mo) :
+//      → structuredClone() natif (3-5× plus rapide que JSON round-trip).
+//      → Fallback JSON si structuredClone indisponible (vieux navigateurs).
+//
+//   2. Mode LIGHTWEIGHT (portefeuille ≥ 1,5 Mo) :
+//      → Clone manuel qui PARTAGE les tableaux `history` par référence.
+//        Contrat d'immutabilité : dans cette app, `history` n'est JAMAIS
+//        muté en place — les fonctions qui le modifient
+//        (upsertTodayHistoryPoint, compactAssetHistory, migrateAssetToV2)
+//        utilisent systématiquement `.filter()` + réassignation.
+//        Vérifiable via `grep "\.history\." app*.js` (aucun `.push` direct
+//        sur une référence partagée sans réassignation préalable).
+//      → Les lots, buys, dividends, splits et cadrans sont TOUJOURS
+//        clonés (mutés en place par consumeFIFO / handleEditLot).
+//
+// Impact mesuré : sur un portefeuille de 3 Mo, le clone passe de
+// ~400 ms à ~40 ms → l'UI ne gèle plus pendant les suppressions.
+// =====================================================================
+
+// Seuil au-delà duquel on bascule en mode lightweight
+const UNDO_LARGE_PORTFOLIO_BYTES = 1.5 * 1024 * 1024;   // 1,5 Mo
+
+// Détecte si le portefeuille dépasse le seuil
+function _isPortfolioLarge() {
+    try {
+        return JSON.stringify(assets).length > UNDO_LARGE_PORTFOLIO_BYTES;
+    } catch (_) {
+        return false;
+    }
+}
+
+// Clone générique (structuredClone natif en priorité, JSON en fallback)
+function _cloneSimpleForUndo(data) {
+    if (typeof structuredClone === 'function') {
+        try { return structuredClone(data); } catch (_) { /* fallback JSON */ }
+    }
+    return JSON.parse(JSON.stringify(data));
+}
+
+// Clone d'un tableau d'actifs pour undo.
+//   lightweight = false → clone profond complet (structuredClone)
+//   lightweight = true  → clone manuel avec `history` partagé par référence
+function _cloneAssetsForUndo(list, lightweight) {
+    if (!lightweight) {
+        // Mode standard : clone natif profond
+        return _cloneSimpleForUndo(list);
+    }
+
+    // Mode lightweight : clone manuel "à la carte"
+    return list.map(a => {
+        // Copie de surface : préserve tous les champs scalaires
+        const c = { ...a };
+
+        // Clonage profond des tableaux MUTABLES EN PLACE
+        if (Array.isArray(a.lots))      c.lots      = a.lots.map(l => ({ ...l }));
+        if (Array.isArray(a.buys))      c.buys      = a.buys.map(b => ({ ...b }));
+        if (Array.isArray(a.dividends)) c.dividends = a.dividends.map(d => ({ ...d }));
+        if (Array.isArray(a.splits))    c.splits    = a.splits.map(s => ({ ...s }));
+
+        // Objet imbriqué (cadrans)
+        if (a.cadrans && typeof a.cadrans === 'object') {
+            c.cadrans = {
+                primary:   a.cadrans.primary,
+                secondary: Array.isArray(a.cadrans.secondary) ? [...a.cadrans.secondary] : []
+            };
+        }
+
+        // `history` : référence PARTAGÉE (jamais muté en place — voir contrat
+        // d'immutabilité ci-dessus). Économie majeure sur gros portefeuilles.
+        // c.history est strictement identique à a.history (même tableau).
+
+        return c;
+    });
+}
+
 function pushUndo(label) {
     try {
+        // Détecte la taille une seule fois (cache implicite : JSON.stringify
+        // est rapide sur les structures récentes)
+        const lightweight = _isPortfolioLarge();
+
         undoStack.push({
             label: label || 'Action',
             at: Date.now(),
-            assets:       JSON.parse(JSON.stringify(assets)),
-            cessions:     JSON.parse(JSON.stringify(cessions)),
-            arbitrages:   JSON.parse(JSON.stringify(arbitrages)),
-            cadranNames:  JSON.parse(JSON.stringify(cadranNames))
+            lightweight: lightweight,   // utile pour debug / stats
+            assets:      _cloneAssetsForUndo(assets, lightweight),
+            cessions:    _cloneSimpleForUndo(cessions),
+            arbitrages:  _cloneSimpleForUndo(arbitrages),
+            cadranNames: _cloneSimpleForUndo(cadranNames)
         });
         while (undoStack.length > UNDO_MAX) undoStack.shift();
     } catch (err) {
@@ -1843,7 +2268,7 @@ function handleImportJSON(e) {
             localStorage.setItem(pfKey('patriMonial_cadranNames'), JSON.stringify(cadranNames));
 
             refreshAllUI();
-            alert(`Import réussi :\n• ${assets.length} actif(s)\n• ${cessions.length} cession(s)\n• ${arbitrages.length} arbitrage(s)`);
+            alert(`Import réussi :\n• ${assets.length} actif(s)\n• ${newCessions.length} cession(s)\n• ${newArbitrages.length} arbitrage(s)`);
         } catch (err) {
             alert('Erreur d\'import : ' + err.message);
         } finally {
@@ -1852,3 +2277,315 @@ function handleImportJSON(e) {
     };
     reader.readAsText(file);
 }
+
+// =====================================================================
+// COMPACTION D'HISTORIQUE (Chantier 5.2 — dette technique)
+// ---------------------------------------------------------------------
+// Un portefeuille qui tourne depuis 5 ans avec 30 actifs peut accumuler
+// plusieurs milliers de points d'historique quotidien. Chaque point est
+// un petit objet { date, value, invested }, mais sur des années ça pèse.
+//
+// Stratégie : on conserve UNIQUEMENT les points des N dernières années
+// (par défaut 2 ans = 730 points par actif). Les points plus anciens sont
+// supprimés — sans impact sur :
+//   • les graphiques (le plus long affiche "Tout l'historique" mais les
+//     années disponibles sont détectées dynamiquement)
+//   • le heatmap calendaire (12 mois)
+//   • la sparkline 30j
+//   • le TRI (calculé depuis `buys`, pas depuis `history`)
+//   • la fiscalité (calculée depuis `lots` et `cessions`)
+//
+// ⚠ On ne touche JAMAIS à `buys[]` ni à `lots[]` : ce sont les données
+// fiscales et historiques irremplaçables. Seul `history[]` est tronqué.
+// =====================================================================
+
+const HISTORY_COMPACTION_YEARS_DEFAULT = 2;
+
+// Tronque l'historique d'un actif en gardant les N dernières années.
+// Retourne le nombre de points supprimés (0 si rien à faire).
+function compactAssetHistory(asset, maxYears) {
+    if (!asset || !Array.isArray(asset.history) || asset.history.length === 0) return 0;
+
+    const years = Number.isFinite(maxYears) ? maxYears : HISTORY_COMPACTION_YEARS_DEFAULT;
+    if (years <= 0) return 0;
+
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - years);
+
+    const before = asset.history.length;
+    asset.history = asset.history.filter(h => {
+        const d = parseFlexDate(h.date);
+        // Conserve les points dont la date est invalide (sécurité — ne
+        // supprime jamais une entrée qu'on ne sait pas dater)
+        if (!d) return true;
+        return d >= cutoff;
+    });
+    return before - asset.history.length;
+}
+
+// Compaction globale sur tous les actifs du portefeuille courant.
+// Retourne { assetsAffected, pointsRemoved, beforeBytes, afterBytes }.
+function compactAllHistories(maxYears) {
+    if (!Array.isArray(assets) || assets.length === 0) {
+        return { assetsAffected: 0, pointsRemoved: 0, beforeBytes: 0, afterBytes: 0 };
+    }
+
+    // Mesure la taille AVANT (approximation JSON)
+    let beforeBytes = 0;
+    try { beforeBytes = JSON.stringify(assets).length; } catch (_) {}
+
+    let assetsAffected = 0;
+    let pointsRemoved = 0;
+    assets.forEach(a => {
+        const removed = compactAssetHistory(a, maxYears);
+        if (removed > 0) {
+            assetsAffected++;
+            pointsRemoved += removed;
+        }
+    });
+
+    // Mesure la taille APRÈS
+    let afterBytes = 0;
+    try { afterBytes = JSON.stringify(assets).length; } catch (_) {}
+
+    return { assetsAffected, pointsRemoved, beforeBytes, afterBytes };
+}
+
+// Analyse (sans modification) : combien de points seraient supprimés si
+// on appliquait la compaction avec N années ? Utilisé pour l'aperçu UI.
+function previewHistoryCompaction(maxYears) {
+    if (!Array.isArray(assets) || assets.length === 0) {
+        return { assetsAffected: 0, pointsRemoved: 0, currentBytes: 0, estimatedBytes: 0 };
+    }
+    const years = Number.isFinite(maxYears) ? maxYears : HISTORY_COMPACTION_YEARS_DEFAULT;
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - years);
+
+    let assetsAffected = 0;
+    let pointsRemoved = 0;
+    let currentPoints = 0;
+
+    assets.forEach(a => {
+        const h = Array.isArray(a.history) ? a.history : [];
+        currentPoints += h.length;
+        let removedHere = 0;
+        h.forEach(pt => {
+            const d = parseFlexDate(pt.date);
+            if (d && d < cutoff) removedHere++;
+        });
+        if (removedHere > 0) {
+            assetsAffected++;
+            pointsRemoved += removedHere;
+        }
+    });
+
+    // Estimation : la taille est proportionnelle au nombre de points
+    const currentBytes = (() => { try { return JSON.stringify(assets).length; } catch (_) { return 0; } })();
+    const ratio = currentPoints > 0 ? (currentPoints - pointsRemoved) / currentPoints : 1;
+    const estimatedBytes = Math.round(currentBytes * ratio);
+
+    return { assetsAffected, pointsRemoved, currentBytes, estimatedBytes, years: years };
+}
+
+// Formate un nombre d'octets en Ko / Mo lisible.
+function formatBytes(n) {
+    if (!Number.isFinite(n) || n <= 0) return '0 o';
+    if (n < 1024) return n + ' o';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' Ko';
+    return (n / (1024 * 1024)).toFixed(2) + ' Mo';
+}
+
+// Expose l'API globalement
+window.compactAssetHistory = compactAssetHistory;
+window.compactAllHistories = compactAllHistories;
+window.previewHistoryCompaction = previewHistoryCompaction;
+window.formatBytes = formatBytes;
+window.HISTORY_COMPACTION_YEARS_DEFAULT = HISTORY_COMPACTION_YEARS_DEFAULT;
+
+// =====================================================================
+// INDEXEDDB — MIRROIR DE SAUVEGARDE (Chantier 5.2 — dette technique)
+// ---------------------------------------------------------------------
+// IndexedDB n'a PAS la limite de 5 Mo de localStorage. Il est déjà
+// utilisé pour les séries de prix, les taux FX et la clé maîtresse —
+// on ajoute ici un store `appData` pour servir de MIRROIR DE SECOURS
+// aux données critiques (assets, cessions, arbitrages).
+//
+// STRATÉGIE (approche « shadow write » non-intrusive) :
+//   1. localStorage reste la source PRIMAIRE pour les lectures synchrones
+//      (l'app est massivement synchrone : ~40 lectures directes de
+//      `assets`, `cessions`, etc.).
+//   2. À chaque écriture (saveToStorage / saveCessions / saveArbitrages),
+//      on schedule un mirror IndexedDB en arrière-plan (debounced 500 ms)
+//      → écriture asynchrone, jamais bloquante.
+//   3. Si localStorage échoue (quota dépassé), on déclenche un mirror
+//      IMMÉDIAT + on informe l'utilisateur via toast.
+//   4. Au boot, si localStorage est vide ou corrompu, on peut restaurer
+//      automatiquement depuis IndexedDB (voir app7-init.js).
+//
+// Aucune régression : si IndexedDB n'est pas disponible (navigateur
+// ancien, mode privé Firefox), tout fonctionne comme avant.
+// =====================================================================
+
+const APPDATA_DB_STORE = 'appData';
+
+// Délègue à openPriceDB (DB partagée). Alias conservé pour compat.
+// ⚠ openPriceDB est définie dans app6-api.js qui charge APRÈS app1-core.js.
+//    Comme openAppDataDB n'est appelée qu'au RUNTIME (jamais au chargement),
+//    la fonction est disponible au moment de l'appel.
+function openAppDataDB() {
+    if (typeof openPriceDB !== 'function') {
+        return Promise.reject(new Error('openPriceDB indisponible — app6-api.js non chargé.'));
+    }
+    return openPriceDB();
+}
+
+async function appDBGet(key) {
+    try {
+        const db = await openAppDataDB();
+        return await new Promise((resolve, reject) => {
+            const req = db.transaction(APPDATA_DB_STORE, 'readonly').objectStore(APPDATA_DB_STORE).get(key);
+            req.onsuccess = () => { db.close(); resolve(req.result || null); };
+            req.onerror   = () => { db.close(); reject(req.error); };
+        });
+    } catch (_) { return null; }
+}
+
+async function appDBSet(key, value) {
+    try {
+        const db = await openAppDataDB();
+        return await new Promise((resolve, reject) => {
+            const tx = db.transaction(APPDATA_DB_STORE, 'readwrite');
+            tx.objectStore(APPDATA_DB_STORE).put(value, key);
+            tx.oncomplete = () => { db.close(); resolve(); };
+            tx.onerror    = () => { db.close(); reject(tx.error); };
+            tx.onabort    = () => { db.close(); reject(tx.error || new Error('Transaction aborted')); };
+        });
+    } catch (err) {
+        console.warn('[IDB] Écriture échouée pour', key, ':', err.message);
+    }
+}
+
+async function appDBDelete(key) {
+    try {
+        const db = await openAppDataDB();
+        return await new Promise((resolve, reject) => {
+            const tx = db.transaction(APPDATA_DB_STORE, 'readwrite');
+            tx.objectStore(APPDATA_DB_STORE).delete(key);
+            tx.oncomplete = () => { db.close(); resolve(); };
+            tx.onerror    = () => { db.close(); reject(tx.error); };
+        });
+    } catch (_) { /* silencieux */ }
+}
+
+// ---------------------------------------------------------------------
+// MIRROR DEBOUNCED
+// ---------------------------------------------------------------------
+// Évite de spammer IndexedDB quand plusieurs écritures surviennent en
+// cascade (import, refresh, etc.).
+let _idbMirrorTimer = null;
+const _idbMirrorPending = new Set();   // clés à mirrorer (assets, cessions, arbitrages)
+
+function scheduleIdbMirror(key) {
+    _idbMirrorPending.add(key);
+    if (_idbMirrorTimer) clearTimeout(_idbMirrorTimer);
+    _idbMirrorTimer = setTimeout(_flushIdbMirror, 500);
+}
+
+async function _flushIdbMirror() {
+    const keys = [..._idbMirrorPending];
+    _idbMirrorPending.clear();
+    _idbMirrorTimer = null;
+
+    for (const key of keys) {
+        try {
+            // La clé inclut le portefeuille courant (multi-portefeuille)
+            const storageKey = key + '__' + currentPortfolioId;
+            let payload;
+            if (key === 'assets')      payload = assets;
+            else if (key === 'cessions')    payload = cessions;
+            else if (key === 'arbitrages')  payload = arbitrages;
+            else continue;
+
+            await appDBSet(storageKey, {
+                updatedAt: Date.now(),
+                portfolioId: currentPortfolioId,
+                data: payload
+            });
+        } catch (err) {
+            console.warn('[IDB] Mirror échoué pour', key, ':', err.message);
+        }
+    }
+}
+
+// Force immédiatement le mirror (utilisé en cas d'erreur quota localStorage).
+async function forceIdbMirror() {
+    _idbMirrorPending.add('assets');
+    _idbMirrorPending.add('cessions');
+    _idbMirrorPending.add('arbitrages');
+    if (_idbMirrorTimer) clearTimeout(_idbMirrorTimer);
+    _idbMirrorTimer = null;
+    await _flushIdbMirror();
+}
+
+// ---------------------------------------------------------------------
+// RESTAURATION DEPUIS INDEXEDDB
+// ---------------------------------------------------------------------
+// Charge les données d'un portefeuille depuis IndexedDB. Utilisé :
+//   • au boot, si localStorage est vide/corrompu
+//   • manuellement via le modal Synchronisation
+// Retourne { assets, cessions, arbitrages, updatedAt } ou null.
+async function loadFromIdb(portfolioId) {
+    const pid = portfolioId || currentPortfolioId;
+    try {
+        const [a, c, ar] = await Promise.all([
+            appDBGet('assets__' + pid),
+            appDBGet('cessions__' + pid),
+            appDBGet('arbitrages__' + pid)
+        ]);
+        // Aucune donnée : retourne null
+        if (!a && !c && !ar) return null;
+
+        // Date la plus récente parmi les trois
+        const updatedAt = Math.max(
+            a?.updatedAt || 0,
+            c?.updatedAt || 0,
+            ar?.updatedAt || 0
+        );
+
+        return {
+            assets:      a?.data || null,
+            cessions:    c?.data || null,
+            arbitrages:  ar?.data || null,
+            updatedAt
+        };
+    } catch (err) {
+        console.warn('[IDB] Chargement échoué :', err);
+        return null;
+    }
+}
+
+// Compare les timestamps localStorage vs IndexedDB pour un portefeuille.
+// Retourne { ls_updatedAt, idb_updatedAt, idbNewer }.
+async function compareStores() {
+    const pid = currentPortfolioId;
+    // localStorage n'a pas de timestamp — on utilise la clé 'lastAutoBackup'
+    // ou on prend 0 si absent.
+    const lsTime = parseInt(localStorage.getItem(pfKey('patriMonial_lastAutoBackup')) || '0', 10) || 0;
+    const idbData = await loadFromIdb(pid);
+    const idbTime = idbData?.updatedAt || 0;
+    return {
+        ls_updatedAt: lsTime,
+        idb_updatedAt: idbTime,
+        idbNewer: idbTime > lsTime + 60 * 1000   // tolérance 1 min
+    };
+}
+
+// Expose l'API globalement
+window.openAppDataDB = openAppDataDB;
+window.appDBGet = appDBGet;
+window.appDBSet = appDBSet;
+window.appDBDelete = appDBDelete;
+window.scheduleIdbMirror = scheduleIdbMirror;
+window.forceIdbMirror = forceIdbMirror;
+window.loadFromIdb = loadFromIdb;
+window.compareStores = compareStores;

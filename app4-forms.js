@@ -145,6 +145,20 @@ function openAddAssetModal() {
     document.getElementById('add-valuation-mode').value = 'MANUAL';
     document.getElementById('add-envelope-date').value = '';
     document.getElementById('add-zone').value = 'UE';
+
+    // Devise — reset à EUR par défaut (Chantier 1.2)
+    const curSel = document.getElementById('add-currency');
+    if (curSel) curSel.value = 'EUR';
+    const fxInput = document.getElementById('add-fx-rate');
+    if (fxInput) fxInput.value = '';
+    _addFxRateTouched = false;
+    onCurrencyChange();
+
+    // Score ESG — reset (Chantier §3)
+    const esgInput = document.getElementById('add-esg-score');
+    if (esgInput) esgInput.value = '';
+    updateEsgPreview();
+
     setFormTags(['Or & Métaux']);
     document.getElementById('modal-add-asset').classList.remove('hidden');
 }
@@ -190,11 +204,76 @@ function openEditAssetModal(id) {
     document.getElementById('add-zone').value = asset.zone || 'UE';
     updateEnvelopeDetails();
 
+    // Devise — restaure la devise et le taux d'achat (Chantier 1.2)
+    const curSel = document.getElementById('add-currency');
+    if (curSel) curSel.value = asset.currency || 'EUR';
+    const fxInput = document.getElementById('add-fx-rate');
+    if (fxInput) {
+        // En édition, on pré-remplit avec la valeur stockée SANS lancer de fetch
+        fxInput.value = asset.fxRateAtPurchase ? asset.fxRateAtPurchase.toFixed(6) : '';
+    }
+    // Marque comme "touche" pour empêcher un fetch automatique d'écraser la valeur
+    _addFxRateTouched = !!(asset.fxRateAtPurchase);
+    onCurrencyChange();
+
+    // Score ESG — préremplit avec la valeur stockée (Chantier §3)
+    const esgInput = document.getElementById('add-esg-score');
+    if (esgInput) {
+        esgInput.value = Number.isFinite(asset.esgScore) ? asset.esgScore : '';
+    }
+    updateEsgPreview();
+
     document.getElementById('modal-add-asset-title').innerHTML = '<i class="fa-solid fa-pen text-emerald-400"></i> Modifier l\'Actif';
     document.getElementById('modal-add-asset-submit-btn').innerText = 'Enregistrer les Modifications';
     document.getElementById('search-results-container').classList.add('hidden');
     document.getElementById('add-search-input').value = '';
     document.getElementById('modal-add-asset').classList.remove('hidden');
+}
+
+// ---------------------------------------------------------------------
+// SCORE ESG — aperçu en direct dans le formulaire (Chantier §3)
+// ---------------------------------------------------------------------
+// Affiche le grade correspondant au score saisi + indique si un score
+// catalogue existe déjà pour ce ticker.
+function updateEsgPreview() {
+    const input = document.getElementById('add-esg-score');
+    const previewEl = document.getElementById('add-esg-preview');
+    const hintEl = document.getElementById('add-esg-catalog-hint');
+    const tickerInput = document.getElementById('add-ticker');
+    const ticker = (tickerInput?.value || '').toUpperCase().trim();
+
+    // Aperçu du grade si score saisi
+    const raw = parseFloat(input?.value);
+    if (previewEl) {
+        if (Number.isFinite(raw) && raw >= 0 && raw <= 100 && typeof esgScoreToGrade === 'function') {
+            const grade = esgScoreToGrade(raw);
+            const styles = (typeof ESG_GRADE_STYLES !== 'undefined' && ESG_GRADE_STYLES[grade]) || null;
+            const color = styles ? styles.fg : 'text-gray-400';
+            previewEl.className = `text-[11px] font-bold ${color} ml-2`;
+            previewEl.innerText = `→ ${grade}`;
+        } else if (input && input.value) {
+            previewEl.className = 'text-[11px] font-bold text-rose-400 ml-2';
+            previewEl.innerText = '→ valeur invalide (0-100)';
+        } else {
+            previewEl.className = 'text-[11px] font-bold text-gray-500 ml-2';
+            previewEl.innerText = '';
+        }
+    }
+
+    // Hint : score catalogue existant
+    if (hintEl && typeof ESG_CATALOG !== 'undefined') {
+        if (!ticker) {
+            hintEl.innerHTML = '';
+            return;
+        }
+        const baseTicker = ticker.replace(/[.\-].*$/, '');
+        const cat = ESG_CATALOG[ticker] || ESG_CATALOG[baseTicker];
+        if (cat) {
+            hintEl.innerHTML = `<i class="fa-solid fa-leaf text-emerald-400 mr-1"></i>Score catalogue disponible : <b>${cat.score}</b> (${cat.grade}) — ${escapeHTML(cat.source)}. Laissez vide pour l'utiliser.`;
+        } else {
+            hintEl.innerHTML = '';
+        }
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -212,10 +291,97 @@ function recalculateAddTotals() {
 }
 
 // ---------------------------------------------------------------------
+// DEVISE — gestion du formulaire d'ajout/édition (Chantier 1.2)
+// ---------------------------------------------------------------------
+// Affiche ou masque le bloc "Taux de change" selon la devise choisie, met
+// à jour les avertissements, et récupère automatiquement un taux indicatif
+// via l'API Frankfurter (async) si la devise n'est pas EUR.
+// ---------------------------------------------------------------------
+
+// Flag pour ne PAS réécraser un taux saisi manuellement par l'utilisateur
+// quand l'API répond (course async).
+let _addFxRateTouched = false;
+
+function onCurrencyChange() {
+    const sel = document.getElementById('add-currency');
+    const wrap = document.getElementById('add-fx-rate-wrap');
+    const input = document.getElementById('add-fx-rate');
+    const hint = document.getElementById('add-fx-rate-hint');
+    const warning = document.getElementById('add-currency-warning');
+    if (!sel || !wrap || !input || !hint || !warning) return;
+
+    const cur = (sel.value || 'EUR').toUpperCase();
+
+    if (cur === 'EUR') {
+        wrap.classList.add('hidden');
+        warning.classList.add('hidden');
+        input.value = '';
+        _addFxRateTouched = false;
+        return;
+    }
+
+    wrap.classList.remove('hidden');
+    warning.classList.remove('hidden');
+
+    // Avertissements généraux
+    const warns = [
+        `Les montants « Prix d'achat » et « Valeur actuelle » doivent être saisis en <b>EUR</b>. ` +
+        `La devise sert à afficher la valeur native et à calculer l'exposition.`,
+        `Le taux de change est figé à la date d'achat : il sert à reconstituer la <b>valeur native</b> ` +
+        `(valeur actuelle ÷ taux courant) et à mesurer l'effet de change.`
+    ];
+    warning.innerHTML = warns.map(w => `<div><i class="fa-solid fa-circle-info mr-1"></i>${w}</div>`).join('');
+
+    // Si l'utilisateur a déjà saisi un taux à la main, ne pas écraser
+    if (_addFxRateTouched && input.value) return;
+
+    // Sinon, on tente de récupérer un taux auto (taux du jour si création,
+    // taux de la date d'achat si elle est déjà renseignée).
+    const purchaseDate = document.getElementById('add-purchase-date')?.value || '';
+    _autoFillFxRate(cur, purchaseDate);
+}
+
+// Récupère un taux indicatif (async) et remplit le champ s'il n'a pas été
+// touché entre-temps. Affiche l'état dans le hint.
+async function _autoFillFxRate(currency, dateISO) {
+    const input = document.getElementById('add-fx-rate');
+    const hint = document.getElementById('add-fx-rate-hint');
+    if (!input || !hint) return;
+
+    hint.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[9px]"></i> Récupération du taux…';
+
+    try {
+        // On demande le taux à la date d'achat si dispo, sinon le plus récent
+        let rate = null;
+        if (typeof getFxRateToEUR === 'function') {
+            rate = await getFxRateToEUR(currency, dateISO || null);
+        }
+
+        if (rate === null || !Number.isFinite(rate) || rate <= 0) {
+            hint.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400 text-[9px]"></i> Taux indisponible — saisissez-le manuellement.';
+            return;
+        }
+
+        // Ne pas écraser une saisie manuelle faite pendant l'attente API
+        if (_addFxRateTouched && input.value) return;
+
+        input.value = rate.toFixed(6);
+        const src = (typeof FX_SUPPORTED !== 'undefined' && FX_SUPPORTED.includes(currency))
+            ? 'Frankfurter (BCE)'
+            : 'fallback local';
+        hint.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-[9px]"></i> Taux indicatif (${src}) : 1 ${currency} ≈ ${rate.toFixed(4)} €`;
+    } catch (err) {
+        hint.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400 text-[9px]"></i> Erreur : ' + (err.message || 'inconnue') + ' — saisie manuelle requise.';
+    }
+}
+
+// ---------------------------------------------------------------------
 // ---------------------------------------------------------------------
 // VALIDATION DE COHÉRENCE (Partie 5)
 // ---------------------------------------------------------------------
-function validateAssetCoherence(fields) {
+// currentId : id de l'actif en cours d'édition (null en création).
+// Permet d'exclure l'actif lui-même de la détection de doublon ISIN.
+function validateAssetCoherence(fields, currentId = null) {
     const warnings = [];
     if (fields.cadrans.primary === 'CRYPTO' && !fields.categories.includes('Crypto'))
         warnings.push('Le cadran "Cryptomonnaies" est sélectionné mais le tag "Crypto" est absent.');
@@ -226,7 +392,7 @@ function validateAssetCoherence(fields) {
     if (fields.isin && !/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(fields.isin))
         warnings.push("Le format de l'ISIN est invalide (2 lettres + 9 alphanum + 1 chiffre).");
     if (fields.isin) {
-        const duplicate = assets.find(a => a.isin === fields.isin && a.id !== fields.id);
+        const duplicate = assets.find(a => a.isin === fields.isin && a.id !== currentId);
         if (duplicate) warnings.push(`Un actif avec cet ISIN existe déjà : ${duplicate.name}.`);
     }
     return warnings;
@@ -285,15 +451,36 @@ function handleAddAsset(e) {
     const isin = (document.getElementById('add-isin').value || '').toUpperCase().trim();
     const referenceRaw = (document.getElementById('add-reference').value || '').trim();
 
+    // Devise (Chantier 1.2)
+    const currency = (document.getElementById('add-currency')?.value || 'EUR').toUpperCase();
+    let fxRateAtPurchase = 0;
+    if (currency !== 'EUR') {
+        const fxRaw = parseFloat(document.getElementById('add-fx-rate')?.value);
+        if (!Number.isFinite(fxRaw) || fxRaw <= 0) {
+            alert(`Vous avez choisi la devise ${currency} mais le taux de change est vide ou invalide.\n\n` +
+                  `Saisissez un taux strictement positif (ex : 0.92 pour USD→EUR), ou repassez en EUR.`);
+            return;
+        }
+        fxRateAtPurchase = fxRaw;
+    }
+
+    // Score ESG (Chantier §3) — saisie manuelle optionnelle
+    const esgRaw = parseFloat(document.getElementById('add-esg-score')?.value);
+    const esgScore = Number.isFinite(esgRaw) && esgRaw >= 0 && esgRaw <= 100 ? esgRaw : null;
+
     const fields = {
         name, ticker, isin, categories: tags, taxCategory,
         cadrans: { primary: primaryCadran, secondary: [] },
         qty, frais, invested, value,
         envelope, envelopeOpenedAt, zone, yahooTicker, valuationMode,
-        purchaseDate, broker
+        purchaseDate, broker,
+        currency,
+        fxRateAtPurchase: currency !== 'EUR' ? fxRateAtPurchase : undefined,
+        fxRateDate:       currency !== 'EUR' ? (purchaseDate || '') : undefined,
+        esgScore:         esgScore   // null = utilise le catalogue automatique
     };
 
-        if (editId) {
+    if (editId) {
         const asset = assets.find(a => a.id === parseFloat(editId));
         if (asset) {
             Object.assign(asset, fields);
@@ -348,6 +535,18 @@ function handleAddAsset(e) {
                 // Capturer la valeur unitaire marché AVANT modification
                 const oldUnitValue = existing.qty > 0 ? (existing.value / existing.qty) : price;
 
+                // Devise (Chantier 1.2) — on ne modifie la devise de l'actif
+                // existant QUE si :
+                //   • il était en EUR (devise par défaut historique) ET
+                //   • l'utilisateur saisit une devise ≠ EUR
+                // Sinon on respecte la devise d'origine pour ne pas fausser
+                // l'historique de change déjà enregistré.
+                if (currency !== 'EUR' && (existing.currency === 'EUR' || !existing.currency)) {
+                    existing.currency = currency;
+                    existing.fxRateAtPurchase = fxRateAtPurchase;
+                    existing.fxRateDate = purchaseDate || '';
+                }
+
                 // Ajouter les nouveaux lots et le buy à l'actif existant
                 existing.lots = (existing.lots || []).concat(lots);
                 existing.buys = (existing.buys || []).concat([{
@@ -394,7 +593,7 @@ function handleAddAsset(e) {
     }
 
 
-    const warnings = validateAssetCoherence(fields);
+    const warnings = validateAssetCoherence(fields, editId ? parseFloat(editId) : null);
     if (warnings.length && !confirm('Avertissements :\n\n' + warnings.join('\n') + '\n\nContinuer quand même ?')) {
         return;
     }
@@ -404,6 +603,12 @@ function handleAddAsset(e) {
     refreshAllUI();
     e.target.reset();
     document.getElementById('add-edit-id').value = '';
+
+    // Chantier 1.4 — si l'actif vient d'être promu depuis la watchlist,
+    // propose de retirer l'entrée correspondante pour éviter un doublon.
+    if (typeof cleanupAfterPromotion === 'function') {
+        setTimeout(() => cleanupAfterPromotion(), 150);
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -1045,25 +1250,24 @@ function handleAddCession(e) {
         }
 
         const selectedLotId = document.getElementById('cession-lot-id-hidden')?.value || '';
+
+        // Snapshot des qtyRemaining AVANT le dry-run : on peut ainsi
+        // restaurer sans risque même si le dry-run échoue en cours de route.
+        const snapshot = (assetToModify.lots || []).map(l => ({ id: l.id, qtyRemaining: l.qtyRemaining || 0 }));
+
         const dryRun = selectedLotId
             ? consumeLotById(assetToModify, selectedLotId, qtyToSell)
             : consumeFIFO(assetToModify, qtyToSell);
 
+        // Rollback inconditionnel depuis le snapshot (sur succès ET échec)
+        snapshot.forEach(s => {
+            const lot = (assetToModify.lots || []).find(l => String(l.id) === String(s.id));
+            if (lot) lot.qtyRemaining = s.qtyRemaining;
+        });
+
         if (dryRun.error) {
             alert(dryRun.error);
             return;
-        }
-        // Rollback : on restaure les lots tels qu'ils étaient avant le dry-run
-        // (consumeFIFO/consumeLotById mutent lot.qtyRemaining directement, il
-        // faut donc annuler explicitement).
-        if (selectedLotId) {
-            const lot = (assetToModify.lots || []).find(l => String(l.id) === String(selectedLotId));
-            if (lot) lot.qtyRemaining = (lot.qtyRemaining || 0) + qtyToSell;
-        } else {
-            dryRun.consumedLots.forEach(c => {
-                const lot = (assetToModify.lots || []).find(l => String(l.id) === String(c.lotId));
-                if (lot) lot.qtyRemaining = (lot.qtyRemaining || 0) + c.qty;
-            });
         }
     }
 
@@ -1988,4 +2192,417 @@ function simulateToCessionForm() {
     // Le prix d'achat total sera recalculé côté handleAddCession (défensif)
     updateCessionUnitPrices();
     onCessionQtyChange();
+}
+
+// =====================================================================
+// DIVIDENDES — CRUD (Chantier 1.1)
+// =====================================================================
+
+// Ouvre le modal d'ajout OU d'édition d'un dividende.
+//   openAddDividendModal(assetId)             → mode création
+//   openAddDividendModal(assetId, dividendId) → mode édition
+function openAddDividendModal(assetId, dividendId) {
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) {
+        alert('Actif introuvable.');
+        return;
+    }
+    const editId = dividendId !== undefined && dividendId !== null ? dividendId : null;
+
+    document.getElementById('dividend-asset-id').value = assetId;
+    document.getElementById('dividend-edit-id').value  = editId || '';
+
+    if (editId) {
+        const div = (asset.dividends || []).find(d => d.id === editId);
+        if (!div) { alert('Dividende introuvable.'); return; }
+        document.getElementById('modal-dividend-title').innerHTML =
+            '<i class="fa-solid fa-pen text-emerald-400"></i> Modifier le dividende';
+        document.getElementById('dividend-date').value      = div.date || new Date().toISOString().slice(0, 10);
+        document.getElementById('dividend-kind').value      = div.kind || 'DIVIDENDE';
+        document.getElementById('dividend-amount').value    = div.amount || '';
+        document.getElementById('dividend-currency').value  = div.currency || 'EUR';
+        document.getElementById('dividend-withheld').value  = div.taxWithheld || 0;
+        document.getElementById('dividend-source').value    = div.source || '';
+    } else {
+        document.getElementById('modal-dividend-title').innerHTML =
+            '<i class="fa-solid fa-sack-dollar text-emerald-400"></i> Nouveau dividende';
+        document.getElementById('dividend-date').value      = new Date().toISOString().slice(0, 10);
+        document.getElementById('dividend-kind').value      = 'DIVIDENDE';
+        document.getElementById('dividend-amount').value    = '';
+        document.getElementById('dividend-currency').value  = 'EUR';
+        document.getElementById('dividend-withheld').value  = 0;
+        document.getElementById('dividend-source').value    = '';
+    }
+
+    document.getElementById('modal-add-dividend').classList.remove('hidden');
+}
+
+// Validation + persistance du formulaire de dividende
+function handleAddDividend(e) {
+    e.preventDefault();
+
+    const assetId = parseFloat(document.getElementById('dividend-asset-id').value);
+    const editId  = document.getElementById('dividend-edit-id').value;
+    const asset   = assets.find(a => a.id === assetId);
+    if (!asset) { alert('Actif introuvable.'); return; }
+
+    const date     = document.getElementById('dividend-date').value;
+    const kind     = document.getElementById('dividend-kind').value;
+    const amount   = parseFloat(document.getElementById('dividend-amount').value);
+    const currency = document.getElementById('dividend-currency').value;
+    const withheld = parseFloat(document.getElementById('dividend-withheld').value) || 0;
+    const source   = document.getElementById('dividend-source').value.trim();
+
+    // Validations
+    if (!date) { alert('Renseignez la date du versement.'); return; }
+    if (!Number.isFinite(amount) || amount <= 0) {
+        alert('Le montant brut doit être strictement positif.');
+        return;
+    }
+    if (withheld < 0) { alert('La retenue à la source ne peut pas être négative.'); return; }
+    if (withheld > amount) {
+        alert('La retenue à la source ne peut pas dépasser le montant brut.');
+        return;
+    }
+
+    // Devise différente de EUR → on enregistre un avertissement informatif
+    // (pas de conversion automatique à ce stade, la conversion nécessiterait
+    //  une table de change historique ; l'utilisateur devra saisir le montant
+    //  en EUR s'il veut une agrégation homogène).
+    if (currency !== 'EUR') {
+        const ok = confirm(
+            `Vous enregistrez ce dividende en ${currency}.\n\n` +
+            `L'application ne convertit PAS automatiquement les devises pour le calcul du TRI ` +
+            `ni pour le rendement du portefeuille. Le montant sera additionné tel quel aux ` +
+            `autres montants (mélange de devises).\n\n` +
+            `Pour un résultat exact, saisissez le montant déjà converti en EUR.\n\n` +
+            `Continuer quand même ?`
+        );
+        if (!ok) return;
+    }
+
+    if (!Array.isArray(asset.dividends)) asset.dividends = [];
+
+    if (editId) {
+        const idx = asset.dividends.findIndex(d => String(d.id) === String(editId));
+        if (idx === -1) { alert('Dividende introuvable pour modification.'); return; }
+        asset.dividends[idx] = {
+            ...asset.dividends[idx],
+            date, kind, amount, currency, taxWithheld: withheld, source
+        };
+    } else {
+        asset.dividends.push({
+            id: Date.now() + Math.floor(Math.random() * 100000),
+            date, kind, amount, currency, taxWithheld: withheld, source
+        });
+    }
+
+    // Tri chronologique croissant (cohérent avec les autres structures)
+    asset.dividends.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    saveToStorage();
+
+    // Invalide les caches dépendants (TRI + scoring)
+    if (typeof invalidateTIRCache === 'function') invalidateTIRCache();
+    if (typeof invalidateScoringCache === 'function') invalidateScoringCache();
+    if (typeof _sparklineCache !== 'undefined' && _sparklineCache.clear) _sparklineCache.clear();
+
+    closeModal('modal-add-dividend');
+
+    // Re-render : tableau + KPI + stats globales + inventaire + détail actif
+    refreshAllUI();
+
+    // Recharge le tableau des dividendes dans le modal de détail actif si ouvert
+    if (currentAssetDetailId === assetId) {
+        const refreshedAsset = assets.find(a => a.id === assetId);
+        if (refreshedAsset) renderAssetDividendsTable(refreshedAsset);
+    }
+
+    e.target.reset();
+}
+
+// Suppression d'un dividende avec confirmation (récap du contenu)
+function deleteDividend(assetId, dividendId) {
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+    const div = (asset.dividends || []).find(d => String(d.id) === String(dividendId));
+    if (!div) return;
+
+    const dt = parseFlexDate(div.date);
+    const dtTxt = dt ? dt.toLocaleDateString('fr-FR') : '—';
+    const net = (Number(div.amount) || 0) - (Number(div.taxWithheld) || 0);
+
+    const recap =
+        `Date : ${dtTxt}\n` +
+        `Type : ${div.kind || 'DIVIDENDE'}\n` +
+        `Montant brut : ${formatEUR(div.amount)}\n` +
+        `Retenue : ${formatEUR(div.taxWithheld || 0)}\n` +
+        `Net perçu : ${formatEUR(net)}` +
+        (div.source ? `\nSource : ${div.source}` : '');
+
+    if (!confirm(`Supprimer ce dividende ?\n\n${recap}\n\nCette action est irréversible.`)) return;
+
+    pushUndo('Suppression d\'un dividende');
+    asset.dividends = asset.dividends.filter(d => String(d.id) !== String(dividendId));
+    saveToStorage();
+
+    // Invalide les caches dépendants
+    if (typeof invalidateTIRCache === 'function') invalidateTIRCache();
+    if (typeof invalidateScoringCache === 'function') invalidateScoringCache();
+    if (typeof _sparklineCache !== 'undefined' && _sparklineCache.clear) _sparklineCache.clear();
+
+    refreshAllUI();
+
+    // Recharge le tableau si le modal est encore ouvert
+    if (currentAssetDetailId === assetId) {
+        const refreshedAsset = assets.find(a => a.id === assetId);
+        if (refreshedAsset) renderAssetDividendsTable(refreshedAsset);
+    }
+}
+
+// =====================================================================
+// SPLITS & REVERSE SPLITS — CRUD (Chantier 1.3)
+// ---------------------------------------------------------------------
+// Un split est NEUTRE fiscalement : il multiplie la quantité et divise le
+// prix unitaire, sans changer la valeur totale ni le capital investi.
+//   ratio > 1 → split (ex: 10 pour 10:1)
+//   0 < ratio < 1 → reverse split (ex: 0.1 pour 1:10)
+//
+// On applique le ratio à :
+//   • asset.qty
+//   • chaque lot : qty, qtyRemaining, price
+//   • chaque buy  : qty, price  (pour cohérence du TRI)
+// On NE TOUCHE PAS à :
+//   • asset.invested (capital investi total, inchangé)
+//   • asset.value    (valeur de marché totale, inchangée)
+//   • asset.history  (séries de valeurs totales, inchangées)
+//   • les cessions déjà enregistrées (à la charge de l'utilisateur)
+// =====================================================================
+
+function openSplitModal(assetId) {
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) { alert('Actif introuvable.'); return; }
+    if (!asset.lots || asset.lots.length === 0) {
+        alert('Cet actif n\'a aucun lot. Le split n\'a rien à modifier.');
+        return;
+    }
+
+    document.getElementById('split-asset-id').value = assetId;
+    document.getElementById('split-asset-name').innerText = asset.name;
+    document.getElementById('split-asset-qty').innerText = fmtQty(asset.qty);
+    const pru = computePRUFromLots(asset);
+    document.getElementById('split-asset-pru').innerText = formatUnitPrice(pru);
+
+    // Valeurs par défaut
+    document.querySelector('input[name="split-type"][value="SPLIT"]').checked = true;
+    document.getElementById('split-ratio-a').value = 10;
+    document.getElementById('split-ratio-b').value = 1;
+    document.getElementById('split-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('split-note').value = '';
+
+    onSplitTypeChange();
+    document.getElementById('modal-add-split').classList.remove('hidden');
+}
+
+// Adapte les libellés et les valeurs par défaut selon le type choisi.
+function onSplitTypeChange() {
+    const type = document.querySelector('input[name="split-type"]:checked')?.value || 'SPLIT';
+    const labelA = document.getElementById('split-label-a');
+    const labelB = document.getElementById('split-label-b');
+    const inputA = document.getElementById('split-ratio-a');
+    const inputB = document.getElementById('split-ratio-b');
+
+    if (type === 'SPLIT') {
+        labelA.innerText = 'Nouvelles actions reçues *';
+        labelB.innerText = 'Anciennes actions échangées *';
+        // Valeurs par défaut pour un split classique : 10:1
+        if (inputA.value === '1' && inputB.value === '10') {
+            inputA.value = 10;
+            inputB.value = 1;
+        }
+    } else {
+        labelA.innerText = 'Nouvelles actions après regroupement *';
+        labelB.innerText = 'Anciennes actions regroupées *';
+        // Valeurs par défaut pour un reverse split : 1:10
+        if (inputA.value === '10' && inputB.value === '1') {
+            inputA.value = 1;
+            inputB.value = 10;
+        }
+    }
+    updateSplitPreview();
+}
+
+// Calcule et affiche l'aperçu avant / après en temps réel.
+function updateSplitPreview() {
+    const assetId = parseFloat(document.getElementById('split-asset-id').value);
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+
+    const a = parseFloat(document.getElementById('split-ratio-a').value) || 0;
+    const b = parseFloat(document.getElementById('split-ratio-b').value) || 0;
+
+    // Récupère les éléments du preview
+    const elQtyB = document.getElementById('split-preview-qty-before');
+    const elPruB = document.getElementById('split-preview-pru-before');
+    const elInvB = document.getElementById('split-preview-inv-before');
+    const elQtyA = document.getElementById('split-preview-qty-after');
+    const elPruA = document.getElementById('split-preview-pru-after');
+    const elInvA = document.getElementById('split-preview-inv-after');
+    if (!elQtyB || !elQtyA) return;
+
+    const pruBefore = computePRUFromLots(asset);
+    elQtyB.innerText = fmtQty(asset.qty);
+    elPruB.innerText = formatUnitPrice(pruBefore);
+    elInvB.innerText = formatEUR(asset.invested);
+
+    if (a <= 0 || b <= 0) {
+        elQtyA.innerText = '—';
+        elPruA.innerText = '—';
+        elInvA.innerText = '—';
+        return;
+    }
+
+    const ratio = a / b;
+    const qtyAfter = asset.qty * ratio;
+    const pruAfter = ratio > 0 ? pruBefore / ratio : 0;
+
+    elQtyA.innerText = fmtQty(qtyAfter);
+    elPruA.innerText = formatUnitPrice(pruAfter);
+    elInvA.innerText = formatEUR(asset.invested) + ' (inchangé)';
+}
+
+// Applique définitivement le split à l'actif et à tous ses lots.
+function handleAddSplit(e) {
+    e.preventDefault();
+
+    const assetId = parseFloat(document.getElementById('split-asset-id').value);
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) { alert('Actif introuvable.'); return; }
+
+    const type = document.querySelector('input[name="split-type"]:checked')?.value || 'SPLIT';
+    const a = parseFloat(document.getElementById('split-ratio-a').value) || 0;
+    const b = parseFloat(document.getElementById('split-ratio-b').value) || 0;
+    const date = document.getElementById('split-date').value;
+    const note = document.getElementById('split-note').value.trim();
+
+    if (a <= 0 || b <= 0) {
+        alert('Les deux valeurs du ratio doivent être strictement positives.');
+        return;
+    }
+    if (!date) {
+        alert('Renseignez la date d\'effet du split.');
+        return;
+    }
+    const ratio = a / b;
+    if (ratio === 1) {
+        alert('Le ratio vaut 1 :1, aucune modification ne serait appliquée.');
+        return;
+    }
+
+    // Confirmation avec récapitulatif chiffré
+    const pruBefore = computePRUFromLots(asset);
+    const qtyAfter = asset.qty * ratio;
+    const pruAfter = pruBefore / ratio;
+
+    const opLabel = type === 'SPLIT' ? 'Split' : 'Reverse split';
+    const msg =
+        `${opLabel} ${a}:${b} — ${asset.name}\n\n` +
+        `Quantité : ${fmtQty(asset.qty)} → ${fmtQty(qtyAfter)}\n` +
+        `PRU/u : ${formatUnitPrice(pruBefore)} → ${formatUnitPrice(pruAfter)}\n` +
+        `Capital investi : ${formatEUR(asset.invested)} (inchangé)\n\n` +
+        `Cette opération modifiera tous les lots en cours. Confirmer ?`;
+
+    if (!confirm(msg)) return;
+
+    pushUndo(`${opLabel} ${a}:${b} sur ${asset.name}`);
+
+    // --- 1) Applique le ratio à la quantité totale ---
+    asset.qty = qtyAfter;
+
+    // --- 2) Applique le ratio à chaque lot (qty, qtyRemaining, price) ---
+    // Les frais du lot restent inchangés (montant total en EUR).
+    // Le prix unitaire est divisé par le ratio → prix_lot × qty_lot reste
+    // strictement identique, donc le PRU total NE CHANGE PAS.
+    (asset.lots || []).forEach(lot => {
+        lot.qty          = (lot.qty || 0) * ratio;
+        lot.qtyRemaining = (lot.qtyRemaining || 0) * ratio;
+        lot.price        = (lot.price || 0) / ratio;
+    });
+
+    // --- 3) Applique le ratio aux buys (pour cohérence du TRI) ---
+    (asset.buys || []).forEach(buy => {
+        buy.qty   = (buy.qty || 0) * ratio;
+        buy.price = (buy.price || 0) / ratio;
+        // buy.total reste identique
+    });
+
+    // --- 4) asset.value et asset.invested sont INCHANGÉS (neutre fiscalement) ---
+    // Mais asset.frais doit rester cohérent : il est déjà en EUR total → inchangé.
+
+    // --- 5) Enregistre le split dans l'historique ---
+    if (!Array.isArray(asset.splits)) asset.splits = [];
+    asset.splits.push({
+        id:        Date.now() + Math.floor(Math.random() * 100000),
+        date,
+        ratio,
+        note,
+        appliedAt: Date.now()
+    });
+    asset.splits.sort((x, y) => new Date(x.date) - new Date(y.date));
+
+    // --- 6) Invalide les caches dépendants ---
+    if (typeof invalidateTIRCache === 'function') invalidateTIRCache();
+    if (typeof invalidateScoringCache === 'function') invalidateScoringCache();
+    if (typeof _sparklineCache !== 'undefined' && _sparklineCache.clear) _sparklineCache.clear();
+
+    saveToStorage();
+    closeModal('modal-add-split');
+    refreshAllUI();
+
+    // Recharge le tableau des lots si le modal de détail est ouvert
+    if (currentAssetDetailId === assetId) {
+        const refreshed = assets.find(a => a.id === assetId);
+        if (refreshed) {
+            renderAssetLotsTable(refreshed);
+            renderAssetDividendsTable(refreshed);
+            renderFxEffectPanel(refreshed);
+        }
+    }
+
+    e.target.reset();
+}
+
+// Suppression d'un split de l'historique (NE REJOUE PAS l'opération inverse).
+// L'utilisateur est averti qu'il doit corriger manuellement s'il veut revenir en arrière.
+function deleteSplit(assetId, splitId) {
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+    const sp = (asset.splits || []).find(s => String(s.id) === String(splitId));
+    if (!sp) return;
+
+    const dt = parseFlexDate(sp.date);
+    const dtTxt = dt ? dt.toLocaleDateString('fr-FR') : '—';
+    const label = sp.ratio >= 1 ? `split ${sp.ratio}:1` : `reverse split 1:${(1 / sp.ratio).toFixed(0)}`;
+
+    const msg =
+        `Supprimer ce split de l'historique ?\n\n` +
+        `Date : ${dtTxt}\n` +
+        `Opération : ${label}\n` +
+        (sp.note ? `Note : ${sp.note}\n` : '') +
+        `\n⚠ ATTENTION : la suppression ne défait PAS l'opération sur les lots.\n` +
+        `Si vous voulez revenir à la situation antérieure, appliquez un split inverse ` +
+        `manuellement (ex: ${sp.ratio}:1 au lieu de 1:${sp.ratio.toFixed(0)}).\n\n` +
+        `Confirmer la suppression de l'entrée d'historique ?`;
+
+    if (!confirm(msg)) return;
+
+    pushUndo('Suppression d\'un split');
+    asset.splits = asset.splits.filter(s => String(s.id) !== String(splitId));
+    saveToStorage();
+    refreshAllUI();
+
+    if (currentAssetDetailId === assetId) {
+        const refreshed = assets.find(a => a.id === assetId);
+        if (refreshed) renderAssetLotsTable(refreshed);
+    }
 }

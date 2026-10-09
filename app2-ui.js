@@ -58,6 +58,14 @@ function switchTab(tabId) {
     if (tabId === 'tab-strategies' && typeof renderStrategiesTab === 'function') {
         renderStrategiesTab();
     }
+    // Chantier 1.4 — l'onglet Watchlist se rend indépendamment du portefeuille
+    if (tabId === 'tab-watchlist' && typeof renderWatchlistTab === 'function') {
+        renderWatchlistTab();
+    }
+    // Chantier 1.10 — l'onglet Historique reconstruit le ledger à la volée
+    if (tabId === 'tab-ledger' && typeof renderLedgerTab === 'function') {
+        renderLedgerTab();
+    }
     refreshAllUI();
 }
 
@@ -445,7 +453,7 @@ function renderInventoryTable(filterCat = inventoryFilter, searchQuery) {
                 <div class="flex items-center gap-1.5 min-w-0">
                     ${assetClassIconHTML(asset)}
                     <div class="min-w-0 flex-1">
-                        <div class="font-bold text-white truncate" title="${escapeHTML(asset.name)}">${escapeHTML(asset.name)}${concentrationBadgeHTML(asset)}${paperBadgeHTML(asset)}</div>
+                        <div class="font-bold text-white truncate" title="${escapeHTML(asset.name)}">${escapeHTML(asset.name)}${sessionBadgeHTML('asset', asset.id)}${concentrationBadgeHTML(asset)}${paperBadgeHTML(asset)}${typeof thesisBadgeHTML === 'function' ? thesisBadgeHTML(asset) : ''}</div>
                         <div class="text-[10px] text-gray-500 font-mono truncate">${assetSubtitleHTML(asset)}</div>
                     </div>
                 </div>
@@ -457,11 +465,16 @@ function renderInventoryTable(filterCat = inventoryFilter, searchQuery) {
             <td class="p-3 text-right font-mono text-gray-300">${asset.qty > 0 ? formatUnitPrice(valeurUnitaire) : '—'}</td>
             <td class="p-3 text-right font-mono text-gray-400">${formatEUR(asset.frais || 0)}</td>
             <td class="p-3 text-right font-mono">${formatEUR(asset.invested)}</td>
-            <td class="p-3 text-right font-mono font-bold text-white">${formatEUR(asset.value)}</td>
+            <td class="p-3 text-right font-mono font-bold text-white">
+                ${formatEUR(asset.value)}
+                ${nativeValueBadgeHTML(asset)}
+            </td>
             <td class="p-3 text-right font-mono">
                 <div class="font-bold ${pnlCls}">${isPos ? '+' : ''}${formatEUR(pnl)}</div>
                 <div class="text-[10px] ${isPos ? 'text-emerald-400/70' : 'text-rose-400/70'}">${isPos ? '+' : ''}${pnlPct.toFixed(2)}%</div>
             </td>
+            <td class="p-3 text-center font-mono">${typeof esgCellHTML === 'function' ? esgCellHTML(asset) : '—'}</td>
+            <td class="p-3 text-right font-mono">${dividendYieldCellHTML(asset)}</td>
             <td class="p-3 text-right">${sparklineHTML(asset)}</td>
             <td class="p-3 text-right font-mono">${tirCellHTML(asset)}</td>
             <td class="p-3 text-center">${scoreCellHTML(asset)}</td>
@@ -490,7 +503,7 @@ function renderInventoryTable(filterCat = inventoryFilter, searchQuery) {
                 <div class="flex items-start gap-1.5 min-w-0 flex-1">
                     ${assetClassIconHTML(asset)}
                     <div class="min-w-0 flex-1">
-                        <div class="font-bold text-white text-sm truncate">${escapeHTML(asset.name)}${concentrationBadgeHTML(asset)}${paperBadgeHTML(asset)}</div>
+                        <div class="font-bold text-white text-sm truncate">${escapeHTML(asset.name)}${sessionBadgeHTML('asset', asset.id)}${concentrationBadgeHTML(asset)}${paperBadgeHTML(asset)}</div>
                         <div class="text-[10px] text-gray-500 font-mono">${assetSubtitleHTML(asset)}</div>
                     </div>
                 </div>
@@ -500,10 +513,16 @@ function renderInventoryTable(filterCat = inventoryFilter, searchQuery) {
                     <div class="mt-1">${sparklineHTML(asset)}</div>
                 </div>
             </div>
-            <div class="flex flex-wrap gap-1">${tagBadgesHTML(asset)} ${cadranBadgesHTML(asset)}</div>
+            <div class="flex flex-wrap gap-1 items-center">
+                ${tagBadgesHTML(asset)}
+                ${cadranBadgesHTML(asset)}
+                ${typeof esgBadgeHTML === 'function' ? esgBadgeHTML(asset) : ''}
+            </div>
             <div class="flex flex-col gap-0.5 text-[11px] text-gray-400">
                 <span>Qté ${fmtQty(asset.qty)} · Investi ${formatEUR(asset.invested)} · Frais ${formatEUR(asset.frais || 0)}</span>
                 ${asset.qty > 0 ? `<span class="text-gray-500">PRU : <span class="font-mono text-gray-300">${formatUnitPrice(computePRUFromLots(asset))}</span> · Val. unitaire : <span class="font-mono text-gray-300">${formatUnitPrice(asset.value / asset.qty)}</span></span>` : ''}
+                ${getAssetNativeValue(asset) ? `<span class="text-gray-500">Valeur native : <span class="font-mono text-blue-300">≈ ${escapeHTML(formatNative(getAssetNativeValue(asset).nativeValue, asset.currency))}</span> (taux : ${getAssetNativeValue(asset).rate.toFixed(4)})</span>` : ''}
+                <span class="text-gray-500">Rendement : ${dividendYieldCellHTML(asset)}</span>
                 <span class="text-gray-500">TRI estimé : ${tirCellHTML(asset)}</span>
                 <span class="text-gray-500 flex items-center gap-1.5">Score : ${scoreCellHTML(asset)}</span>
             </div>
@@ -561,12 +580,13 @@ function renderCryptoTable() {
                 <div class="flex items-center gap-1.5 min-w-0">
                     ${assetClassIconHTML(a)}
                     <div class="min-w-0 flex-1">
-                        <div class="font-bold text-white truncate">${escapeHTML(a.name)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}</div>
-                        <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(a.ticker)}</div>
-                    </div>
-                </div>
-            </td>
-            <td class="p-3 text-right font-mono">${fmtQty(a.qty)}</td>
+                    
+                                    <div class="font-bold text-white truncate">${escapeHTML(a.name)}${sessionBadgeHTML('asset', a.id)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}${typeof thesisBadgeHTML === 'function' ? thesisBadgeHTML(a) : ''}</div>
+                <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(a.ticker)}</div>
+            </div>
+        </div>
+    </td>
+    <td class="p-3 text-right font-mono">${fmtQty(a.qty)}</td>
             <td class="p-3 text-right font-mono text-gray-400">${formatEUR(a.frais || 0)}</td>
             <td class="p-3 text-right font-mono">${formatEUR(a.invested)}</td>
             <td class="p-3 text-right font-mono font-bold text-white">${formatEUR(a.value)}</td>
@@ -579,6 +599,89 @@ function renderCryptoTable() {
     }).join('') || '<tr><td colspan="7" class="p-4 text-center text-gray-500 text-xs">Aucun actif crypto enregistré.</td></tr>';
 
     document.getElementById('crypto-total-val').innerText = formatEUR(total);
+}
+
+// =====================================================================
+// KPI BANDEAU — Exposition devise (Chantier 1.2)
+// ---------------------------------------------------------------------
+// Calcule et affiche les 4 cartes de la section « Exposition devise » :
+//   • Devise dominante (nom + %)
+//   • Exposition hors EUR (%)
+//   • Nombre de devises distinctes
+//   • Top 3 avec mini barres de progression
+// =====================================================================
+function renderCurrencyExposureKPI() {
+    const list = assets.filter(a => !isPaperAsset(a));
+    const exposure = buildCurrencyExposure(list);
+    const total = list.reduce((s, a) => s + (a.value || 0), 0);
+
+    // --- 1) Devise dominante ---
+    const elDom = document.getElementById('stat-fx-dominant');
+    const elDomPct = document.getElementById('stat-fx-dominant-pct');
+    if (elDom && elDomPct) {
+        if (!exposure.length || total <= 0) {
+            elDom.innerHTML = '<span class="text-gray-500">—</span>';
+            elDomPct.innerText = '— % du portefeuille';
+        } else {
+            const dom = exposure[0];
+            const flag = _currencyFlag(dom.currency);
+            const cls = dom.currency === 'EUR' ? 'text-emerald-400' : 'text-blue-400';
+            elDom.innerHTML = `<span class="${cls}">${flag} ${escapeHTML(dom.currency)}</span>`;
+            elDomPct.innerText = `${dom.pct.toFixed(1)} % du portefeuille`;
+        }
+    }
+
+    // --- 2) Exposition hors EUR ---
+    const elForeign = document.getElementById('stat-fx-foreign-pct');
+    if (elForeign) {
+        const foreignPct = exposure
+            .filter(e => e.currency !== 'EUR')
+            .reduce((s, e) => s + e.pct, 0);
+        elForeign.innerText = foreignPct.toFixed(1) + ' %';
+        elForeign.className = `text-2xl font-bold font-mono ${
+            foreignPct >= 50 ? 'text-amber-400' :
+            foreignPct >= 20 ? 'text-emerald-400' :
+            'text-white'
+        }`;
+    }
+
+    // --- 3) Nombre de devises ---
+    const elCount = document.getElementById('stat-fx-count');
+    if (elCount) {
+        elCount.innerText = exposure.length;
+    }
+
+    // --- 4) Répartition top 3 (barres) ---
+    const elBreak = document.getElementById('stat-fx-breakdown');
+    if (elBreak) {
+        const top3 = exposure.slice(0, 3);
+        if (!top3.length || total <= 0) {
+            elBreak.innerHTML = '<div class="text-[11px] text-gray-500 italic">Aucune devise étrangère</div>';
+        } else {
+            const colors = { EUR: '#10b981', USD: '#3b82f6', GBP: '#8b5cf6', CHF: '#f59e0b', JPY: '#ef4444' };
+            elBreak.innerHTML = top3.map(e => {
+                const color = colors[e.currency] || '#6b7280';
+                const flag = _currencyFlag(e.currency);
+                return `<div>
+                    <div class="flex justify-between text-[10px] mb-0.5">
+                        <span class="text-gray-300">${flag} ${escapeHTML(e.currency)}</span>
+                        <span class="font-mono text-gray-400">${e.pct.toFixed(1)} %</span>
+                    </div>
+                    <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="h-full transition-all duration-500" style="width:${Math.min(100, e.pct)}%;background:${color};"></div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+    }
+}
+
+// Renvoie un drapeau emoji à partir d'un code devise (fallback : 🌐)
+function _currencyFlag(code) {
+    const map = {
+        EUR: '🇪🇺', USD: '🇺🇸', GBP: '🇬🇧', CHF: '🇨🇭', JPY: '🇯🇵'
+    };
+    return map[String(code || '').toUpperCase()] || '🌐';
 }
 
 // ---------------------------------------------------------------------
@@ -608,7 +711,7 @@ function renderHorsGaveTable(filterCat = horsGaveFilter) {
     );
     let total = 0;
 
-    tbody.innerHTML = items.map(a => {
+        tbody.innerHTML = items.map(a => {
         total += a.value || 0;
         const pnl = (a.value || 0) - (a.invested || 0);
         const isPos = pnl >= 0;
@@ -617,13 +720,14 @@ function renderHorsGaveTable(filterCat = horsGaveFilter) {
                 <div class="flex items-center gap-1.5 min-w-0">
                     ${assetClassIconHTML(a)}
                     <div class="min-w-0 flex-1">
-                        <div class="font-bold text-white truncate">${escapeHTML(a.name)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}</div>
+                        <div class="font-bold text-white truncate">${escapeHTML(a.name)}${sessionBadgeHTML('asset', a.id)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}</div>
                         <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(a.ticker)}</div>
                     </div>
                 </div>
             </td>
             <td class="p-3"><span class="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px]">${escapeHTML(a.category)}</span></td>
             <td class="p-3 text-right font-mono">${fmtQty(a.qty)}</td>
+
             <td class="p-3 text-right font-mono text-gray-400">${formatEUR(a.frais || 0)}</td>
             <td class="p-3 text-right font-mono font-bold text-white">${formatEUR(a.value)}</td>
             <td class="p-3 text-right font-mono font-bold ${isPos ? 'text-emerald-400' : 'text-rose-400'}">${isPos ? '+' : ''}${formatEUR(pnl)}</td>
@@ -718,7 +822,7 @@ function renderGaveDetailTable() {
     const items = assets.filter(a => GAVE_QUADRANTS.includes(a.cadran) && gaveDetailFilter.has(a.cadran));
     const tbody = document.getElementById('table-gave-detail-body');
 
-    tbody.innerHTML = items.length ? items.map(a => {
+        tbody.innerHTML = items.length ? items.map(a => {
         const pnl = (a.value || 0) - (a.invested || 0);
         const isPos = pnl >= 0;
         return `<tr class="clickable-row ${rowTintClass(a)}" onclick="openAssetDetailModal(${a.id})">
@@ -726,13 +830,14 @@ function renderGaveDetailTable() {
                 <div class="flex items-center gap-1.5 min-w-0">
                     ${assetClassIconHTML(a)}
                     <div class="min-w-0 flex-1">
-                        <div class="font-bold text-white truncate">${escapeHTML(a.name)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}</div>
+                        <div class="font-bold text-white truncate">${escapeHTML(a.name)}${sessionBadgeHTML('asset', a.id)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}</div>
                         <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(a.ticker)}</div>
                     </div>
                 </div>
             </td>
             <td class="p-3">${cadranBadgeHTML(a.cadran)}</td>
             <td class="p-3 text-right font-mono">${fmtQty(a.qty)}</td>
+
             <td class="p-3 text-right font-mono text-gray-400">${formatEUR(a.frais || 0)}</td>
             <td class="p-3 text-right font-mono">${formatEUR(a.invested)}</td>
             <td class="p-3 text-right font-mono font-bold text-white">${formatEUR(a.value)}</td>
@@ -1239,8 +1344,6 @@ function getCommandList() {
         { label: 'Importer un CSV / Excel',       hint: 'AuCoffre, Trade Republic, Boursorama…',  icon: 'fa-file-csv',            category: 'Données',    run: () => openCsvImportModal() },
         { label: 'Importer un JSON PatriMonial',  hint: 'Restaurer une sauvegarde JSON',          icon: 'fa-file-import',         category: 'Données',    run: () => document.getElementById('input-import-json').click() },
         { label: 'Exporter en JSON',              hint: 'Télécharger la sauvegarde complète',     icon: 'fa-download',            category: 'Données',    run: () => exportData() },
-        { label: 'Rapport mensuel (PDF A4)',      hint: 'Synthèse, allocation, portefeuille, fiscalité', icon: 'fa-file-pdf', category: 'Données',    run: () => exportMonthlyReportPDF() },
-        { label: 'Exporter en Excel (.xlsx)',     hint: '5 feuilles : synthèse, actifs, lots, cessions, arbitrages', icon: 'fa-file-excel', category: 'Données', run: () => exportToExcel() },
         { label: 'Exporter en Excel (.xlsx)',     hint: '5 feuilles : synthèse, actifs, lots, cessions, arbitrages', icon: 'fa-file-excel', category: 'Données', run: () => exportToExcel() },
         { label: 'Synchronisation Google Drive',  hint: 'Sauvegardes chiffrées AES-256',          icon: 'fa-cloud-arrow-up',      category: 'Données',    run: () => openDriveSyncModal() },
         { label: 'Explication du TRI',            hint: 'Pourquoi ce ratio est plus juste que le P&L', icon: 'fa-percent',        category: 'Fiscalité',  run: () => alert('Le TRI (Taux de Rendement Interne) annualise votre performance en tenant compte du moment où chaque euro a été investi.\n\nUn actif acheté hier en +5 % a un TRI supérieur à un actif acheté il y a 10 ans en +30 % — parce que le premier a "travaillé" beaucoup moins longtemps pour le même résultat.\n\nLe TRI est donc le meilleur indicateur pour juger un DCA ou des versements échelonnés.') },
@@ -1248,6 +1351,13 @@ function getCommandList() {
         { label: 'Leaderboard Top & Flop',        hint: 'Voir les meilleurs et pires actifs',     icon: 'fa-ranking-star',        category: 'Navigation', run: () => { switchTab('tab-dashboard'); setTimeout(() => { const el = document.getElementById('scoring-top5'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100); } },
         { label: 'Suggestions intelligentes',     hint: 'Conseils contextuels sur le portefeuille', icon: 'fa-brain',             category: 'Navigation', run: () => { switchTab('tab-dashboard'); setTimeout(() => { const el = document.getElementById('suggestions-grid'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100); } },
         { label: 'Charger les données démo',      hint: "Remet le portefeuille d'exemple",        icon: 'fa-rotate-left',         category: 'Action',     run: () => resetData() },
+        { label: 'Refaire l\'assistant de démarrage', hint: 'Relancer l\'onboarding wizard (4 étapes)', icon: 'fa-wand-magic-sparkles', category: 'Action', run: () => { if (typeof forceShowOnboarding === 'function') forceShowOnboarding(); } },
+        { label: 'Basculer la sidebar latérale', hint: 'Replier / déployer (desktop uniquement)', icon: 'fa-bars-staggered', category: 'Action', run: () => { if (typeof toggleSidebarCollapsed === 'function') toggleSidebarCollapsed(); } },
+        { label: 'Rouvrir la sidebar mobile', hint: 'Ouvrir en drawer (mobile uniquement)', icon: 'fa-bars', category: 'Action', run: () => { if (typeof openSidebarMobile === 'function') openSidebarMobile(); } },
+        { label: 'Importer depuis un exchange', hint: 'Binance, Coinbase ou Kraken (lecture seule)', icon: 'fa-plug', category: 'Données', run: () => { if (typeof openBrokerImportModal === 'function') openBrokerImportModal(); else alert('Module broker non chargé.'); } },
+        { label: 'Lancer les tests unitaires', hint: 'Vérifier l\'intégrité du code (~85 assertions)', icon: 'fa-flask-vial', category: 'Action', run: () => { if (typeof runTests === 'function') runTests(); else alert('Module de tests non chargé.'); } },
+        { label: 'Audit CSP (handlers inline)', hint: 'Rapport console des onclick= présents dans le DOM', icon: 'fa-shield-halved', category: 'Action', run: () => { if (typeof runCspAudit === 'function') runCspAudit(); else alert('Module audit CSP non chargé.'); } },
+        { label: (typeof isCspFallbackDelegatorActive === 'function' && isCspFallbackDelegatorActive() ? 'Désactiver' : 'Activer') + ' le délégateur CSP', hint: 'Rejouer les handlers inline sans unsafe-inline (test)', icon: 'fa-toggle-on', category: 'Action', run: () => { if (typeof enableCspFallbackDelegator !== 'function') return alert('Module CSP non chargé.'); if (isCspFallbackDelegatorActive()) { disableCspFallbackDelegator(); toastInfo('Délégateur désactivé', 'Les handlers inline natifs reprennent la main.'); } else { enableCspFallbackDelegator(); } } },
         { label: 'Vider tout',                    hint: 'Effacer actifs, cessions et arbitrages', icon: 'fa-trash-can',           category: 'Action',     run: () => clearAllData() },
         { label: (tintRowsEnabled ? 'Désactiver' : 'Activer') + ' le teintage des lignes', hint: 'Vert = gain · Rouge = perte', icon: 'fa-palette', category: 'Action', run: () => { toggleTintRows(); } },
         { label: (lightMode ? 'Passer en mode sombre' : 'Passer en mode clair'), hint: 'Basculer le thème de l\'interface', icon: lightMode ? 'fa-moon' : 'fa-sun', category: 'Action', run: () => { toggleLightMode(); } },
@@ -1267,8 +1377,78 @@ function getCommandList() {
         { label: 'Objectifs & Projections',        hint: 'Onglet 9 — Monte-Carlo patrimoine',      icon: 'fa-bullseye',            category: 'Navigation', run: () => switchTab('tab-objectifs') },
         { label: 'Nouvel objectif patrimonial',    hint: 'Définir un objectif chiffré',            icon: 'fa-plus',                category: 'Action',     run: () => openAddGoalModal() },
         { label: 'Comparateur de segments',       hint: 'Activer / fermer la comparaison',        icon: 'fa-code-compare',        category: 'Navigation', run: () => { switchTab('tab-dashboard'); toggleCompareMode(); } },
-        { label: 'Simulateur de vente',           hint: "« Et si je vendais X ? » (ouvre le 1ᵉʳ actif)", icon: 'fa-flask',          category: 'Fiscalité',  run: () => { if (assets.length) openSellSimulator(assets[0].id); else alert('Aucun actif à simuler.'); } }
+        { label: 'Simulateur de vente',           hint: "« Et si je vendais X ? » (ouvre le 1ᵉʳ actif)", icon: 'fa-flask',          category: 'Fiscalité',  run: () => { if (assets.length) openSellSimulator(assets[0].id); else alert('Aucun actif à simuler.'); } },
+        { label: 'Voir le rapport mensuel',       hint: 'Historique MoM / YoY de la performance',         icon: 'fa-calendar-check', category: 'Navigation', run: () => { switchTab('tab-dashboard'); setTimeout(() => { const el = document.getElementById('monthly-history-table-wrap'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100); } },
+        { label: 'Créer un snapshot manuellement', hint: 'Archiver la performance du mois en cours',      icon: 'fa-camera',         category: 'Action',     run: () => { if (typeof captureMonthlySnapshot === 'function') { captureMonthlySnapshot(); renderMonthlySnapshotsSection(); if (typeof toastSuccess === 'function') toastSuccess('Snapshot créé', 'Performance du mois en cours archivée.'); } } },
+        { label: 'Voir la matrice de corrélation', hint: 'Détecter les concentrations cachées entre actifs', icon: 'fa-diagram-project', category: 'Navigation', run: () => { switchTab('tab-dashboard'); setTimeout(() => { const el = document.getElementById('correlationHeatmapSvg'); if (el && el.parentElement) el.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100); } },
+        { label: 'Recalculer la matrice de corrélation', hint: 'Forcer un recalcul sur les cours réels', icon: 'fa-arrows-rotate', category: 'Action', run: () => { if (typeof invalidateCorrelationCache === 'function') { invalidateCorrelationCache(); renderCorrelationSection(); if (typeof toastInfo === 'function') toastInfo('Matrice recalculée', 'Les corrélations ont été mises à jour.'); } } },
+        { label: 'Configurer le DCA planifié', hint: 'Rappel mensuel + suggestion de cadran', icon: 'fa-coins', category: 'Action', run: () => { if (typeof openDcaConfigModal === 'function') openDcaConfigModal(); else alert('Module DCA non chargé.'); } },
+        { label: (typeof dcaConfig !== 'undefined' && dcaConfig.enabled ? 'Désactiver' : 'Activer') + ' le DCA planifié', hint: 'Rappels automatiques mensuels', icon: (typeof dcaConfig !== 'undefined' && dcaConfig.enabled) ? 'fa-pause' : 'fa-play', category: 'Action', run: () => { if (typeof toggleDcaEnabled === 'function') toggleDcaEnabled(); else alert('Module DCA non chargé.'); } },
+        { label: 'DCA — Enregistrer l\'achat maintenant', hint: 'Ouvre le formulaire pré-rempli avec la suggestion en cours', icon: 'fa-plus-circle', category: 'Action', run: () => { if (typeof openDcaQuickAdd === 'function') openDcaQuickAdd(); else alert('Module DCA non chargé.'); } },
+        { label: 'Voir le waterfall du P&L', hint: 'Décomposition du P&L par actif', icon: 'fa-chart-column', category: 'Navigation', run: () => { switchTab('tab-dashboard'); setTimeout(() => { const el = document.getElementById('waterfallChart'); if (el && el.parentElement) el.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100); } },
+        { label: 'Recalculer le waterfall', hint: 'Forcer un recalcul du diagramme de décomposition', icon: 'fa-arrows-rotate', category: 'Action', run: () => { if (typeof renderWaterfallSection === 'function') { renderWaterfallSection(); if (typeof toastInfo === 'function') toastInfo('Waterfall recalculé', 'Les contributions ont été mises à jour.'); } } },
+        { label: (typeof slidePanelMode !== 'undefined' && slidePanelMode === 'slide' ? 'Passer en modal centré' : 'Passer en vue slide-in'), hint: 'Panneau latéral pour le détail d\'actif (← / → pour naviguer)', icon: 'fa-window-restore', category: 'Action', run: () => { if (typeof toggleSlidePanelMode === 'function') toggleSlidePanelMode(); else alert('Module slide-panel non chargé.'); } },
+        { label: 'Actif suivant', hint: 'Naviguer vers l\'actif suivant (flèche →) dans le modal ouvert', icon: 'fa-arrow-right', category: 'Navigation', run: () => { if (typeof navigateAsset === 'function') navigateAsset(+1); else alert('Module slide-panel non chargé.'); } },
+        { label: 'Actif précédent', hint: 'Naviguer vers l\'actif précédent (flèche ←) dans le modal ouvert', icon: 'fa-arrow-left', category: 'Navigation', run: () => { if (typeof navigateAsset === 'function') navigateAsset(-1); else alert('Module slide-panel non chargé.'); } },
+        { label: 'Ouvrir le premier actif', hint: 'Ouvre le détail du 1ᵉʳ actif de l\'inventaire', icon: 'fa-eye', category: 'Actifs', run: () => { if (!assets.length) { alert('Aucun actif dans le portefeuille.'); return; } if (typeof openAssetDetailModal === 'function') openAssetDetailModal(assets[0].id); } },
+        { label: 'Recherche rapide d\'actif', hint: 'Palette dédiée aux actifs (raccourci : Ctrl+P)', icon: 'fa-magnifying-glass', category: 'Navigation', run: () => { if (typeof openQuickSearch === 'function') openQuickSearch(); else alert('Module filtres non chargé.'); } },
+        { label: 'Sauvegarder les filtres actuels', hint: 'Créer un filtre réutilisable depuis l\'état présent', icon: 'fa-floppy-disk', category: 'Action', run: () => { if (typeof promptCreateSavedFilter === 'function') promptCreateSavedFilter(); else alert('Module filtres non chargé.'); } }
     ];
+
+    // ---------------------------------------------------------------------
+    // Sous-commandes dynamiques : un item par filtre sauvegardé (Chantier §9)
+    // ---------------------------------------------------------------------
+    if (typeof loadSavedFilters === 'function') {
+        try {
+            const filters = loadSavedFilters();
+            filters
+                .slice()
+                .sort((a, b) => (b.lastAppliedAt || 0) - (a.lastAppliedAt || 0))
+                .forEach(f => {
+                    const usage = f.applyCount || 0;
+                    const cat = (f.criteria && f.criteria.category && f.criteria.category !== 'ALL')
+                        ? f.criteria.category
+                        : null;
+                    const search = (f.criteria && f.criteria.search) ? f.criteria.search : null;
+                    const details = [];
+                    if (cat) details.push(cat);
+                    if (search) details.push('« ' + search + ' »');
+                    details.push(usage + ' util.');
+
+                    cmds.push({
+                        label: 'Filtre : ' + f.name,
+                        hint: details.join(' · '),
+                        icon: 'fa-filter',
+                        category: 'Filtres sauvegardés',
+                        run: () => {
+                            if (typeof applySavedFilter === 'function') {
+                                applySavedFilter(f.id);
+                                closeSavedFiltersMenu();
+                            } else {
+                                alert('Module filtres non chargé.');
+                            }
+                        }
+                    });
+                });
+
+            if (filters.length > 0) {
+                cmds.push({
+                    label: 'Gérer les filtres sauvegardés',
+                    hint: filters.length + ' filtre(s) mémorisé(s)',
+                    icon: 'fa-list-check',
+                    category: 'Filtres sauvegardés',
+                    run: () => {
+                        switchTab('tab-inventaire');
+                        setTimeout(() => {
+                            if (typeof toggleSavedFiltersMenu === 'function') toggleSavedFiltersMenu();
+                        }, 120);
+                    }
+                });
+            }
+        } catch (err) {
+            console.warn('[CmdPalette] Chargement des filtres sauvegardés échoué :', err);
+        }
+    }
     // Sous-commandes dynamiques : un couple Ouvrir/Modifier pour chaque actif
     assets.forEach(a => {
         cmds.push({

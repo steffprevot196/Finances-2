@@ -65,106 +65,106 @@ h1 { letter-spacing: -0.02em; }
    rempli au moment du clic sur « Exporter en PDF », puis le
    navigateur bascule en mode impression (only print visible).
    ============================================================ */
-   #print-fiscal-recap { display: none; }
+#print-fiscal-recap { display: none; }
 
-   @media print {
-       /* Masque tout le reste de l'app */
-       body > *:not(#print-fiscal-recap) { display: none !important; }
-       body {
-           background: #ffffff !important;
-           color: #111827 !important;
-           padding: 0 !important;
-           margin: 0 !important;
-           min-height: 0 !important;
-       }
-       /* Affiche uniquement le container de print */
-       #print-fiscal-recap { display: block !important; }
-   
-       @page {
-           size: A4;
-           margin: 14mm 13mm;
-       }
-   
-       .pdf-page  { page-break-after: always; }
-       .pdf-page:last-child { page-break-after: auto; }
-       .pdf-section { page-break-inside: avoid; }
-   }
-   
-   #print-fiscal-recap {
-       color: #111827;
-       background: #ffffff;
-       font-family: 'Inter', system-ui, -apple-system, sans-serif;
-       padding: 0;
-       width: 100%;
-       line-height: 1.4;
-   }
-   #print-fiscal-recap .pdf-header {
-       display: flex; align-items: center; justify-content: space-between;
-       border-bottom: 3px solid #0f766e;
-       padding-bottom: 10px; margin-bottom: 16px;
-   }
-   #print-fiscal-recap .pdf-logo {
-       width: 44px; height: 44px; border-radius: 10px;
-       background: linear-gradient(135deg, #0f766e, #14b8a6);
-       color: #fff; display: flex; align-items: center; justify-content: center;
-       font-size: 22px; font-weight: 700; flex-shrink: 0;
-   }
-   #print-fiscal-recap h1 { font-size: 18px; margin: 0; color: #0f172a; }
-   #print-fiscal-recap h2 {
-       font-size: 12px; margin: 16px 0 8px;
-       padding: 5px 8px; background: #f3f4f6;
-       border-left: 4px solid #0f766e;
-       color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;
-   }
-   #print-fiscal-recap table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
-   #print-fiscal-recap th {
-       background: #0f172a; color: #fff; padding: 6px 7px;
-       text-align: left; font-size: 9.5px;
-       text-transform: uppercase; letter-spacing: 0.3px;
-   }
-   #print-fiscal-recap td {
-       padding: 5px 7px;
-       border-bottom: 1px solid #e5e7eb;
-       color: #1f2937; vertical-align: top;
-   }
-   #print-fiscal-recap tr:nth-child(even) td { background: #f9fafb; }
-   #print-fiscal-recap .pdf-num {
-       text-align: right;
-       font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
-       white-space: nowrap;
-   }
-   #print-fiscal-recap .pdf-kpi-grid {
-       display: grid; grid-template-columns: repeat(4, 1fr);
-       gap: 8px; margin-bottom: 10px;
-   }
-   #print-fiscal-recap .pdf-kpi {
-       border: 1px solid #e5e7eb; border-radius: 6px;
-       padding: 8px 10px; background: #f9fafb;
-   }
-   #print-fiscal-recap .pdf-kpi .label {
-       font-size: 9px; text-transform: uppercase;
-       color: #6b7280; letter-spacing: 0.4px;
-   }
-   #print-fiscal-recap .pdf-kpi .value {
-       font-size: 15px; font-weight: 700; color: #0f172a;
-       font-family: ui-monospace, monospace; margin-top: 2px;
-   }
-   #print-fiscal-recap .pdf-kpi.accent .value   { color: #b45309; }
-   #print-fiscal-recap .pdf-kpi.positive .value { color: #047857; }
-   #print-fiscal-recap .pdf-kpi.negative .value { color: #be123c; }
-   #print-fiscal-recap .pdf-total-row td {
-       font-weight: 700; background: #ecfdf5 !important;
-       color: #065f46; border-top: 2px solid #0f766e;
-   }
-   #print-fiscal-recap .pdf-footer {
-       margin-top: 22px; padding-top: 10px;
-       border-top: 1px solid #d1d5db;
-       font-size: 9px; color: #6b7280; line-height: 1.5;
-   }
-   #print-fiscal-recap .pdf-meta {
-       font-size: 10px; color: #4b5563;
-       text-align: right; line-height: 1.5;
-   }
+@media print {
+    /* Masque tout le reste de l'app */
+    body > *:not(#print-fiscal-recap) { display: none !important; }
+    body {
+        background: #ffffff !important;
+        color: #111827 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        min-height: 0 !important;
+    }
+    /* Affiche uniquement le container de print */
+    #print-fiscal-recap { display: block !important; }
+
+    @page {
+        size: A4;
+        margin: 14mm 13mm;
+    }
+
+    .pdf-page  { page-break-after: always; }
+    .pdf-page:last-child { page-break-after: auto; }
+    .pdf-section { page-break-inside: avoid; }
+}
+
+#print-fiscal-recap {
+    color: #111827;
+    background: #ffffff;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    padding: 0;
+    width: 100%;
+    line-height: 1.4;
+}
+#print-fiscal-recap .pdf-header {
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 3px solid #0f766e;
+    padding-bottom: 10px; margin-bottom: 16px;
+}
+#print-fiscal-recap .pdf-logo {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: linear-gradient(135deg, #0f766e, #14b8a6);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 700; flex-shrink: 0;
+}
+#print-fiscal-recap h1 { font-size: 18px; margin: 0; color: #0f172a; }
+#print-fiscal-recap h2 {
+    font-size: 12px; margin: 16px 0 8px;
+    padding: 5px 8px; background: #f3f4f6;
+    border-left: 4px solid #0f766e;
+    color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;
+}
+#print-fiscal-recap table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+#print-fiscal-recap th {
+    background: #0f172a; color: #fff; padding: 6px 7px;
+    text-align: left; font-size: 9.5px;
+    text-transform: uppercase; letter-spacing: 0.3px;
+}
+#print-fiscal-recap td {
+    padding: 5px 7px;
+    border-bottom: 1px solid #e5e7eb;
+    color: #1f2937; vertical-align: top;
+}
+#print-fiscal-recap tr:nth-child(even) td { background: #f9fafb; }
+#print-fiscal-recap .pdf-num {
+    text-align: right;
+    font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    white-space: nowrap;
+}
+#print-fiscal-recap .pdf-kpi-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; margin-bottom: 10px;
+}
+#print-fiscal-recap .pdf-kpi {
+    border: 1px solid #e5e7eb; border-radius: 6px;
+    padding: 8px 10px; background: #f9fafb;
+}
+#print-fiscal-recap .pdf-kpi .label {
+    font-size: 9px; text-transform: uppercase;
+    color: #6b7280; letter-spacing: 0.4px;
+}
+#print-fiscal-recap .pdf-kpi .value {
+    font-size: 15px; font-weight: 700; color: #0f172a;
+    font-family: ui-monospace, monospace; margin-top: 2px;
+}
+#print-fiscal-recap .pdf-kpi.accent .value   { color: #b45309; }
+#print-fiscal-recap .pdf-kpi.positive .value { color: #047857; }
+#print-fiscal-recap .pdf-kpi.negative .value { color: #be123c; }
+#print-fiscal-recap .pdf-total-row td {
+    font-weight: 700; background: #ecfdf5 !important;
+    color: #065f46; border-top: 2px solid #0f766e;
+}
+#print-fiscal-recap .pdf-footer {
+    margin-top: 22px; padding-top: 10px;
+    border-top: 1px solid #d1d5db;
+    font-size: 9px; color: #6b7280; line-height: 1.5;
+}
+#print-fiscal-recap .pdf-meta {
+    font-size: 10px; color: #4b5563;
+    text-align: right; line-height: 1.5;
+}
 
 
 
@@ -540,4 +540,525 @@ button:active:not(:disabled) {
 body.light .bg-gray-900\/60,
 body.light .bg-gray-900\/80 {
     box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 0 0 1px rgba(0, 0, 0, .02) inset;
+}
+
+
+/* ============================================================
+   DENSITÉ D'AFFICHAGE — mode compact (Chantier 2.6)
+   ------------------------------------------------------------
+   Réduit les paddings verticaux d'environ 30 % quand le body
+   porte la classe `.density-compact`. Ne touche jamais aux
+   polices ni aux couleurs — uniquement aux espacements.
+
+   Approche : ciblage direct des classes Tailwind utilitaires
+   (`.p-6`, `.p-5`, `.gap-4`, etc.) pour rester robuste et
+   prédictible. Le préfixe `body.density-compact` augmente la
+   spécificité et garantit la victoire sur les règles Tailwind.
+   ============================================================ */
+
+body.density-compact {
+    --density-row-padding-y: 6px;
+    --density-row-padding-x: 8px;
+    --density-gap: 0.5rem;
+}
+
+/* --- Tableaux : réduit le padding vertical des cellules --- */
+body.density-compact table thead th,
+body.density-compact table tbody td {
+    padding-top: var(--density-row-padding-y, 6px);
+    padding-bottom: var(--density-row-padding-y, 6px);
+    padding-left: var(--density-row-padding-x, 8px);
+    padding-right: var(--density-row-padding-x, 8px);
+}
+
+/* Lignes plus resserrées mais sans perdre la lisibilité */
+body.density-compact table tbody tr {
+    line-height: 1.25;
+}
+
+/* --- Ciblage explicite des classes de padding Tailwind --- */
+body.density-compact .p-6 {
+    padding: 1rem !important;   /* au lieu de 1.5rem (p-6 = 24px) */
+}
+body.density-compact .p-5 {
+    padding: 0.875rem !important;   /* au lieu de 1.25rem (p-5 = 20px) */
+}
+body.density-compact .p-4 {
+    padding: 0.625rem !important;   /* au lieu de 1rem (p-4 = 16px) */
+}
+body.density-compact .p-3 {
+    padding: 0.4375rem !important;   /* au lieu de 0.75rem (p-3 = 12px) */
+}
+body.density-compact .p-2\.5 {
+    padding: 0.3125rem !important;   /* au lieu de 0.625rem (p-2.5 = 10px) */
+}
+body.density-compact .p-2 {
+    padding: 0.25rem !important;   /* au lieu de 0.5rem (p-2 = 8px) */
+}
+
+/* --- Gaps des grilles et flex containers --- */
+body.density-compact .gap-4 {
+    gap: 0.625rem !important;   /* au lieu de 1rem */
+}
+body.density-compact .gap-3 {
+    gap: 0.4375rem !important;   /* au lieu de 0.75rem */
+}
+body.density-compact .gap-2 {
+    gap: 0.3125rem !important;   /* au lieu de 0.5rem */
+}
+
+/* --- Espaces verticaux entre les blocs --- */
+body.density-compact .space-y-6 > * + * {
+    margin-top: 1rem !important;   /* au lieu de 1.5rem */
+}
+body.density-compact .space-y-4 > * + * {
+    margin-top: 0.625rem !important;   /* au lieu de 1rem */
+}
+body.density-compact .space-y-3 > * + * {
+    margin-top: 0.4375rem !important;   /* au lieu de 0.75rem */
+}
+body.density-compact .space-y-2 > * + * {
+    margin-top: 0.3125rem !important;   /* au lieu de 0.5rem */
+}
+
+/* --- Hauteur de ligne des labels / valeurs --- */
+body.density-compact .font-mono {
+    line-height: 1.15;
+}
+
+/* --- Champs de formulaire plus compacts --- */
+body.density-compact input:not([type="checkbox"]):not([type="radio"]),
+body.density-compact select,
+body.density-compact textarea {
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+}
+
+/* --- Compensation sur les cartes très visuelles (KPI, dashboard) ---
+       Le mode compact reste lisible : on remet un padding minimum
+       sur les cards signature pour ne pas casser la hiérarchie. */
+body.density-compact #tab-dashboard .bg-gray-900\/60 > .text-2xl,
+body.density-compact #tab-dashboard .bg-gray-900\/80 > .text-2xl {
+    margin-bottom: 0.25rem;
+}
+
+
+/* ============================================================
+   BADGE « NOUVEAU / MODIFIÉ » — Session (Chantier 2.7)
+   ------------------------------------------------------------
+   Petit point bleu pulsant qui signale une entité importée ou
+   restaurée pendant la session en cours. Disparaît après 5 min,
+   au clic, ou au rechargement de la page.
+
+   Position : inline-block après le nom de l'actif / libellé.
+   Interaction : curseur pointer + tooltip natif via title="…".
+   ============================================================ */
+
+.session-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 10px;
+    height: 10px;
+    margin-left: 4px;
+    vertical-align: middle;
+    cursor: pointer;
+    flex-shrink: 0;
+    border-radius: 50%;
+    transition: transform 150ms ease;
+}
+
+.session-badge:hover {
+    transform: scale(1.3);
+}
+
+.session-badge-dot {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #3b82f6;   /* blue-500 */
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    animation: sessionBadgePulse 2s ease-out infinite;
+}
+
+/* Variante light mode : bleu plus foncé pour le contraste sur blanc */
+body.light .session-badge-dot {
+    background-color: #2563eb;   /* blue-600 */
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6);
+}
+
+/* Animation pulse — effet "radar" discret */
+@keyframes sessionBadgePulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+        transform: scale(1);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+        transform: scale(1);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+        transform: scale(1);
+    }
+}
+
+/* Respect de la préférence OS « réduire les animations » */
+@media (prefers-reduced-motion: reduce) {
+    .session-badge-dot {
+        animation: none;
+        /* Fixe une lueur légère pour rester visible */
+        box-shadow: 0 0 4px 1px rgba(59, 130, 246, 0.55);
+    }
+    .session-badge:hover {
+        transform: none;
+    }
+}
+
+
+/* ============================================================
+   BOTTOM-NAV MOBILE + DRAWER (Chantier 2.4)
+   ------------------------------------------------------------
+   Barre de navigation fixe en bas de l'écran, visible uniquement
+   sur mobile (< 768 px). Complétée par un drawer glissant depuis
+   le bas pour accéder aux onglets secondaires.
+
+   Sur desktop : masquée automatiquement par le JS (display: none).
+   ============================================================ */
+
+/* --- Boutons de la nav mobile : état par défaut --- */
+.mobile-nav-btn {
+    color: #6b7280; /* gray-500 */
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: color 180ms ease, border-top-color 180ms ease, transform 100ms ease;
+}
+
+.mobile-nav-btn:hover {
+    color: #9ca3af; /* gray-400 */
+}
+
+.mobile-nav-btn:active {
+    transform: scale(0.94);
+}
+
+/* Icônes légèrement plus grosses sur la nav que dans le reste de l'app */
+.mobile-nav-btn i {
+    line-height: 1;
+}
+
+/* --- Espace sécurisé iOS (encoche / barre home) --- */
+.safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Alternative : ajoute la marge sous la nav pour les iPhones */
+@supports (padding: env(safe-area-inset-bottom)) {
+    body {
+        padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    }
+    @media (min-width: 768px) {
+        body {
+            padding-bottom: 0;
+        }
+    }
+}
+
+/* --- Overlay et drawer : transitions douces --- */
+.mobile-drawer-overlay {
+    transition: opacity 200ms ease;
+}
+
+.mobile-drawer {
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+    /* Empêche le rebond iOS qui casse le transform */
+    overscroll-behavior: contain;
+}
+
+/* --- Bouton « Plus » : indicateur ambre pulsant --- */
+#mobile-nav-drawer-indicator {
+    animation: mobileNavIndicatorPulse 2s ease-in-out infinite;
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6);
+}
+
+@keyframes mobileNavIndicatorPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0);
+        transform: scale(1.15);
+    }
+}
+
+/* --- Drawer : item actif --- */
+.mobile-drawer-btn {
+    transition: background-color 150ms ease, border-color 150ms ease, transform 100ms ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-drawer-btn:active {
+    transform: scale(0.98);
+}
+
+/* --- Light mode : adapte les couleurs --- */
+body.light #mobile-bottom-nav {
+    background-color: rgba(255, 255, 255, 0.96) !important;
+    border-top-color: #e5e7eb !important;
+    backdrop-filter: blur(12px);
+}
+
+body.light .mobile-nav-btn {
+    color: #6b7280;
+}
+
+body.light .mobile-nav-btn:hover {
+    color: #111827;
+}
+
+body.light #mobile-drawer {
+    background-color: #ffffff !important;
+    border-top-color: #e5e7eb !important;
+}
+
+body.light .mobile-drawer-btn {
+    background-color: #f9fafb !important;
+    border-color: #e5e7eb !important;
+}
+
+body.light .mobile-drawer-btn:hover {
+    background-color: #f3f4f6 !important;
+}
+
+/* --- Ajustements en mode compact --- */
+body.density-compact #mobile-bottom-nav {
+    height: 56px;   /* un peu plus court */
+}
+
+body.density-compact #mobile-bottom-nav .mobile-nav-btn {
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+body.density-compact #mobile-bottom-nav i {
+    font-size: 16px;   /* au lieu de 18px */
+}
+
+body.density-compact #mobile-bottom-nav .text-\[10px\] {
+    font-size: 9px;
+}
+
+/* --- Respect de prefers-reduced-motion --- */
+@media (prefers-reduced-motion: reduce) {
+    .mobile-drawer {
+        transition: none !important;
+    }
+    .mobile-drawer-overlay {
+        transition: none !important;
+    }
+    #mobile-nav-drawer-indicator {
+        animation: none;
+    }
+    .mobile-nav-btn:active,
+    .mobile-drawer-btn:active {
+        transform: none;
+    }
+}
+
+/* --- Desktop : masque la barre même si le JS a un délai --- */
+@media (min-width: 768px) {
+    #mobile-bottom-nav,
+    #mobile-drawer,
+    #mobile-drawer-overlay {
+        display: none !important;
+    }
+}
+
+
+/* ============================================================
+   SIDEBAR LATÉRALE COLLAPSIBLE (Chantier 2.1)
+   ------------------------------------------------------------
+   Sidebar fixe à gauche sur desktop (≥ 1024 px), remplaçant la
+   nav horizontale. Sur mobile/tablette (< 1024 px), elle est
+   masquée et la bottom-nav prend le relais.
+
+   États du body :
+     • body.has-sidebar             → sidebar visible (desktop)
+     • body.sidebar-collapsed       → sidebar repliée (64 px)
+     • body.has-sidebar:not(.sidebar-collapsed) → déployée (240 px)
+   ============================================================ */
+
+/* --- Transitions du body sur le padding pour accompagner le toggle --- */
+body {
+    transition: padding-left 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* --- Décalage du contenu principal --- */
+/* Base (mobile) : pas de sidebar visible, mais on garde la règle pour
+   que le jour où la sidebar devient un drawer mobile, le CSS soit prêt. */
+body.has-sidebar {
+    padding-left: calc(240px + 1rem) !important;
+}
+body.has-sidebar.sidebar-collapsed {
+    padding-left: calc(64px + 1rem) !important;
+}
+
+@media (min-width: 768px) {
+    body.has-sidebar {
+        padding-left: calc(240px + 1.5rem) !important;
+    }
+    body.has-sidebar.sidebar-collapsed {
+        padding-left: calc(64px + 1.5rem) !important;
+    }
+}
+
+/* --- Sidebar elle-même --- */
+.app-sidebar {
+    /* La largeur est gérée en inline-style par le JS (240/64 px) */
+    transition: width 250ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: width;
+    overflow: hidden;   /* évite qu'un label débordant pousse la largeur */
+}
+
+/* Scroll de la zone centrale : barre de scroll discrète */
+.app-sidebar .sidebar-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+.app-sidebar .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 4px;
+}
+.app-sidebar .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.4);
+}
+
+/* --- Labels masqués en mode replié --- */
+.sidebar-label {
+    transition: opacity 180ms ease, max-width 180ms ease;
+    max-width: 220px;
+    overflow: hidden;
+    white-space: nowrap;
+    opacity: 1;
+}
+
+body.sidebar-collapsed .sidebar-label {
+    opacity: 0;
+    max-width: 0;
+    pointer-events: none;
+    /* Petit délai pour laisser la largeur de la sidebar se réduire d'abord */
+    transition-delay: 40ms;
+}
+
+/* --- Pied de la sidebar (mini-barre d'icônes) : vertical en mode replié --- */
+body.sidebar-collapsed .sidebar-footer {
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.5rem 0;
+}
+body.sidebar-collapsed .sidebar-footer .sidebar-tool-btn {
+    max-width: 40px;
+}
+
+/* --- Items de navigation : ajustement du padding en mode replié --- */
+body.sidebar-collapsed .sidebar-nav-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+    gap: 0;
+}
+body.sidebar-collapsed .sidebar-nav-item .sidebar-active-indicator {
+    /* Reste visible : petit trait à gauche même en mode replié */
+}
+
+/* --- Effet hover uniforme --- */
+.sidebar-nav-item:hover {
+    background-color: rgba(31, 41, 55, 0.5);
+}
+.sidebar-nav-item.bg-emerald-950\/40:hover {
+    background-color: rgba(6, 78, 59, 0.5) !important;
+}
+
+/* --- Header de la sidebar : bouton hamburger en mode replié --- */
+body.sidebar-collapsed .sidebar-header {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+body.sidebar-collapsed .sidebar-header > div:first-child {
+    /* Logo */
+    margin: 0 auto;
+}
+
+/* --- Masquage de la nav horizontale sur desktop quand la sidebar est là --- */
+@media (min-width: 1024px) {
+    body.has-sidebar > nav {
+        display: none !important;
+    }
+}
+
+/* --- Light mode : adaptations --- */
+body.light .app-sidebar {
+    background-color: #ffffff !important;
+    border-right-color: #e5e7eb !important;
+}
+body.light .sidebar-nav-item {
+    color: #374151;
+}
+body.light .sidebar-nav-item:hover {
+    background-color: #f3f4f6 !important;
+    color: #111827;
+}
+body.light .sidebar-nav-item.bg-emerald-950\/40 {
+    background-color: #d1fae5 !important;
+    color: #065f46 !important;
+}
+body.light .sidebar-label {
+    color: #4b5563;
+}
+body.light .sidebar-footer {
+    border-top-color: #e5e7eb !important;
+}
+body.light .sidebar-toggle-btn,
+body.light .sidebar-tool-btn {
+    background-color: #f3f4f6 !important;
+    color: #4b5563 !important;
+    border: 1px solid #e5e7eb;
+}
+body.light .sidebar-toggle-btn:hover,
+body.light .sidebar-tool-btn:hover {
+    background-color: #e5e7eb !important;
+    color: #111827 !important;
+}
+
+/* --- Mode compact : sidebar plus resserrée --- */
+body.density-compact .sidebar-nav-item {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+}
+body.density-compact .sidebar-nav-item .sidebar-label {
+    font-size: 12px;
+}
+body.density-compact .app-sidebar .mb-3 {
+    margin-bottom: 0.5rem;
+}
+
+/* --- Mode compact + replié : pied de sidebar encore plus dense --- */
+body.density-compact.sidebar-collapsed .sidebar-footer {
+    gap: 0.25rem;
+    padding: 0.375rem 0;
+}
+
+/* --- Accessibilité : préférence de réduction des animations --- */
+@media (prefers-reduced-motion: reduce) {
+    body,
+    .app-sidebar,
+    .sidebar-label {
+        transition: none !important;
+    }
 }
