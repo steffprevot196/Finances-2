@@ -250,24 +250,42 @@ function tagBadgesHTML(asset) {
         'Devises/Liquidités': 'bg-blue-950 text-blue-300 border-blue-800/50',
         'Matières Premières': 'bg-rose-950 text-rose-300 border-rose-800/50'
     };
-    return (asset.categories || []).map(t =>
-        `<span class="px-1.5 py-0.5 rounded border text-[9px] font-bold ${cls[t] || 'bg-gray-800 text-gray-400 border-gray-700'}">${t}</span>`
-    ).join(' ');
+    const DEFAULT_CLS = 'bg-gray-800 text-gray-400 border-gray-700';
+    return (asset.categories || []).map(t => {
+        const tag = String(t ?? '');
+        // hasOwnProperty : empêche cls['constructor'] etc. de remonter du prototype
+        const css = Object.prototype.hasOwnProperty.call(cls, tag) ? cls[tag] : DEFAULT_CLS;
+        return `<span class="px-1.5 py-0.5 rounded border text-[9px] font-bold ${css}">${escapeHTML(tag)}</span>`;
+    }).join(' ');
 }
 
 function cadranBadgesHTML(asset) {
-    const sec = ((asset.cadrans && asset.cadrans.secondary) || []).map(q =>
+    // Whitelist stricte : seuls les 4 codes GAVE valides sont acceptés.
+    // Empêche CADRAN_BADGE_COLORS['constructor'] etc. de polluer l'attribut class.
+    const validSecondary = ((asset.cadrans && asset.cadrans.secondary) || [])
+        .filter(q => GAVE_QUADRANTS.includes(q));
+
+    const sec = validSecondary.map(q =>
         `<span class="px-1.5 py-0.5 rounded border border-dashed text-[9px] whitespace-nowrap opacity-70 ${CADRAN_BADGE_COLORS[q]}" title="Cadran secondaire (informatif, hors calcul des 25%)">+ ${escapeHTML(cadranLabel(q))}</span>`
     ).join(' ');
+
     return cadranBadgeHTML(asset.cadran || 'HORS_GAVE') + (sec ? ' ' + sec : '');
 }
 
 function assetSubtitleHTML(asset) {
-    const parts = [asset.ticker];
-    if (asset.envelope) parts.push(envelopeShort(asset.envelope));
+    const parts = [escapeHTML(String(asset.ticker || ''))];
+
+    if (asset.envelope) {
+        const env = envelopeShort(asset.envelope);
+        if (env) parts.push(escapeHTML(String(env)));
+    }
     if (asset.valuationMode === 'MANUAL') parts.push('valo. manuelle');
-    if (asset.manualUpdateDate) parts.push(`MAJ ${new Date(asset.manualUpdateDate).toLocaleDateString('fr-FR')}`);
-    return parts.join(' • ');
+
+    if (asset.manualUpdateDate) {
+        const d = new Date(asset.manualUpdateDate);
+        if (!isNaN(d.getTime())) parts.push(`MAJ ${d.toLocaleDateString('fr-FR')}`);
+    }
+    return parts.filter(Boolean).join(' • ');
 }
 
 // Badge ⚠ orange si le poids de l'actif dépasse le seuil de concentration.
@@ -284,17 +302,28 @@ function concentrationBadgeHTML(asset) {
 
 // Badge 📝 « Papier » pour les positions simulées.
 // Sa couleur reflète le scénario de rattachement (paperScenarioId).
+// Validation stricte des couleurs de scénario (anti-injection CSS dans style="")
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+const PAPER_FALLBACK_COLOR = '#a855f7';
+
 function paperBadgeHTML(asset) {
     if (!isPaperAsset(asset)) return '';
     const scen = (typeof paperScenarios !== 'undefined')
         ? paperScenarios.find(s => s.id === asset.paperScenarioId)
         : null;
-    const color = scen ? scen.color : '#a855f7';
-    const name  = scen ? scen.name  : 'Papier';
+
+    const rawColor = scen ? scen.color : PAPER_FALLBACK_COLOR;
+    const color = HEX_COLOR_RE.test(String(rawColor || ''))
+        ? rawColor
+        : PAPER_FALLBACK_COLOR;
+
+    const name = scen ? scen.name : 'Papier';
+    const safeName = escapeHTML(String(name));
+
     return ` <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold"
                   style="background:${color}1a;border-color:${color}80;color:${color};"
-                  title="Position fictive — scénario : ${escapeHTML(name)}. Non incluse dans la fiscalité tant qu'elle n'est pas promue en réel.">
-              <i class="fa-solid fa-flask text-[8px]"></i>${escapeHTML(name)}
+                  title="Position fictive — scénario : ${safeName}. Non incluse dans la fiscalité tant qu'elle n'est pas promue en réel.">
+              <i class="fa-solid fa-flask text-[8px]"></i>${safeName}
             </span>`;
 }
 
@@ -1624,8 +1653,9 @@ function renderPortfolioMenu() {
     list.innerHTML = portfolios.map(p => {
         const isCurrent = p.id === currentPortfolioId;
         const val = computePortfolioTotal(p.id);
+        const safeId = safeInlineArg(p.id);
         return `<div class="flex items-center justify-between border-b border-gray-800/60 last:border-b-0 ${isCurrent ? 'bg-indigo-950/30' : ''}">
-            <button onclick="switchPortfolio('${p.id}')" class="flex-1 text-left min-w-0 flex items-center gap-2 p-2.5 hover:bg-gray-800/50 transition">
+            <button onclick="switchPortfolio(${safeId})" class="flex-1 text-left min-w-0 flex items-center gap-2 p-2.5 hover:bg-gray-800/50 transition">
                 <i class="fa-solid ${isCurrent ? 'fa-circle-check text-indigo-400' : 'fa-circle text-gray-700'} text-[10px] flex-shrink-0"></i>
                 <span class="min-w-0 flex-1">
                     <span class="block text-xs font-medium ${isCurrent ? 'text-white' : 'text-gray-300'} truncate">${escapeHTML(p.name)}</span>
@@ -1633,8 +1663,8 @@ function renderPortfolioMenu() {
                 </span>
             </button>
             <div class="flex gap-0.5 flex-shrink-0 pr-1.5">
-                <button onclick="event.stopPropagation(); renamePortfolio('${p.id}')" class="p-1.5 text-gray-500 hover:text-indigo-400 transition" title="Renommer"><i class="fa-solid fa-pen text-[10px]"></i></button>
-                ${portfolios.length > 1 ? `<button onclick="event.stopPropagation(); deletePortfolio('${p.id}')" class="p-1.5 text-gray-500 hover:text-rose-400 transition" title="Supprimer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
+                <button onclick="event.stopPropagation(); renamePortfolio(${safeId})" class="p-1.5 text-gray-500 hover:text-indigo-400 transition" title="Renommer"><i class="fa-solid fa-pen text-[10px]"></i></button>
+                ${portfolios.length > 1 ? `<button onclick="event.stopPropagation(); deletePortfolio(${safeId})" class="p-1.5 text-gray-500 hover:text-rose-400 transition" title="Supprimer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -1836,12 +1866,12 @@ function renderStrategyCardHTML(scenario) {
         : '';
 
     return `
-        <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-3 ${scenario.archived ? 'opacity-60' : ''}" style="border-top: 3px solid ${scenario.color};">
+        <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4 flex flex-col gap-3 ${scenario.archived ? 'opacity-60' : ''}" style="border-top: 3px solid ${HEX_COLOR_RE.test(String(scenario.color || '')) ? scenario.color : PAPER_FALLBACK_COLOR};">
             <!-- En-tête -->
             <div class="flex justify-between items-start gap-2">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center flex-wrap gap-1">
-                        <span class="w-3 h-3 rounded-full flex-shrink-0" style="background:${scenario.color};"></span>
+                        <span class="w-3 h-3 rounded-full flex-shrink-0" style="background:${HEX_COLOR_RE.test(String(scenario.color || '')) ? scenario.color : PAPER_FALLBACK_COLOR};"></span>
                         <span class="font-bold text-white text-sm truncate" title="${escapeHTML(scenario.name)}">${escapeHTML(scenario.name)}</span>
                         ${currentBadge}${archivedBadge}
                     </div>
@@ -1893,22 +1923,22 @@ function renderStrategyCardHTML(scenario) {
 
             <!-- Actions -->
             <div class="flex justify-end gap-1 pt-2 border-t border-gray-800 flex-wrap">
-                <button onclick="setCurrentPaperScenario('${scenario.id}'); switchTab('tab-inventaire');" class="px-2 py-1 rounded bg-gray-800 hover:bg-purple-900/60 text-gray-300 hover:text-purple-300 text-[10px] transition" title="Voir les positions dans l'inventaire">
+                <button onclick="setCurrentPaperScenario(${safeInlineArg(scenario.id)}); switchTab('tab-inventaire');" class="px-2 py-1 rounded bg-gray-800 hover:bg-purple-900/60 text-gray-300 hover:text-purple-300 text-[10px] transition" title="Voir les positions dans l'inventaire">
                     <i class="fa-solid fa-eye text-[9px]"></i> Voir
                 </button>
-                <button onclick="renamePaperScenarioUI('${scenario.id}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Renommer">
+                <button onclick="renamePaperScenarioUI(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Renommer">
                     <i class="fa-solid fa-pen text-[9px]"></i>
                 </button>
-                <button onclick="duplicatePaperScenario('${scenario.id}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-teal-900/60 text-gray-300 hover:text-teal-300 text-[10px] transition" title="Dupliquer (positions + paramètres)">
+                <button onclick="duplicatePaperScenario(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-teal-900/60 text-gray-300 hover:text-teal-300 text-[10px] transition" title="Dupliquer (positions + paramètres)">
                     <i class="fa-solid fa-copy text-[9px]"></i>
                 </button>
-                <button onclick="toggleArchivePaperScenario('${scenario.id}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-amber-900/60 text-gray-300 hover:text-amber-300 text-[10px] transition" title="${scenario.archived ? 'Désarchiver' : 'Archiver'}">
+                <button onclick="toggleArchivePaperScenario(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-amber-900/60 text-gray-300 hover:text-amber-300 text-[10px] transition" title="${scenario.archived ? 'Désarchiver' : 'Archiver'}">
                     <i class="fa-solid fa-${scenario.archived ? 'box-open' : 'box-archive'} text-[9px]"></i>
                 </button>
-                <button onclick="deleteAllPaperAssets('${scenario.id}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-amber-900/60 text-gray-300 hover:text-amber-300 text-[10px] transition" title="Purger les positions (garde le scénario vide)">
+                <button onclick="deleteAllPaperAssets(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-amber-900/60 text-gray-300 hover:text-amber-300 text-[10px] transition" title="Purger les positions (garde le scénario vide)">
                     <i class="fa-solid fa-broom text-[9px]"></i>
                 </button>
-                <button onclick="deletePaperScenario('${scenario.id}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-rose-900/60 text-gray-300 hover:text-rose-300 text-[10px] transition" title="Supprimer le scénario et ses positions">
+                <button onclick="deletePaperScenario(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-rose-900/60 text-gray-300 hover:text-rose-300 text-[10px] transition" title="Supprimer le scénario et ses positions">
                     <i class="fa-solid fa-trash text-[9px]"></i>
                 </button>
             </div>

@@ -217,9 +217,11 @@ function renderSavedFiltersMenu() {
 
     menu.innerHTML = sorted.map(f => {
         const count = f.applyCount || 0;
+        const safeId = /^flt_\d+_\d+$/.test(String(f.id)) ? f.id : '';
+        if (!safeId) return '';
         return `
             <div class="flex items-center justify-between border-b border-gray-800/60 last:border-b-0 hover:bg-gray-800/40 transition group">
-                <button onclick="applySavedFilter('${f.id}'); closeSavedFiltersMenu();"
+                <button onclick="applySavedFilter(${JSON.stringify(safeId)}); closeSavedFiltersMenu();"
                         class="flex-1 text-left min-w-0 flex items-center gap-2 p-2.5">
                     <i class="fa-solid fa-filter text-teal-400 text-[10px] flex-shrink-0"></i>
                     <span class="min-w-0 flex-1">
@@ -232,15 +234,15 @@ function renderSavedFiltersMenu() {
                     </span>
                 </button>
                 <div class="flex gap-0.5 flex-shrink-0 pr-1.5 opacity-0 group-hover:opacity-100 transition">
-                    <button onclick="event.stopPropagation(); renameSavedFilterUI('${f.id}')"
+                    <button onclick="event.stopPropagation(); renameSavedFilterUI(${JSON.stringify(safeId)})"
                             class="p-1.5 text-gray-500 hover:text-indigo-400 transition" title="Renommer">
                         <i class="fa-solid fa-pen text-[10px]"></i>
                     </button>
-                    <button onclick="event.stopPropagation(); overwriteSavedFilter('${f.id}')"
+                    <button onclick="event.stopPropagation(); overwriteSavedFilter(${JSON.stringify(safeId)})"
                             class="p-1.5 text-gray-500 hover:text-teal-400 transition" title="Écraser par les filtres actuels">
                         <i class="fa-solid fa-floppy-disk text-[10px]"></i>
                     </button>
-                    <button onclick="event.stopPropagation(); deleteSavedFilter('${f.id}')"
+                    <button onclick="event.stopPropagation(); deleteSavedFilter(${JSON.stringify(safeId)})"
                             class="p-1.5 text-gray-500 hover:text-rose-400 transition" title="Supprimer">
                         <i class="fa-solid fa-trash text-[10px]"></i>
                     </button>

@@ -1069,7 +1069,8 @@ function exportLotsCSV(assetId) {
 
     const fmtNum  = (v, d = 2) => Number.isFinite(v) ? v.toFixed(d).replace('.', ',') : '';
     const csvCell = (s) => {
-        const str = String(s == null ? '' : s);
+        let str = String(s == null ? '' : s);
+        if (/^[=+\-@\t\r]/.test(str)) str = "'" + str;
         return /[";\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
     };
 

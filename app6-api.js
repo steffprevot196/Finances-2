@@ -103,9 +103,11 @@ async function fetchTwelveDataHistory(symbol, days = 365) {
 
 function saveTwelveDataKey() {
     twelveDataApiKey = document.getElementById('twelve-key-input').value.trim();
-    localStorage.setItem('patriMonial_twelveDataKey', twelveDataApiKey);
+    // ── SECURITY ── Session-only : pas de persistance dans localStorage.
     const el = document.getElementById('twelve-status');
-    if (el) el.innerText = twelveDataApiKey ? '✅ Clé enregistrée' : '⚠️ Aucune clé';
+    if (el) el.innerText = twelveDataApiKey
+        ? '✅ Clé enregistrée (mémoire de session)'
+        : '⚠️ Aucune clé';
 }
 
 // ---------------------------------------------------------------------
@@ -1217,9 +1219,8 @@ async function pushToDrive() {
         alert('La phrase secrète doit contenir au moins 8 caractères.');
         return;
     }
-    // Si aucune phrase n'est saisie mais qu'une clé est mémorisée, on utilise
-    // une chaîne sentinelle qui sera ignorée par getOrCreateMasterKey.
-    if (!passphrase && hasKey) passphrase = '__cached__';
+    // null = "utiliser la clé mémorisée" (voir getOrCreateMasterKey, correctif 8).
+    if (!passphrase && hasKey) passphrase = null;
 
     try {
         const envelope = await encryptPayload(currentDataSnapshot(), passphrase);
@@ -1370,6 +1371,30 @@ async function deriveMasterKey(passphrase, salt) {
 // Récupère la clé mémorisée (si elle correspond à la phrase fournie),
 // sinon la dérive et la mémorise. Retourne { key, isNew }.
 async function getOrCreateMasterKey(passphrase) {
+    // ── SECURITY ── Refus du sentinel vide/'__cached__' en tant que passphrase
+    // réelle : un appel avec sentinel doit IMPÉRATIVEMENT retrouver une clé
+    // mémorisée valide. Sinon on lève une erreur claire, au lieu de dériver
+    // silencieusement une clé faible à partir du littéral '__cached__'.
+    if (!passphrase || passphrase === '__cached__') {
+        const stored = await keyDBGet('driveMasterKey');
+        if (!stored || !stored.key) {
+            throw new Error('Aucune clé mémorisée — saisissez la phrase secrète.');
+        }
+        try {
+            const probe = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: new Uint8Array(stored.witnessIv) },
+                stored.key,
+                new Uint8Array(stored.witness)
+            );
+            if (new TextDecoder().decode(probe) !== KEY_WITNESS) {
+                throw new Error('Witness mismatch');
+            }
+        } catch (_) {
+            throw new Error('Clé mémorisée corrompue — ressaisissez la phrase secrète.');
+        }
+        return { key: stored.key, isNew: false };
+    }
+
     const stored = await keyDBGet('driveMasterKey');
     if (stored && stored.key) {
         try {
@@ -1421,7 +1446,7 @@ async function pullFromDrive(fileId) {
         alert('Saisissez la phrase secrète utilisée lors de l\'envoi.');
         return;
     }
-    if (!passphrase && hasKey) passphrase = '__cached__';
+    if (!passphrase && hasKey) passphrase = null;
     try {
         const res = await driveApiFetch(`files/${fileId}?alt=media`);
         const envelope = await res.json();
@@ -1478,8 +1503,10 @@ function restoreLocalBackup(index) {
 // =====================================================================
 function saveFinnhubKey() {
     finnhubApiKey = document.getElementById('finnhub-key-input').value.trim();
-    localStorage.setItem('patriMonial_finnhubKey', finnhubApiKey);
-    document.getElementById('finnhub-status').innerText = finnhubApiKey ? '✅ Clé enregistrée' : '⚠️ Aucune clé';
+    // ── SECURITY ── Session-only : pas de persistance dans localStorage.
+    document.getElementById('finnhub-status').innerText = finnhubApiKey
+        ? '✅ Clé enregistrée (mémoire de session)'
+        : '⚠️ Aucune clé';
 }
 
 async function searchFinnhubSymbol(query) {
@@ -1617,7 +1644,7 @@ async function shouldAutoBackupToDrive() {
 // uniquement (pas d'alerte).
 async function performSilentDriveBackup() {
     try {
-        const envelope = await encryptPayload(currentDataSnapshot(), '__cached__');
+        const envelope = await encryptPayload(currentDataSnapshot(), null);
         const metadata = {
             name: 'patrimonial-backup-auto-' + Date.now() + '.json',
             parents: ['appDataFolder']

@@ -47,7 +47,6 @@
                                https://www.googleapis.com
                                https://accounts.google.com
                                https://oauth2.googleapis.com
-                               https://api.allorigins.win
                                https://api.twelvedata.com;
                    img-src 'self' data:;
                    style-src 'self' 'unsafe-inline'
@@ -101,12 +100,19 @@
             }
         }
     </script>
-    <!-- FontAwesome icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- SheetJS (pour parser les fichiers Excel .xlsx AuCoffre) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- FontAwesome icons (version épinglée, SRI désactivé) -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer">
+    <!-- Chart.js (version épinglée, SRI désactivé) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
+    <!-- SheetJS (version épinglée, SRI désactivé) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
 
 
     <link rel="stylesheet" href="style.css">

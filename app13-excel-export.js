@@ -10,8 +10,15 @@
 // ---------------------------------------------------------------------
 // Ajoute une feuille à un classeur en appliquant des largeurs de colonnes
 // et un style d'en-tête (gras, fond gris clair) si les options le permettent.
+const _XLSX_FORMULA_PREFIX_RE = /^[=+\-@\t\r]/;
+function _xlsxSafeString(v) {
+    if (typeof v !== 'string') return v;
+    return _XLSX_FORMULA_PREFIX_RE.test(v) ? "'" + v : v;
+}
+
 function _xlsxAddSheet(workbook, sheetName, aoa, colWidths) {
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const safeAoa = aoa.map(row => Array.isArray(row) ? row.map(_xlsxSafeString) : row);
+    const ws = XLSX.utils.aoa_to_sheet(safeAoa);
     if (Array.isArray(colWidths)) {
         ws['!cols'] = colWidths.map(w => ({ wch: w }));
     }

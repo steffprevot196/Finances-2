@@ -100,8 +100,14 @@ function countSessionNew(kind) {
 // Le badge est un petit point bleu pulsant + tooltip explicatif.
 function sessionBadgeHTML(kind, id) {
     if (!isSessionNew(kind, id)) return '';
-    const key = kind + '_' + id;
-    return ` <span class="session-badge" data-session-badge="${key}" title="Nouveau / modifié dans cette session — cliquez pour masquer" onclick="event.stopPropagation(); clearSessionBadge('${kind}', ${JSON.stringify(id)});">
+    // ── SECURITY ── Whitelist stricte de `kind` + coercition numérique de `id`.
+    // Le pattern `clearSessionBadge('${kind}', ...)` est un handler inline :
+    // toute valeur non contrôlée dans `kind` deviendrait injectable.
+    const safeKind = SESSION_BADGE_KINDS.includes(kind) ? kind : 'asset';
+    const numericId = Number(id);
+    const safeId = Number.isFinite(numericId) && numericId > 0 ? numericId : 0;
+    const key = safeKind + '_' + safeId;
+    return ` <span class="session-badge" data-session-badge="${escapeHTML(key)}" title="Nouveau / modifié dans cette session — cliquez pour masquer" onclick="event.stopPropagation(); clearSessionBadge('${safeKind}', ${safeId});">
         <span class="session-badge-dot"></span>
     </span>`;
 }

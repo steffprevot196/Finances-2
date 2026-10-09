@@ -209,6 +209,9 @@ function _watchlistTypeBadge(w) {
 
 // Construit le HTML d'une carte d'entrée watchlist.
 function _watchlistCardHTML(w) {
+    // ── SECURITY ── Coercition stricte de l'ID en contexte inline JS.
+    const safeId = Number(w.id);
+    if (!Number.isFinite(safeId) || safeId <= 0) return '';
     const hasTarget = w.targetPrice > 0;
     const distance = watchlistTargetDistance(w);
     const reached  = watchlistIsTargetReached(w);
@@ -315,13 +318,13 @@ function _watchlistCardHTML(w) {
 
             <!-- Actions -->
             <div class="flex justify-end gap-1 pt-2 border-t border-gray-800 flex-wrap">
-                <button onclick="promoteWatchlistToAsset('${w.id}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-emerald-900/60 text-gray-300 hover:text-emerald-300 text-[10px] transition flex items-center gap-1" title="Créer un actif réel pré-rempli depuis cette idée">
+                <button onclick="promoteWatchlistToAsset('${safeId}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-emerald-900/60 text-gray-300 hover:text-emerald-300 text-[10px] transition flex items-center gap-1" title="Créer un actif réel pré-rempli depuis cette idée">
                     <i class="fa-solid fa-arrow-up-right-dots text-[9px]"></i> Promouvoir
                 </button>
-                <button onclick="editWatchlistEntry('${w.id}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Modifier">
+                <button onclick="editWatchlistEntry('${safeId}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Modifier">
                     <i class="fa-solid fa-pen text-[9px]"></i>
                 </button>
-                <button onclick="deleteWatchlistEntry('${w.id}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-rose-900/60 text-gray-300 hover:text-rose-300 text-[10px] transition" title="Supprimer">
+                <button onclick="deleteWatchlistEntry('${safeId}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-rose-900/60 text-gray-300 hover:text-rose-300 text-[10px] transition" title="Supprimer">
                     <i class="fa-solid fa-trash text-[9px]"></i>
                 </button>
             </div>

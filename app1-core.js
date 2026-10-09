@@ -187,8 +187,17 @@ let lotShowSold   = true;     // afficher les lots totalement vendus ?
 let lastRiskMetrics        = {};
 let realVolCache           = {};
 let realSeriesCache        = {};
-let finnhubApiKey          = localStorage.getItem('patriMonial_finnhubKey') || '';
-let twelveDataApiKey       = localStorage.getItem('patriMonial_twelveDataKey') || '';
+// ── SECURITY ── Les clés Finnhub et Twelve Data ne sont PLUS persistées
+// dans localStorage (lisibles par tout script de même origine / extension).
+// Elles vivent en mémoire volatile, perdues au rechargement de la page.
+// Un utilisateur doit les ressaisir une fois par session.
+let finnhubApiKey          = '';
+let twelveDataApiKey       = '';
+try {
+    // Purge des anciennes clés persistées (migration de sécurité).
+    localStorage.removeItem('patriMonial_finnhubKey');
+    localStorage.removeItem('patriMonial_twelveDataKey');
+} catch (_) { /* silencieux */ }
 
 // Seuil de concentration (poids max d'un actif dans le portefeuille).
 // Au-delà : un badge ⚠ s'affiche sur la ligne / carte de l'actif.
@@ -442,6 +451,16 @@ function escapeHTML(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+// --- Sécurité : génération d'arguments sûrs pour les handlers inline ---
+// Les handlers du type `onclick="fn('${id}')"` sont vulnérables même avec
+// escapeHTML : le navigateur HTML-décode l'attribut AVANT de le parser
+// comme JS, donc `&#39;` redevient `'` et casse le littéral de chaîne.
+// Le seul pattern sûr est : JSON.stringify (échappe le JS) + escapeHTML
+// (échappe le HTML). Cette fonction encapsule ce double échappement.
+function safeInlineArg(v) {
+    return escapeHTML(JSON.stringify(v));
 }
 
 // --- Formatage des quantités (grands nombres crypto, fractions d'onces…) ---
@@ -1714,9 +1733,12 @@ function renderPaperScenarioMenu() {
     list.innerHTML = paperScenarios.map(s => {
         const isCurrent = s.id === currentPaperScenarioId;
         const count = assets.filter(a => isPaperAsset(a) && a.paperScenarioId === s.id).length;
+        const safeId = safeInlineArg(s.id);
+        // Validation de la couleur (anti-injection CSS dans style="")
+        const safeColor = HEX_COLOR_RE.test(String(s.color || '')) ? s.color : PAPER_FALLBACK_COLOR;
         return `<div class="flex items-center justify-between border-b border-gray-800/60 last:border-b-0 ${isCurrent ? 'bg-purple-950/30' : ''}">
-            <button onclick="setCurrentPaperScenario('${s.id}'); closePaperScenarioMenu();" class="flex-1 text-left min-w-0 flex items-center gap-2 p-2.5 hover:bg-gray-800/50 transition">
-                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background:${s.color};"></span>
+            <button onclick="setCurrentPaperScenario(${safeId}); closePaperScenarioMenu();" class="flex-1 text-left min-w-0 flex items-center gap-2 p-2.5 hover:bg-gray-800/50 transition">
+                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background:${safeColor};"></span>
                 <span class="min-w-0 flex-1">
                     <span class="block text-xs font-medium ${isCurrent ? 'text-white' : 'text-gray-300'} truncate">${escapeHTML(s.name)}</span>
                     <span class="block text-[10px] text-gray-500 font-mono">${count} position(s) · créé le ${new Date(s.createdAt).toLocaleDateString('fr-FR')}</span>
@@ -1724,8 +1746,8 @@ function renderPaperScenarioMenu() {
                 ${isCurrent ? '<i class="fa-solid fa-circle-check text-purple-400 text-[10px]"></i>' : ''}
             </button>
             <div class="flex gap-0.5 flex-shrink-0 pr-1.5">
-                <button onclick="event.stopPropagation(); renamePaperScenarioUI('${s.id}')" class="p-1.5 text-gray-500 hover:text-purple-400 transition" title="Renommer"><i class="fa-solid fa-pen text-[10px]"></i></button>
-                ${paperScenarios.length > 1 ? `<button onclick="event.stopPropagation(); deletePaperScenario('${s.id}')" class="p-1.5 text-gray-500 hover:text-rose-400 transition" title="Supprimer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
+                <button onclick="event.stopPropagation(); renamePaperScenarioUI(${safeId})" class="p-1.5 text-gray-500 hover:text-purple-400 transition" title="Renommer"><i class="fa-solid fa-pen text-[10px]"></i></button>
+                ${paperScenarios.length > 1 ? `<button onclick="event.stopPropagation(); deletePaperScenario(${safeId})" class="p-1.5 text-gray-500 hover:text-rose-400 transition" title="Supprimer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
             </div>
         </div>`;
     }).join('');
