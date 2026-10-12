@@ -32,7 +32,8 @@ function destroyAllCharts() {
         compareChartHistoryInstance.A, compareChartHistoryInstance.B,
         paperCompareChartAllocInstance.A, paperCompareChartAllocInstance.B,
         paperCompareChartHistoryInstance,
-        (typeof goalChartInstance !== 'undefined' ? goalChartInstance : null)
+        (typeof goalChartInstance !== 'undefined' ? goalChartInstance : null),
+        (typeof annualPnlChartInstance !== 'undefined' ? annualPnlChartInstance : null)
     ].forEach(c => { if (c) c.destroy(); });
 
     dashboardAllocChartInstance = dashboardHistoryChartInstance = null;
@@ -42,6 +43,7 @@ function destroyAllCharts() {
     paperCompareChartAllocInstance = { A: null, B: null };
     paperCompareChartHistoryInstance = null;
     if (typeof goalChartInstance !== 'undefined') goalChartInstance = null;
+    if (typeof annualPnlChartInstance !== 'undefined') annualPnlChartInstance = null;
 }
 
 // ---------------------------------------------------------------------
@@ -65,6 +67,10 @@ function switchTab(tabId) {
     // Chantier 1.10 — l'onglet Historique reconstruit le ledger à la volée
     if (tabId === 'tab-ledger' && typeof renderLedgerTab === 'function') {
         renderLedgerTab();
+    }
+    // Histogramme annuel (onglet Accueil)
+    if (tabId === 'tab-accueil' && typeof renderAnnualPnlChart === 'function') {
+        renderAnnualPnlChart();
     }
     refreshAllUI();
 }

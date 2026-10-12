@@ -51,7 +51,20 @@ window.addEventListener('DOMContentLoaded', () => {
     calculateMetalTaxSim();
 
     // 6. Préchargement du cache de volatilité réelle (async, se termine plus tard)
-    primeRealVolCache();
+    //    + reconstruction des historiques depuis les cours réels déjà en cache.
+    //    Cela permet à la Trajectoire Patrimoniale d'afficher une vraie courbe
+    //    "Valeur" qui se détache de "Investi" dès le premier rendu, sans
+    //    attendre que l'utilisateur clique sur "Historique de prix".
+    primeRealVolCache().then(() => {
+        if (typeof rebuildAllHistoriesFromRealPrices === 'function') {
+            const n = rebuildAllHistoriesFromRealPrices();
+            if (n > 0) {
+                saveToStorage();
+                if (typeof refreshAllUI === 'function') refreshAllUI();
+                console.info(`[History] ${n} historique(s) reconstruit(s) au boot.`);
+            }
+        }
+    }).catch(() => {});
 
     // 7. Pop-up de reclassement Action/ETF si nécessaire
     maybeShowReclassModal();
@@ -338,6 +351,13 @@ window.addEventListener('DOMContentLoaded', () => {
         initMcWorkerModule();
     }
 
+    // 8n-octodecies. Filtres par actif sur les onglets Accueil et Vue d'ensemble.
+    //                Injecte deux barres de filtres en haut de chaque onglet
+    //                et rend statsAssets()/statsCessions() filter-aware.
+    if (typeof initTabFiltersModule === 'function') {
+        initTabFiltersModule();
+    }
+
     // Hook sur refreshBenchmarkSeries : dès que le benchmark est
     // téléchargé ou rafraîchi, on recalcule le comparateur CW8 et on
     // re-rend si l'onglet dashboard est actif.
@@ -553,6 +573,37 @@ window.addEventListener('DOMContentLoaded', () => {
     if (tickerInput && typeof updateEsgPreview === 'function') {
         tickerInput.addEventListener('input', updateEsgPreview);
     }
+
+// 9c-ter. Résolution automatique ISIN → ticker Yahoo
+//   Quand l'utilisateur tape un ISIN valide (format 12 chars), on interroge
+//   Finnhub pour récupérer le symbole de marché et on pré-remplit les
+//   champs Ticker + Ticker Yahoo si vides.
+const isinInput = document.getElementById('add-isin');
+if (isinInput) {
+    isinInput.addEventListener('blur', async () => {
+        const isin = isinInput.value.trim().toUpperCase();
+        if (!/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(isin)) return;
+
+        // Ne pas écraser une saisie manuelle
+        const tickerInput = document.getElementById('add-ticker');
+        const yahooInput  = document.getElementById('add-yahoo-ticker');
+        if (tickerInput.value.trim() && yahooInput.value.trim()) return;
+
+        if (typeof searchFinnhubSymbol !== 'function' || !finnhubApiKey) return;
+        try {
+            const results = await searchFinnhubSymbol(isin);
+            if (!results.length) return;
+            const best = results[0];   // Finnhub trie par pertinence
+
+            if (!tickerInput.value.trim()) tickerInput.value = best.ticker;
+            if (!yahooInput.value.trim() && /\.[A-Z]{2,3}$/.test(best.ticker)) {
+                yahooInput.value = best.ticker;
+            }
+            const nameInput = document.getElementById('add-name');
+            if (!nameInput.value.trim()) nameInput.value = best.name;
+        } catch (_) { /* silencieux : l'utilisateur saisira manuellement */ }
+    });
+}
 
     // 9d. Flag « champ Taux de change touché » (Chantier 1.2)
     //     Empêche _autoFillFxRate d'écraser une saisie manuelle de l'utilisateur

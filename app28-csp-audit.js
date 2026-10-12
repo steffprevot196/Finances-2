@@ -327,6 +327,60 @@ function _execCspStatement(stmt, el, event) {
     if (s === 'event.stopPropagation()') { event.stopPropagation(); return true; }
     if (s === 'event.preventDefault()')  { event.preventDefault();  return true; }
 
+    // ── Pattern : document.getElementById('X').METHOD(args) ──
+    //   ou : document.getElementById('X').prop.method(args)
+    // Supporte les handlers comme :
+    //   onclick="document.getElementById('input-import-json').click()"
+    //   onclick="document.getElementById('modal-help').classList.remove('hidden')"
+    //   onclick="document.getElementById('slider').classList.toggle('active')"
+    //
+    // Sans ce bloc, ces handlers échouent silencieusement (getElementById
+    // reçoit un argument mal parsé → null → TypeError avalé).
+    const getByIdChain = s.match(
+        /^document\.getElementById\(\s*(['"])([^'"]+)\1\s*\)(?:\?\.)?\.((?:[a-zA-Z_$][a-zA-Z0-9_$]*\.)*[a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(([\s\S]*)\)$/
+    );
+    if (getByIdChain) {
+        const id = getByIdChain[2];
+        const methodPath = getByIdChain[3];
+        const argsRaw = getByIdChain[4].trim();
+
+        const target = document.getElementById(id);
+        if (!target) {
+            console.warn('[CSP Delegator] getElementById vide pour id =', id);
+            return false;
+        }
+
+        // Navigue dans les propriétés intermédiaires (ex: classList, style)
+        const parts = methodPath.split('.');
+        let obj = target;
+        for (let i = 0; i < parts.length - 1; i++) {
+            obj = obj[parts[i]];
+            if (obj === undefined || obj === null) {
+                console.warn('[CSP Delegator] Chemin introuvable :', id, '→', methodPath);
+                return false;
+            }
+        }
+        const methodName = parts[parts.length - 1];
+
+        if (typeof obj[methodName] !== 'function') {
+            console.warn('[CSP Delegator] Méthode inconnue :', methodName, 'sur', id);
+            return false;
+        }
+
+        let args = [];
+        if (argsRaw) {
+            args = _splitArgsTopLevel(argsRaw).map(a => _parseArgValue(a, el, event));
+        }
+
+        try {
+            obj[methodName].apply(obj, args);
+            return true;
+        } catch (err) {
+            console.error('[CSP Delegator] Erreur dans', id + '.' + methodPath, ':', err);
+            return false;
+        }
+    }
+
     // ── Appel de fonction fn(args) ──
     const callMatch = s.match(/^([a-zA-Z_$][a-zA-Z0-9_$.]*(?:\?\.)?)\s*\(([\s\S]*)\)$/);
     if (callMatch) {

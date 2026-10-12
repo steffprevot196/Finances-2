@@ -82,6 +82,20 @@ function updateAssetFormSections(desiredEnvelope) {
     const manual = tags.some(t => MANUAL_VALUATION_TAGS.includes(t));
     document.getElementById('add-valuation-wrap').classList.toggle('hidden', !manual);
 
+    // === Champ "Coût total d'acquisition" : crypto non-ETF uniquement ===
+    // Un ETF-Crypto (rare mais possible via les tags) ne déclenche pas ce
+    // champ : on ne veut pas dupliquer l'UX "ETF" classique avec prix unitaire.
+    const isCryptoNonEtf = tags.includes('Crypto') && !tags.includes('ETF');
+    const totalWrap = document.getElementById('add-total-cost-wrap');
+    if (totalWrap) {
+        totalWrap.classList.toggle('hidden', !isCryptoNonEtf);
+        if (isCryptoNonEtf) {
+            // Différé léger pour laisser le navigateur finir le toggle DOM
+            // avant de lire qty / price (évite un calcul sur valeurs vides).
+            setTimeout(recalculateTotalCost, 0);
+        }
+    }
+
     const opts = envelopeOptionsFor(tags);
     const sel  = document.getElementById('add-envelope');
     const previous = desiredEnvelope !== undefined ? desiredEnvelope : sel.value;
@@ -137,6 +151,9 @@ function openAddAssetModal() {
     _addValueTouched = false;
     document.getElementById('add-purchase-date').value = new Date().toISOString().slice(0, 10);
     document.getElementById('add-qty').value = 1;
+    // Reset du champ "Coût total" (visible uniquement pour crypto non-ETF)
+    const _totalCostInput = document.getElementById('add-total-cost');
+    if (_totalCostInput) _totalCostInput.value = '';
     setBrokerValue('');
     document.getElementById('add-bond-coupon').value = '';
     document.getElementById('add-bond-maturity').value = '';
@@ -227,6 +244,8 @@ function openEditAssetModal(id) {
     document.getElementById('modal-add-asset-submit-btn').innerText = 'Enregistrer les Modifications';
     document.getElementById('search-results-container').classList.add('hidden');
     document.getElementById('add-search-input').value = '';
+    // Force le recalcul du coût total après restauration des valeurs
+    if (typeof recalculateTotalCost === 'function') recalculateTotalCost();
     document.getElementById('modal-add-asset').classList.remove('hidden');
 }
 
@@ -282,12 +301,70 @@ function updateEsgPreview() {
 // intentionnellement par l'utilisateur (y compris 0).
 // ---------------------------------------------------------------------
 function recalculateAddTotals() {
+    // Recalcule le coût total d'acquisition (toujours, si le bloc est visible)
+    if (typeof recalculateTotalCost === 'function') recalculateTotalCost();
+
+    // Recalcule la valeur unitaire (seulement si non touchée manuellement)
     if (_addValueTouched) return;
     const price = parseFloat(document.getElementById('add-price').value) || 0;
     const valueInput = document.getElementById('add-value');
     if (valueInput && !valueInput.value) {
         valueInput.value = price.toFixed(4);
     }
+}
+
+// ---------------------------------------------------------------------
+// COÛT TOTAL D'ACQUISITION — spécifique aux cryptos non-ETF
+// ---------------------------------------------------------------------
+// Ce champ permet de saisir directement le montant investi (ex: « j'ai
+// acheté pour 500 € de BTC avec 3 € de frais ») plutôt que le PRU unitaire.
+// Le back-calcul suit la formule fiscale française :
+//     PRU unitaire = (coût total − frais) / quantité
+// Ce qui garantit que `invested = qty × PRU + frais` reste cohérent.
+// ---------------------------------------------------------------------
+
+// Recalcule le champ "Coût total" à partir de qty × PRU + frais.
+// Ne fait rien si le bloc est masqué (asset non crypto) ou si les valeurs
+// de base sont insuffisantes (évite d'afficher "0.00" sur un formulaire vide).
+function recalculateTotalCost() {
+    const wrap = document.getElementById('add-total-cost-wrap');
+    if (!wrap || wrap.classList.contains('hidden')) return;
+
+    const input = document.getElementById('add-total-cost');
+    if (!input) return;
+
+    const qty   = parseFloat(document.getElementById('add-qty').value)   || 0;
+    const price = parseFloat(document.getElementById('add-price').value) || 0;
+    const frais = parseFloat(document.getElementById('add-frais').value) || 0;
+
+    // Garde-fou : tant que quantité et PRU ne sont pas renseignés, on
+    // n'écrase pas un éventuel "0.00" saisi manuellement.
+    if (qty <= 0 || price <= 0) return;
+
+    input.value = (qty * price + frais).toFixed(2);
+}
+
+// Appelé quand l'utilisateur modifie directement le champ Coût total :
+// on back-calcule le PRU unitaire pour que `invested = qty × PRU + frais`
+// corresponde exactement au montant saisi.
+function onTotalCostInput() {
+    const input = document.getElementById('add-total-cost');
+    if (!input) return;
+
+    const total = parseFloat(input.value);
+    if (!Number.isFinite(total) || total < 0) return;
+
+    const qty = parseFloat(document.getElementById('add-qty').value) || 0;
+    if (qty <= 0) return;
+
+    const frais = parseFloat(document.getElementById('add-frais').value) || 0;
+    const price = (total - frais) / qty;
+
+    // Frais > coût total : situation incohérente, on n'écrase pas le PRU
+    if (price < 0) return;
+
+    const priceInput = document.getElementById('add-price');
+    if (priceInput) priceInput.value = price.toFixed(6);
 }
 
 // ---------------------------------------------------------------------
@@ -418,6 +495,18 @@ function handleAddAsset(e) {
     const purchaseDateFR = purchaseDate
         ? new Date(purchaseDate).toLocaleDateString('fr-FR')
         : new Date().toLocaleDateString('fr-FR');
+
+    // ── Détection d'une correction de courtier (mode édition) ──
+    // Si l'utilisateur a modifié le nom du courtier lors de l'édition
+    // d'un actif, on mémorise l'ancien nom pour le retirer du registre
+    // persistant après sauvegarde (voir plus bas).
+    let _oldBrokerToClean = null;
+    if (editId) {
+        const _editingAsset = assets.find(a => a.id === parseFloat(editId));
+        if (_editingAsset && _editingAsset.broker && _editingAsset.broker !== broker) {
+            _oldBrokerToClean = _editingAsset.broker;
+        }
+    }
 
     // À la création, la valeur de marché est initialisée au prix payé (0% de performance).
     // En édition, le champ "Valeur Actuelle" est réactivé et utilisé tel quel.
@@ -599,6 +688,19 @@ function handleAddAsset(e) {
     }
 
     saveToStorage();
+
+    // Mémorise le courtier saisi (pour qu'il apparaisse dans les
+    // suggestions des prochaines saisies).
+    if (typeof rememberBroker === 'function') rememberBroker(broker);
+
+    // Nettoyage automatique : si l'utilisateur vient de corriger une
+    // faute de frappe sur le nom du courtier (mode édition), l'ancien
+    // nom fautif est retiré du registre — à condition qu'aucun autre
+    // actif ne l'utilise encore (voir forgetBroker).
+    if (_oldBrokerToClean && typeof forgetBroker === 'function') {
+        forgetBroker(_oldBrokerToClean);
+    }
+
     closeModal('modal-add-asset');
     refreshAllUI();
     e.target.reset();
@@ -819,7 +921,13 @@ function renderSearchResults(results) {
 function selectSearchResult(item) {
     document.getElementById('add-name').value = item.name;
     document.getElementById('add-ticker').value = item.ticker;
-    document.getElementById('add-yahoo-ticker').value = item.yahooTicker || '';
+    // Si aucun ticker Yahoo explicite n'est fourni, on utilise le ticker
+// lui-même quand il ressemble à un symbole de marché (suffixe .DE, .PA, .L,
+// .MU, .AS, .MI, .SW… OU purement alphabétique pour les US).
+const yahooFallback = item.yahooTicker
+    || (/\.[A-Z]{1,3}$/.test(item.ticker) ? item.ticker : '')   // ← {1,3} au lieu de {2,3}
+    || (/^[A-Z]{1,5}$/.test(item.ticker) ? item.ticker : '');
+document.getElementById('add-yahoo-ticker').value = yahooFallback;
     document.getElementById('add-isin').value = item.isin || '';
 
     let tags = item.tags;
@@ -855,18 +963,65 @@ function openSellAssetModal() {
     document.getElementById('modal-sell-asset').classList.remove('hidden');
 }
 
+// ---------------------------------------------------------------------
+// DÉTECTION DE LA DATE D'ACQUISITION LA PLUS ANCIENNE
+// ---------------------------------------------------------------------
+// Un actif peut avoir sa date d'origine dans TROIS endroits différents :
+//   • `purchaseDate` : ISO YYYY-MM-DD (saisie au formulaire)
+//   • `buys[].date`  : format FR DD/MM/YYYY (achats successifs)
+//   • `lots[].date`  : ISO YYYY-MM-DD (pièces AuCoffre, imports, migration)
+//
+// On prend le MINIMUM de toutes les sources trouvées. C'est indispensable
+// car :
+//   • `buys` n'est pas toujours trié chronologiquement (imports CSV)
+//   • certains actifs n'ont QUE des `lots` (pas de `buys`)
+//   • `purchaseDate` peut refléter la date de création de la ligne plutôt
+//     que la date du premier achat
+function _getEarliestAcquisitionDate(asset) {
+    if (!asset) return null;
+    const candidates = [];
+
+    if (asset.purchaseDate) {
+        const d = parseFlexDate(asset.purchaseDate);
+        if (d) candidates.push(d);
+    }
+    (asset.buys || []).forEach(b => {
+        const d = parseFlexDate(b.date);
+        if (d) candidates.push(d);
+    });
+    (asset.lots || []).forEach(l => {
+        const d = parseFlexDate(l.date);
+        if (d) candidates.push(d);
+    });
+
+    if (!candidates.length) return null;
+    return new Date(Math.min(...candidates.map(d => d.getTime())));
+}
+
 function goToSellStep2() {
     const saleDate = document.getElementById('sell-date-input').value;
     if (!saleDate) { alert('Choisissez une date de vente.'); return; }
     pendingSellDate = saleDate;
     document.getElementById('sell-date-label').innerText = new Date(saleDate).toLocaleDateString('fr-FR');
 
-    const saleTime = new Date(saleDate).getTime();
+    // Comparaison à la granularité du JOUR : on inclut tout actif acheté le
+    // jour même de la vente. Utiliser l'heure exacte provoquerait des
+    // exclusions silencieuses selon le fuseau horaire du navigateur.
+    const saleDayEnd = new Date(saleDate);
+    saleDayEnd.setHours(23, 59, 59, 999);
+    const saleTime = saleDayEnd.getTime();
+
     const eligible = assets.filter(a => {
-        const buyDate = a.purchaseDate
-            ? new Date(a.purchaseDate)
-            : (a.buys && a.buys[0] ? parseFlexDate(a.buys[0].date) : null);
+        const buyDate = _getEarliestAcquisitionDate(a);
         return buyDate && buyDate.getTime() <= saleTime;
+    });
+
+    // Tri par date d'acquisition croissante (le plus ancien en premier)
+    // pour rendre la liste déterministe et facile à scanner.
+    eligible.sort((a, b) => {
+        const da = _getEarliestAcquisitionDate(a);
+        const db = _getEarliestAcquisitionDate(b);
+        return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
     });
 
     const list = document.getElementById('sell-asset-list');
@@ -931,8 +1086,8 @@ function openAddCessionModal() {
     if (hint) hint.innerText = '';
     const venteUnitEl = document.getElementById('cession-prix-vente-unit');
     const achatUnitEl = document.getElementById('cession-prix-achat-unit');
-    if (venteUnitEl) venteUnitEl.innerText = '— €/unité';
-    if (achatUnitEl) achatUnitEl.innerText = '— €/unité';
+    if (venteUnitEl) venteUnitEl.value = '';
+    if (achatUnitEl) achatUnitEl.value = '';
     document.getElementById('cession-frais').value = 0;
     document.getElementById('cession-avant-2018').checked = false;
     document.getElementById('cession-enveloppe').value = 'CTO';
@@ -941,6 +1096,11 @@ function openAddCessionModal() {
     document.getElementById('cession-coupons').value = 0;
 
     toggleCessionFieldsByType();
+
+    // Masque l'aperçu fiscal tant qu'aucun prix n'est saisi
+    const previewEl = document.getElementById('cession-preview');
+    if (previewEl) previewEl.classList.add('hidden');
+
     document.getElementById('modal-add-cession').classList.remove('hidden');
 }
 
@@ -978,8 +1138,12 @@ function prefillCessionFromAsset() {
     // PRU moyen pondéré (méthode fiscale française) recalculé depuis les lots
     const pru = computePRUFromLots(asset);
     const prixAchatUnitaire = pru > 0 ? pru : (asset.qty > 0 ? (asset.invested / asset.qty) : 0);
+    const prixVenteUnitaire = asset.qty > 0 ? (asset.value / asset.qty) : 0;
+    
     document.getElementById('cession-prix-achat').value = (prixAchatUnitaire * asset.qty).toFixed(2);
     document.getElementById('cession-prix-vente').value = (asset.value || 0).toFixed(2);
+    document.getElementById('cession-prix-achat-unit').value = prixAchatUnitaire.toFixed(6);
+    document.getElementById('cession-prix-vente-unit').value = prixVenteUnitaire.toFixed(6);
     document.getElementById('cession-enveloppe').value = SECURITY_ENVELOPES.includes(asset.envelope)
         ? asset.envelope
         : 'CTO';
@@ -996,6 +1160,9 @@ function prefillCessionFromAsset() {
 
     // Affiche le sélecteur nominatif si plusieurs pièces référencées disponibles
     renderCessionLotPicker(asset);
+
+    // Rafraîchit l'aperçu fiscal (les totaux viennent d'être pré-remplis)
+    if (typeof updateCessionPreview === 'function') updateCessionPreview();
 }
 
 // Affiche le sélecteur de pièce nominative si l'actif a plusieurs lots référencés
@@ -1047,7 +1214,13 @@ function renderCessionLotPicker(asset) {
 
     // Pré-remplit date achat et prix achat depuis ce lot
     document.getElementById('cession-date-achat').value = firstLot.date || '';
-    document.getElementById('cession-prix-achat').value = ((firstLot.price || 0) * 1).toFixed(2);
+    const lotUnitCost = (firstLot.price || 0) + ((firstLot.frais || 0) / (firstLot.qty || 1));
+    document.getElementById('cession-prix-achat').value = lotUnitCost.toFixed(2);
+
+    // Réinitialise les champs PU pour éviter une valeur résiduelle d'un autre actif
+    document.getElementById('cession-prix-achat-unit').value = lotUnitCost.toFixed(6);
+    // Le PU de vente sera calculé par onCessionQtyChange() à partir de la valeur marché
+    document.getElementById('cession-prix-vente-unit').value = '';
 
     // Hint quantité
     const hint = document.getElementById('cession-qty-hint');
@@ -1071,8 +1244,12 @@ function onCessionLotChange() {
     if (!lot) return;
 
     // Recalcule prix d'achat (total = unitaire × 1)
+    const lotUnitCost = (lot.price || 0) + ((lot.frais || 0) / (lot.qty || 1));
     document.getElementById('cession-date-achat').value = lot.date || '';
-    document.getElementById('cession-prix-achat').value = ((lot.price || 0) + ((lot.frais || 0) / (lot.qty || 1))).toFixed(2);
+    document.getElementById('cession-prix-achat').value = lotUnitCost.toFixed(2);
+    // Force le PU d'achat pour qu'il soit cohérent avec ce lot spécifique
+    document.getElementById('cession-prix-achat-unit').value = lotUnitCost.toFixed(6);
+
     updateCessionUnitPrices();
 }
 
@@ -1118,11 +1295,25 @@ function onCessionQtyChange() {
         pru = computePRUFromLots(asset) || (asset.qty > 0 ? asset.invested / asset.qty : 0);
     }
 
-    // Mise à jour des prix totaux
-    document.getElementById('cession-prix-achat').value = (pru * qty).toFixed(2);
-    document.getElementById('cession-prix-vente').value = (unitValue * qty).toFixed(2);
+    // Récupère les prix unitaires saisis ou calculés
+    const venteUnitInput = document.getElementById('cession-prix-vente-unit').value;
+    const achatUnitInput = document.getElementById('cession-prix-achat-unit').value;
 
-        // Hint
+    let venteUnit = unitValue;
+    let achatUnit = pru;
+
+    if (venteUnitInput && !isNaN(parseFloat(venteUnitInput))) {
+        venteUnit = parseFloat(venteUnitInput);
+    }
+    if (achatUnitInput && !isNaN(parseFloat(achatUnitInput))) {
+        achatUnit = parseFloat(achatUnitInput);
+    }
+
+    // Mise à jour des prix totaux en fonction des prix unitaires
+    document.getElementById('cession-prix-achat').value = (achatUnit * qty).toFixed(2);
+    document.getElementById('cession-prix-vente').value = (venteUnit * qty).toFixed(2);
+
+    // Hint
     const hint = document.getElementById('cession-qty-hint');
     if (hint) {
         if (qty > maxQty) {
@@ -1134,8 +1325,11 @@ function onCessionQtyChange() {
         }
     }
 
-    // Affiche aussi les prix unitaires
+    // Synchronise l'affichage des prix unitaires
     updateCessionUnitPrices();
+
+    // Rafraîchit l'aperçu fiscal
+    if (typeof updateCessionPreview === 'function') updateCessionPreview();
 }
 
 // Recalcule les prix unitaires AFFICHÉS à partir des valeurs RÉELLES des champs
@@ -1149,14 +1343,79 @@ function updateCessionUnitPrices() {
     const achatUnitEl = document.getElementById('cession-prix-achat-unit');
 
     if (venteUnitEl) {
-        venteUnitEl.innerText = (qty > 0 && venteTotale > 0)
-            ? `${formatEUR(venteTotale / qty)} / unité`
-            : '— €/unité';
+        venteUnitEl.value = (qty > 0 && venteTotale > 0) ? parseFloat((venteTotale / qty).toFixed(6)) : '';
     }
     if (achatUnitEl) {
-        achatUnitEl.innerText = (qty > 0 && achatTotal > 0)
-            ? `${formatEUR(achatTotal / qty)} / unité`
-            : '— €/unité';
+        achatUnitEl.value = (qty > 0 && achatTotal > 0) ? parseFloat((achatTotal / qty).toFixed(6)) : '';
+    }
+
+    // Rafraîchit l'aperçu fiscal à chaque variation de prix
+    if (typeof updateCessionPreview === 'function') updateCessionPreview();
+}
+
+// ---------------------------------------------------------------------
+// APERÇU FISCAL EN DIRECT — visible dans le modal de cession
+// ---------------------------------------------------------------------
+// Recalcule et affiche la cascade : vente → −PRU → −frais → PV nette.
+// Rend explicite la prise en compte des frais de cession (souvent
+// invisibles dans les totaux affichés).
+function updateCessionPreview() {
+    const preview = document.getElementById('cession-preview');
+    if (!preview) return;
+
+    const vente = parseFloat(document.getElementById('cession-prix-vente')?.value) || 0;
+    const achat = parseFloat(document.getElementById('cession-prix-achat')?.value) || 0;
+    const frais = parseFloat(document.getElementById('cession-frais')?.value) || 0;
+
+    // Cache l'aperçu si aucun prix n'est encore saisi
+    if (vente <= 0 && achat <= 0) {
+        preview.classList.add('hidden');
+        return;
+    }
+    preview.classList.remove('hidden');
+
+    const pvBrute = vente - achat;
+    const pvNette = pvBrute - frais;
+
+    const setText = (id, txt, cls) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerText = txt;
+        if (cls !== undefined) el.className = cls;
+    };
+
+    setText('cession-preview-vente', formatEUR(vente));
+    setText('cession-preview-achat', formatEUR(achat));
+
+    setText('cession-preview-pv-brute',
+        (pvBrute >= 0 ? '+' : '') + formatEUR(pvBrute),
+        pvBrute >= 0 ? 'text-emerald-400' : 'text-rose-400');
+
+    setText('cession-preview-frais', frais > 0 ? '−' + formatEUR(frais) : '0,00 €');
+
+    setText('cession-preview-pv-nette',
+        (pvNette >= 0 ? '+' : '') + formatEUR(pvNette),
+        'font-bold ' + (pvNette >= 0 ? 'text-emerald-400' : 'text-rose-400'));
+}
+
+function updateCessionTotalsFromUnit(type) {
+    const qty = parseFloat(document.getElementById('cession-qty').value) || 0;
+    if (qty <= 0) return;
+
+    if (type === 'vente') {
+        const unitPriceInput = document.getElementById('cession-prix-vente-unit');
+        const unitPrice = parseFloat(unitPriceInput.value);
+        const totalEl = document.getElementById('cession-prix-vente');
+        if (Number.isFinite(unitPrice) && unitPrice > 0) {
+            totalEl.value = (qty * unitPrice).toFixed(2);
+        }
+    } else if (type === 'achat') {
+        const unitPriceInput = document.getElementById('cession-prix-achat-unit');
+        const unitPrice = parseFloat(unitPriceInput.value);
+        const totalEl = document.getElementById('cession-prix-achat');
+        if (Number.isFinite(unitPrice) && unitPrice > 0) {
+            totalEl.value = (qty * unitPrice).toFixed(2);
+        }
     }
 }
 
@@ -1352,6 +1611,13 @@ function editCession(id) {
     document.getElementById('cession-date-achat').value = c.dateAchat || '';
     document.getElementById('cession-prix-vente').value = c.prixVente;
     document.getElementById('cession-prix-achat').value = c.prixAchat;
+    // Affiche aussi les prix unitaires reconstitués (prix total / quantité)
+    // La quantité n'est pas stockée dans la cession — on utilise 1 comme valeur par défaut.
+    // L'utilisateur peut ajuster la quantité pour recalculer.
+    const qtyEl = document.getElementById('cession-qty');
+    const qtyForUnit = parseFloat(qtyEl?.value) || 1;
+    document.getElementById('cession-prix-vente-unit').value = (c.prixVente / qtyForUnit).toFixed(6);
+    document.getElementById('cession-prix-achat-unit').value = (c.prixAchat / qtyForUnit).toFixed(6);
     document.getElementById('cession-frais').value = c.frais || 0;
     document.getElementById('cession-avant-2018').checked = !!c.avant2018;
     document.getElementById('cession-enveloppe').value = c.envelope || 'CTO';
@@ -1415,53 +1681,314 @@ function openRecapModal() {
     `;
     document.getElementById('modal-recap').classList.remove('hidden');
 }
-// Gestion du sélecteur de courtier (avec création custom)
-const KNOWN_BROKERS = [
-    'Boursorama', 'Bourse Direct', 'Fortuneo', 'Trade Republic', 'Interactive Brokers',
-    'Degiro', 'Saxo Banque', 'Binance', 'Coinbase', 'Kraken', 'Ledger', 'AuCoffre.com',
-    'Linxea', 'Yomoni', 'Nalo'
-];
+// =====================================================================
+// GESTION DYNAMIQUE DES COURTIERS (saisie libre + mémorisation)
+// ---------------------------------------------------------------------
+// L'utilisateur peut saisir librement un nom de courtier dans un champ
+// texte. Une fois enregistré avec un actif, le nom rejoint la liste des
+// suggestions (datalist) persistée dans localStorage. Le champ reste
+// modifiable à tout moment (correction de faute de frappe).
+// =====================================================================
 
+const BROKERS_STORAGE_KEY = 'patriMonial_brokers';
+
+// ---------------------------------------------------------------------
+// LISTE DES COURTIERS — personnalisable par l'utilisateur
+// ---------------------------------------------------------------------
+// Les courtiers sont stockés dans localStorage et VIDES par défaut.
+// L'utilisateur les ajoute via le bouton « + », les gère via le bouton
+// « crayon ». Les courtiers attachés à des actifs existants sont toujours
+// visibles (pour ne pas perdre de données importées).
+
+function loadSavedBrokers() {
+    try {
+        const raw = localStorage.getItem(BROKERS_STORAGE_KEY);
+        if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list)) return list.filter(b => typeof b === 'string' && b.trim());
+        }
+    } catch (_) {}
+    return [];
+}
+
+function saveBrokers(list) {
+    try { localStorage.setItem(BROKERS_STORAGE_KEY, JSON.stringify(list)); } catch (_) {}
+}
+
+// Renvoie la liste complète : courtiers mémorisés + ceux utilisés par
+// des actifs existants. AUCUN courtier par défaut n'est injecté.
+function getAllBrokers() {
+    const set = new Set();
+    loadSavedBrokers().forEach(b => set.add(b));
+    (assets || []).forEach(a => {
+        if (a.broker && a.broker.trim()) set.add(a.broker.trim());
+    });
+    return [...set].sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+}
+
+// Remplit le <select> des courtiers. Préserve la valeur sélectionnée si
+// elle existe toujours dans la liste.
+function refreshBrokerSelect(selectedValue) {
+    const sel = document.getElementById('add-broker-select');
+    if (!sel) return;
+
+    const current = selectedValue !== undefined ? selectedValue : sel.value;
+    const list = getAllBrokers();
+
+    sel.innerHTML = '<option value="">— Aucun —</option>' +
+        list.map(b => `<option value="${escapeHTML(b)}">${escapeHTML(b)}</option>`).join('');
+
+    if (current && list.includes(current)) {
+        sel.value = current;
+    } else {
+        sel.value = '';
+    }
+
+    const hidden = document.getElementById('add-broker');
+    if (hidden) hidden.value = sel.value;
+}
+
+// Alias de compatibilité — appelé depuis app7-init.js et app4-forms.js
+function refreshBrokerDatalist() {
+    refreshBrokerSelect();
+}
+
+// Handler du <select> : synchronise le champ caché
 function onBrokerSelectChange() {
     const sel = document.getElementById('add-broker-select');
-    const custom = document.getElementById('add-broker-custom');
     const hidden = document.getElementById('add-broker');
-    if (sel.value === '__custom__') {
-        custom.classList.remove('hidden');
-        custom.focus();
-        custom.oninput = () => { hidden.value = custom.value.trim(); };
-        hidden.value = custom.value.trim();
-    } else {
-        custom.classList.add('hidden');
-        custom.value = '';
-        hidden.value = sel.value;
+    if (sel && hidden) hidden.value = sel.value;
+}
+
+// Définit le courtier sélectionné (utilisé par openAddAssetModal et edit).
+// Si le nom n'existe pas dans la liste (actif importé avec un courtier
+// inconnu), il est ajouté à la volée pour ne pas le perdre.
+function setBrokerValue(brokerName) {
+    const trimmed = (brokerName || '').trim();
+
+    // Rafraîchit d'abord la liste (permet au nouveau nom d'apparaître)
+    refreshBrokerSelect();
+
+    const sel = document.getElementById('add-broker-select');
+    const hidden = document.getElementById('add-broker');
+
+    if (trimmed && sel && !Array.from(sel.options).some(o => o.value === trimmed)) {
+        const opt = document.createElement('option');
+        opt.value = trimmed;
+        opt.textContent = trimmed;
+        sel.appendChild(opt);
+    }
+    if (sel && trimmed) sel.value = trimmed;
+    if (hidden) hidden.value = trimmed;
+}
+
+// Mémorise un nouveau courtier (appelé après une création d'actif)
+function rememberBroker(name) {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return;
+    const saved = loadSavedBrokers();
+    if (saved.some(b => b.toLowerCase() === trimmed.toLowerCase())) return;
+    saved.push(trimmed);
+    saveBrokers(saved);
+    refreshBrokerSelect();
+}
+
+// Supprime un courtier du registre — uniquement s'il n'est plus utilisé
+function forgetBroker(name) {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return;
+    const lower = trimmed.toLowerCase();
+
+    const stillUsed = (assets || []).some(a =>
+        a.broker && a.broker.toLowerCase() === lower
+    );
+    if (stillUsed) return;
+
+    const saved = loadSavedBrokers();
+    const filtered = saved.filter(b => b.toLowerCase() !== lower);
+    if (filtered.length !== saved.length) {
+        saveBrokers(filtered);
+        refreshBrokerSelect();
     }
 }
 
-// Pré-remplit le sélecteur de courtier à partir d'une valeur enregistrée
-function setBrokerValue(brokerName) {
-    const sel = document.getElementById('add-broker-select');
-    const custom = document.getElementById('add-broker-custom');
-    const hidden = document.getElementById('add-broker');
-    const v = (brokerName || '').trim();
-    if (!v) {
-        sel.value = '';
-        custom.classList.add('hidden');
-        custom.value = '';
-        hidden.value = '';
+// ---------------------------------------------------------------------
+// AJOUT D'UN COURTIER (bouton +)
+// ---------------------------------------------------------------------
+function promptAddBroker() {
+    const name = prompt('Nom du nouveau courtier / plateforme :', '');
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+
+    const saved = loadSavedBrokers();
+    if (saved.some(b => b.toLowerCase() === trimmed.toLowerCase())) {
+        setBrokerValue(trimmed);
+        if (typeof toastInfo === 'function') {
+            toastInfo('Courtier déjà présent', `« ${trimmed} » a été sélectionné.`);
+        }
         return;
     }
-    if (KNOWN_BROKERS.includes(v) || v === '') {
-        sel.value = v;
-        custom.classList.add('hidden');
-        custom.value = '';
-    } else {
-        sel.value = '__custom__';
-        custom.classList.remove('hidden');
-        custom.value = v;
-        custom.oninput = () => { hidden.value = custom.value.trim(); };
+
+    saved.push(trimmed);
+    saveBrokers(saved);
+    refreshBrokerSelect();
+    setBrokerValue(trimmed);
+
+    if (typeof toastSuccess === 'function') {
+        toastSuccess('Courtier ajouté', `« ${trimmed} » est maintenant disponible.`);
     }
-    hidden.value = v;
+}
+
+// ---------------------------------------------------------------------
+// GESTIONNAIRE DE COURTIERS (modal)
+// ---------------------------------------------------------------------
+function openBrokerManager() {
+    let modal = document.getElementById('modal-broker-manager');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-broker-manager';
+        modal.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden';
+        document.body.appendChild(modal);
+    }
+    renderBrokerManager(modal);
+    modal.classList.remove('hidden');
+}
+
+function renderBrokerManager(modal) {
+    const list = getAllBrokers();
+
+    // Compte les actifs utilisant chaque broker
+    const usageCount = {};
+    (assets || []).forEach(a => {
+        if (a.broker && a.broker.trim()) {
+            const k = a.broker.trim();
+            usageCount[k] = (usageCount[k] || 0) + 1;
+        }
+    });
+
+    const rowsHTML = list.length
+        ? list.map(b => {
+            const count = usageCount[b] || 0;
+            const safeArg = safeInlineArg(b);
+            const deleteDisabled = count > 0;
+            return `<div class="flex items-center gap-2 p-2.5 bg-gray-950 border border-gray-800 rounded-lg">
+                <span class="flex-1 min-w-0 font-mono text-[12px] text-white truncate" title="${escapeHTML(b)}">${escapeHTML(b)}</span>
+                ${count > 0 ? `<span class="text-[10px] text-gray-500 whitespace-nowrap flex-shrink-0">${count} actif(s)</span>` : ''}
+                <button type="button" onclick="renameBroker(${safeArg})" class="w-7 h-7 rounded-md bg-gray-800 text-gray-400 hover:bg-indigo-900/60 hover:text-indigo-300 flex items-center justify-center transition flex-shrink-0" title="Renommer">
+                    <i class="fa-solid fa-pen text-[10px]"></i>
+                </button>
+                <button type="button" onclick="deleteBroker(${safeArg})" class="w-7 h-7 rounded-md bg-gray-800 flex items-center justify-center transition flex-shrink-0 ${deleteDisabled ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:bg-rose-900/60 hover:text-rose-300'}" title="${deleteDisabled ? 'Impossible : actif(s) lié(s)' : 'Supprimer'}" ${deleteDisabled ? 'disabled' : ''}>
+                    <i class="fa-solid fa-trash text-[10px]"></i>
+                </button>
+            </div>`;
+        }).join('')
+        : '<div class="text-center text-gray-500 italic text-xs py-6">Aucun courtier mémorisé.<br>Utilisez le bouton « + » pour en ajouter.</div>';
+
+    modal.innerHTML = `
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <div>
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-building-columns text-indigo-400"></i> Gérer les courtiers
+                    </h3>
+                    <p class="text-[11px] text-gray-500 mt-0.5">Renommer, ajouter ou supprimer les courtiers mémorisés.</p>
+                </div>
+                <button onclick="closeModal('modal-broker-manager')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 space-y-2 overflow-y-auto text-xs">
+                ${rowsHTML}
+            </div>
+            <div class="p-3 border-t border-gray-800 bg-gray-950 flex justify-between items-center gap-2">
+                <button type="button" onclick="promptAddBrokerFromManager()" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-plus text-[10px]"></i> Ajouter un courtier
+                </button>
+                <button type="button" onclick="closeModal('modal-broker-manager')" class="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium">Fermer</button>
+            </div>
+        </div>
+    `;
+}
+
+function promptAddBrokerFromManager() {
+    const name = prompt('Nom du nouveau courtier / plateforme :', '');
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+
+    const saved = loadSavedBrokers();
+    if (saved.some(b => b.toLowerCase() === trimmed.toLowerCase())) {
+        if (typeof toastInfo === 'function') toastInfo('Déjà présent', `« ${trimmed} » existe déjà.`);
+        return;
+    }
+    saved.push(trimmed);
+    saveBrokers(saved);
+    refreshBrokerSelect();
+
+    const modal = document.getElementById('modal-broker-manager');
+    if (modal) renderBrokerManager(modal);
+
+    if (typeof toastSuccess === 'function') {
+        toastSuccess('Courtier ajouté', `« ${trimmed} » est maintenant disponible.`);
+    }
+}
+
+function renameBroker(oldName) {
+    const newName = prompt(`Renommer « ${oldName} » en :`, oldName);
+    if (!newName || !newName.trim() || newName.trim() === oldName) return;
+    const trimmed = newName.trim();
+
+    const saved = loadSavedBrokers();
+    if (saved.some(b => b.toLowerCase() === trimmed.toLowerCase() && b !== oldName)) {
+        alert('Un courtier avec ce nom existe déjà.');
+        return;
+    }
+
+    // 1) Renomme dans la liste mémorisée
+    const idx = saved.findIndex(b => b === oldName);
+    if (idx > -1) {
+        saved[idx] = trimmed;
+        saveBrokers(saved);
+    }
+
+    // 2) Renomme dans tous les actifs qui utilisent ce courtier
+    let affected = 0;
+    (assets || []).forEach(a => {
+        if (a.broker === oldName) {
+            a.broker = trimmed;
+            affected++;
+        }
+    });
+    if (affected > 0 && typeof saveToStorage === 'function') {
+        saveToStorage();
+    }
+
+    refreshBrokerSelect();
+
+    const modal = document.getElementById('modal-broker-manager');
+    if (modal) renderBrokerManager(modal);
+
+    if (typeof toastSuccess === 'function') {
+        toastSuccess('Courtier renommé', affected > 0
+            ? `${affected} actif(s) mis à jour automatiquement.`
+            : 'Le nom a été mis à jour.');
+    }
+}
+
+function deleteBroker(name) {
+    const count = (assets || []).filter(a => a.broker === name).length;
+    if (count > 0) {
+        alert(`Impossible de supprimer « ${name} » : ${count} actif(s) l'utilise(nt) encore.\n\nChangez d'abord leur courtier via la fiche de chaque actif.`);
+        return;
+    }
+    if (!confirm(`Supprimer définitivement le courtier « ${name} » de la liste ?`)) return;
+
+    saveBrokers(loadSavedBrokers().filter(b => b !== name));
+    refreshBrokerSelect();
+
+    const modal = document.getElementById('modal-broker-manager');
+    if (modal) renderBrokerManager(modal);
+
+    if (typeof toastInfo === 'function') {
+        toastInfo('Courtier supprimé', name);
+    }
 }
 // =====================================================================
 // SIMULATEUR FISCALITÉ MÉTAUX (indépendant du registre)

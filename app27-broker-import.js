@@ -764,6 +764,12 @@ window.renderBrokerImportStep = renderBrokerImportStep;
 window.selectBroker = selectBroker;
 window.clearBrokerKeysAndRefresh = clearBrokerKeysAndRefresh;
 
+// ⚠ Exposition de la mémoire volatile des clés broker.
+// Nécessaire pour que currentDataSnapshot(true) dans app1-core.js puisse
+// lire les clés lors d'un push chiffré vers Google Drive.
+// ⚠ Cette variable reste SESSION-ONLY : jamais persistée sur disque.
+window._brokerKeysMemory = _brokerKeysMemory;
+
 // =====================================================================
 // TEST DE CONNEXION + RÉCUPÉRATION DES POSITIONS (Étape 1 → 2)
 // =====================================================================

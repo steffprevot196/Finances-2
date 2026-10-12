@@ -1,0 +1,4932 @@
+{
+  "exportVersion": 2,
+  "exportedAt": "2026-10-12T19:35:30.343Z",
+  "app": "PatriMonial",
+  "data": {
+    "assets": [
+      {
+        "id": 1791624336333,
+        "buys": [
+          {
+            "date": "05/11/2024",
+            "type": "Achat Initial",
+            "qty": 8,
+            "price": 174.76,
+            "frais": 0,
+            "total": 1398.08,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "31/10/2025",
+            "value": 1913.5999755859375,
+            "invested": 1398.08
+          },
+          {
+            "date": "28/11/2025",
+            "value": 1866.239990234375,
+            "invested": 1398.08
+          },
+          {
+            "date": "31/12/2025",
+            "value": 1913.0400390625,
+            "invested": 1398.08
+          },
+          {
+            "date": "30/01/2026",
+            "value": 2054.47998046875,
+            "invested": 1398.08
+          },
+          {
+            "date": "27/02/2026",
+            "value": 2178.47998046875,
+            "invested": 1398.08
+          },
+          {
+            "date": "31/03/2026",
+            "value": 1898,
+            "invested": 1398.08
+          },
+          {
+            "date": "30/04/2026",
+            "value": 2234.47998046875,
+            "invested": 1398.08
+          },
+          {
+            "date": "29/05/2026",
+            "value": 2476.639892578125,
+            "invested": 1398.08
+          },
+          {
+            "date": "30/06/2026",
+            "value": 2476.800048828125,
+            "invested": 1398.08
+          },
+          {
+            "date": "31/07/2026",
+            "value": 2281.760009765625,
+            "invested": 1398.08
+          },
+          {
+            "date": "28/08/2026",
+            "value": 2421.760009765625,
+            "invested": 1398.08
+          },
+          {
+            "date": "30/09/2026",
+            "value": 2408.47998046875,
+            "invested": 1398.08
+          },
+          {
+            "date": "09/10/2026",
+            "value": 2382.239990234375,
+            "invested": 1398.08
+          },
+          {
+            "date": "12/10/2026",
+            "value": 23.604400000000002,
+            "invested": 1398.08
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791624336520,
+            "date": "2024-11-05",
+            "qty": 8,
+            "qtyRemaining": 8,
+            "price": 174.76,
+            "frais": 0,
+            "reference": ""
+          }
+        ],
+        "name": "iShares MSCI EM Asia UCITS ETF",
+        "ticker": "CEMA.L",
+        "isin": "IE00B5L8K969",
+        "categories": [
+          "ETF"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "ASIE",
+          "secondary": []
+        },
+        "qty": 8,
+        "frais": 0,
+        "invested": 1398.08,
+        "value": 23.604400000000002,
+        "envelope": "CTO",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "CEMA.L",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-11-05",
+        "broker": "SCALABLE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Actions/ETF",
+        "cadran": "ASIE",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791624982564,
+        "buys": [
+          {
+            "date": "05/11/2024",
+            "type": "Achat Initial",
+            "qty": 571,
+            "price": 8.393,
+            "frais": 0,
+            "total": 4792.403,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "01/11/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/12/2024",
+            "value": 5172.831580565523,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/01/2025",
+            "value": 5627.14757404987,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/02/2025",
+            "value": 6081.463567534218,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/03/2025",
+            "value": 6491.813497132984,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/04/2025",
+            "value": 6945.518850841143,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/05/2025",
+            "value": 7385.179489696962,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/06/2025",
+            "value": 7839.49548318131,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/07/2025",
+            "value": 8279.156122037131,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/08/2025",
+            "value": 8733.47211552148,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/09/2025",
+            "value": 9187.788109005825,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/10/2025",
+            "value": 9627.448747861647,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/11/2025",
+            "value": 10082.375381122183,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/12/2025",
+            "value": 10522.036019978003,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/01/2026",
+            "value": 10976.35201346235,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/02/2026",
+            "value": 11430.668006946698,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/03/2026",
+            "value": 11841.017936545464,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/04/2026",
+            "value": 12294.723290253623,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/05/2026",
+            "value": 12734.383929109443,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/06/2026",
+            "value": 13188.69992259379,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/07/2026",
+            "value": 13628.360561449612,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/08/2026",
+            "value": 14082.676554933958,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/09/2026",
+            "value": 14536.992548418306,
+            "invested": 4792.403
+          },
+          {
+            "date": "01/10/2026",
+            "value": 14976.653187274125,
+            "invested": 4792.403
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791624983346,
+            "date": "2024-11-05",
+            "qty": 571,
+            "qtyRemaining": 469,
+            "price": 8.393,
+            "frais": 0,
+            "reference": ""
+          }
+        ],
+        "name": "iShares S&P 500 Energy Sector UCITS ETF",
+        "ticker": "QDVF.MU",
+        "isin": "IE00B42NKQ00",
+        "categories": [
+          "ETF"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "PETROLE",
+          "secondary": []
+        },
+        "qty": 469,
+        "frais": 0,
+        "invested": 3936.3170000000005,
+        "value": 15151.045,
+        "envelope": "CTO",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "QDVF.MU",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-11-05",
+        "broker": "",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Actions/ETF",
+        "cadran": "PETROLE",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791625116321,
+        "buys": [
+          {
+            "date": "10/10/2026",
+            "type": "Achat Initial",
+            "qty": 73,
+            "price": 46.9,
+            "frais": 0,
+            "total": 3423.7,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "31/10/2025",
+            "value": 5646.002410888672,
+            "invested": 3423.7
+          },
+          {
+            "date": "28/11/2025",
+            "value": 5965.560089111328,
+            "invested": 3423.7
+          },
+          {
+            "date": "31/12/2025",
+            "value": 6106.45011138916,
+            "invested": 3423.7
+          },
+          {
+            "date": "30/01/2026",
+            "value": 7059.09977722168,
+            "invested": 3423.7
+          },
+          {
+            "date": "27/02/2026",
+            "value": 7412.420066833496,
+            "invested": 3423.7
+          },
+          {
+            "date": "31/03/2026",
+            "value": 6537.697700500488,
+            "invested": 3423.7
+          },
+          {
+            "date": "30/04/2026",
+            "value": 6549.92488861084,
+            "invested": 3423.7
+          },
+          {
+            "date": "29/05/2026",
+            "value": 6486.04988861084,
+            "invested": 3423.7
+          },
+          {
+            "date": "30/06/2026",
+            "value": 5707.504821777344,
+            "invested": 3423.7
+          },
+          {
+            "date": "31/07/2026",
+            "value": 5718.090133666992,
+            "invested": 3423.7
+          },
+          {
+            "date": "28/08/2026",
+            "value": 6455.02522277832,
+            "invested": 3423.7
+          },
+          {
+            "date": "30/09/2026",
+            "value": 5887.45011138916,
+            "invested": 3423.7
+          },
+          {
+            "date": "09/10/2026",
+            "value": 5933.805267333984,
+            "invested": 3423.7
+          },
+          {
+            "date": "12/10/2026",
+            "value": 2424.39,
+            "invested": 3423.7
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791625117250,
+            "date": "2024-11-05",
+            "qty": 73,
+            "qtyRemaining": 30,
+            "price": 46.9,
+            "frais": 0,
+            "reference": ""
+          }
+        ],
+        "name": "Ishares Physical Metals PLC",
+        "ticker": "IGLN.L",
+        "isin": "IE00B4ND3602",
+        "categories": [
+          "ETF"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "OR",
+          "secondary": []
+        },
+        "qty": 30,
+        "frais": 0,
+        "invested": 1407,
+        "value": 2424.39,
+        "envelope": "CTO",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "IGLN.L",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-11-05",
+        "broker": "SCALABLE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Actions/ETF",
+        "cadran": "OR",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791625319277,
+        "buys": [
+          {
+            "date": "10/10/2026",
+            "type": "Achat Initial",
+            "qty": 2.055,
+            "price": 48.648,
+            "frais": 0,
+            "total": 99.97164000000001,
+            "reference": ""
+          },
+          {
+            "date": "10/01/2025",
+            "type": "Achat Additionnel",
+            "qty": 2.105,
+            "price": 47.49,
+            "frais": 0,
+            "total": 99.96645000000001,
+            "reference": ""
+          },
+          {
+            "date": "03/02/2025",
+            "type": "Achat Additionnel",
+            "qty": 2.061,
+            "price": 48.515,
+            "frais": 0,
+            "total": 99.989415,
+            "reference": ""
+          },
+          {
+            "date": "03/03/2025",
+            "type": "Achat Additionnel",
+            "qty": 1.972,
+            "price": 50.69,
+            "frais": 0,
+            "total": 99.96068,
+            "reference": ""
+          },
+          {
+            "date": "01/04/2025",
+            "type": "Achat Additionnel",
+            "qty": 2.062,
+            "price": 48.49,
+            "frais": 0,
+            "total": 99.98638,
+            "reference": ""
+          },
+          {
+            "date": "25/04/2025",
+            "type": "Achat Additionnel",
+            "qty": 67,
+            "price": 44.58,
+            "frais": 0.99,
+            "total": 2987.8499999999995,
+            "reference": ""
+          },
+          {
+            "date": "02/05/2025",
+            "type": "Achat Additionnel",
+            "qty": 2.131,
+            "price": 45.925,
+            "frais": 0,
+            "total": 97.86617499999998,
+            "reference": ""
+          },
+          {
+            "date": "05/05/2026",
+            "type": "Achat Additionnel",
+            "qty": 69,
+            "price": 76,
+            "frais": 0.99,
+            "total": 5244.99,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "31/10/2025",
+            "value": 4246.753985206604,
+            "invested": 3587.7217399999995
+          },
+          {
+            "date": "28/11/2025",
+            "value": 4117.751735206603,
+            "invested": 3587.7217399999995
+          },
+          {
+            "date": "31/12/2025",
+            "value": 4152.6817690200805,
+            "invested": 3587.7217399999995
+          },
+          {
+            "date": "30/01/2026",
+            "value": 4489.278239433288,
+            "invested": 3587.7217399999995
+          },
+          {
+            "date": "27/02/2026",
+            "value": 4859.614002113342,
+            "invested": 3587.7217399999995
+          },
+          {
+            "date": "31/03/2026",
+            "value": 4363.054487319946,
+            "invested": 3587.7217399999995
+          },
+          {
+            "date": "30/04/2026",
+            "value": 4987.822525360107,
+            "invested": 3587.7217399999995
+          },
+          {
+            "date": "29/05/2026",
+            "value": 10483.471126419066,
+            "invested": 8832.711739999999
+          },
+          {
+            "date": "30/06/2026",
+            "value": 10596.244803405762,
+            "invested": 8832.711739999999
+          },
+          {
+            "date": "31/07/2026",
+            "value": 9637.670247161865,
+            "invested": 8832.711739999999
+          },
+          {
+            "date": "28/08/2026",
+            "value": 10257.18225,
+            "invested": 8832.711739999999
+          },
+          {
+            "date": "30/09/2026",
+            "value": 10481.245426986694,
+            "invested": 8832.711739999999
+          },
+          {
+            "date": "09/10/2026",
+            "value": 10410.019648864745,
+            "invested": 8832.711739999999
+          },
+          {
+            "date": "12/10/2026",
+            "value": 10306.891559999998,
+            "invested": 8832.711739999999
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791625320133,
+            "date": "2024-12-10",
+            "qty": 2.055,
+            "qtyRemaining": 2.055,
+            "price": 48.648,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791626490166,
+            "date": "2025-01-10",
+            "qty": 2.105,
+            "qtyRemaining": 2.105,
+            "price": 47.49,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791629119733,
+            "date": "2025-02-03",
+            "qty": 2.061,
+            "qtyRemaining": 2.061,
+            "price": 48.515,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791632259851,
+            "date": "2025-03-03",
+            "qty": 1.972,
+            "qtyRemaining": 1.972,
+            "price": 50.69,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791632684196,
+            "date": "2025-04-01",
+            "qty": 2.062,
+            "qtyRemaining": 2.062,
+            "price": 48.49,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791632977251,
+            "date": "2025-04-25",
+            "qty": 67,
+            "qtyRemaining": 67,
+            "price": 44.58,
+            "frais": 0.99,
+            "reference": ""
+          },
+          {
+            "id": 1791633112134,
+            "date": "2025-05-02",
+            "qty": 2.131,
+            "qtyRemaining": 2.131,
+            "price": 46.925,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791663330537,
+            "date": "2026-05-05",
+            "qty": 69,
+            "qtyRemaining": 69,
+            "price": 76,
+            "frais": 0.99,
+            "reference": ""
+          }
+        ],
+        "name": "HSBC MSCI AC FAR EAST ex JAPAN UCITS ETF USD",
+        "ticker": "HMAF.L",
+        "isin": "IE00BBQ2W338",
+        "categories": [
+          "ETF"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "ASIE",
+          "secondary": []
+        },
+        "qty": 148.386,
+        "frais": 1.98,
+        "invested": 8832.711739999999,
+        "value": 10306.891559999998,
+        "envelope": "CTO",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "HMAF.L",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-12-10",
+        "broker": "",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Actions/ETF",
+        "cadran": "ASIE",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791625429637,
+        "buys": [
+          {
+            "date": "10/10/2026",
+            "type": "Achat Initial",
+            "qty": 2.093,
+            "price": 47.77,
+            "frais": 0,
+            "total": 99.98261000000001,
+            "reference": ""
+          },
+          {
+            "date": "10/01/2025",
+            "type": "Achat Additionnel",
+            "qty": 2.061,
+            "price": 48.515,
+            "frais": 0,
+            "total": 99.989415,
+            "reference": ""
+          },
+          {
+            "date": "10/10/2026",
+            "type": "Achat Additionnel",
+            "qty": 2.093,
+            "price": 45.775,
+            "frais": 0,
+            "total": 95.807075,
+            "reference": ""
+          },
+          {
+            "date": "10/10/2026",
+            "type": "Achat Additionnel",
+            "qty": 4,
+            "price": 48.09,
+            "frais": 0.99,
+            "total": 193.35000000000002,
+            "reference": ""
+          },
+          {
+            "date": "10/10/2026",
+            "type": "Achat Additionnel",
+            "qty": 2.047,
+            "price": 46.845,
+            "frais": 0,
+            "total": 95.891715,
+            "reference": ""
+          },
+          {
+            "date": "01/05/2025",
+            "type": "Achat Additionnel",
+            "qty": 2.04,
+            "price": 49.01,
+            "frais": 0,
+            "total": 99.9804,
+            "reference": ""
+          },
+          {
+            "date": "25/04/2025",
+            "type": "Achat Additionnel",
+            "qty": 71,
+            "price": 42.24,
+            "frais": 0,
+            "total": 2999.04,
+            "reference": ""
+          },
+          {
+            "date": "02/05/2025",
+            "type": "Achat Additionnel",
+            "qty": 2.395,
+            "price": 41.75,
+            "frais": 0,
+            "total": 99.99125,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "31/10/2025",
+            "value": 4673.323870159149,
+            "invested": 3792.312465
+          },
+          {
+            "date": "28/11/2025",
+            "value": 4817.199376613617,
+            "invested": 3792.312465
+          },
+          {
+            "date": "31/12/2025",
+            "value": 4810.181230636596,
+            "invested": 3792.312465
+          },
+          {
+            "date": "30/01/2026",
+            "value": 5391.824259681702,
+            "invested": 3792.312465
+          },
+          {
+            "date": "27/02/2026",
+            "value": 5835.732785499573,
+            "invested": 3792.312465
+          },
+          {
+            "date": "31/03/2026",
+            "value": 6672.667525817871,
+            "invested": 3792.312465
+          },
+          {
+            "date": "30/04/2026",
+            "value": 6417.376483863831,
+            "invested": 3792.312465
+          },
+          {
+            "date": "29/05/2026",
+            "value": 6058.564525817871,
+            "invested": 3792.312465
+          },
+          {
+            "date": "30/06/2026",
+            "value": 5723.439772590637,
+            "invested": 3792.312465
+          },
+          {
+            "date": "31/07/2026",
+            "value": 6364.7392177276615,
+            "invested": 3792.312465
+          },
+          {
+            "date": "28/08/2026",
+            "value": 6574.411474182129,
+            "invested": 3792.312465
+          },
+          {
+            "date": "30/09/2026",
+            "value": 6592.83448386383,
+            "invested": 3792.312465
+          },
+          {
+            "date": "09/10/2026",
+            "value": 6931.468477409363,
+            "invested": 3792.312465
+          },
+          {
+            "date": "12/10/2026",
+            "value": 6956.909699999999,
+            "invested": 3792.312465
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791625429810,
+            "date": "2024-12-10",
+            "qty": 2.093,
+            "qtyRemaining": 2.093,
+            "price": 47.77,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791626937305,
+            "date": "2025-01-10",
+            "qty": 2.061,
+            "qtyRemaining": 2.061,
+            "price": 48.515,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791628527968,
+            "date": "2025-02-03",
+            "qty": 2.093,
+            "qtyRemaining": 2.093,
+            "price": 47.775,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791628702656,
+            "date": "2025-02-03",
+            "qty": 4,
+            "qtyRemaining": 4,
+            "price": 48.09,
+            "frais": 0.99,
+            "reference": ""
+          },
+          {
+            "id": 1791632184341,
+            "date": "2025-03-03",
+            "qty": 2.047,
+            "qtyRemaining": 2.047,
+            "price": 48.845,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791632621500,
+            "date": "2025-04-01",
+            "qty": 2.04,
+            "qtyRemaining": 2.04,
+            "price": 49.01,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791632843433,
+            "date": "2025-04-25",
+            "qty": 71,
+            "qtyRemaining": 71,
+            "price": 42.24,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791633244419,
+            "date": "2025-05-02",
+            "qty": 2.395,
+            "qtyRemaining": 2.395,
+            "price": 41.75,
+            "frais": 0,
+            "reference": ""
+          }
+        ],
+        "name": "Xtrackers MSCI World Energy UCITS ETF",
+        "ticker": "XDW0.L",
+        "isin": "IE00BM67HM91",
+        "categories": [
+          "ETF"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "PETROLE",
+          "secondary": []
+        },
+        "qty": 87.729,
+        "frais": 0.99,
+        "invested": 3792.312465,
+        "value": 6956.909699999999,
+        "envelope": "CTO",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "XDW0.L",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-12-10",
+        "broker": "SCALABLE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Actions/ETF",
+        "cadran": "PETROLE",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791663023718,
+        "buys": [
+          {
+            "date": "17/03/2025",
+            "type": "Achat Initial",
+            "qty": 3,
+            "price": 131.45,
+            "frais": 0.99,
+            "total": 395.34,
+            "reference": ""
+          },
+          {
+            "date": "06/05/2026",
+            "type": "Achat Additionnel",
+            "qty": 4,
+            "price": 159.96,
+            "frais": 0.99,
+            "total": 640.83,
+            "reference": ""
+          },
+          {
+            "date": "10/10/2026",
+            "type": "Achat Additionnel",
+            "qty": 3,
+            "price": 165.9,
+            "frais": 0.99,
+            "total": 498.69000000000005,
+            "reference": ""
+          },
+          {
+            "date": "19/05/2026",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 140.57,
+            "frais": 0.99,
+            "total": 141.56,
+            "reference": ""
+          },
+          {
+            "date": "10/06/2026",
+            "type": "Achat Additionnel",
+            "qty": 2,
+            "price": 101.92,
+            "frais": 0.99,
+            "total": 204.83,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "30/04/2025",
+            "value": 1140.32997,
+            "invested": 395.34
+          },
+          {
+            "date": "30/05/2025",
+            "value": 1107.179994,
+            "invested": 395.34
+          },
+          {
+            "date": "30/06/2025",
+            "value": 1212.69003,
+            "invested": 395.34
+          },
+          {
+            "date": "31/07/2025",
+            "value": 1205.57997,
+            "invested": 395.34
+          },
+          {
+            "date": "29/08/2025",
+            "value": 1003.23,
+            "invested": 395.34
+          },
+          {
+            "date": "30/09/2025",
+            "value": 966.62997,
+            "invested": 395.34
+          },
+          {
+            "date": "31/10/2025",
+            "value": 808.5300300000001,
+            "invested": 395.34
+          },
+          {
+            "date": "28/11/2025",
+            "value": 531.53997,
+            "invested": 395.34
+          },
+          {
+            "date": "31/12/2025",
+            "value": 455.84999999999997,
+            "invested": 395.34
+          },
+          {
+            "date": "30/01/2026",
+            "value": 449.13003000000003,
+            "invested": 395.34
+          },
+          {
+            "date": "27/02/2026",
+            "value": 388.5,
+            "invested": 395.34
+          },
+          {
+            "date": "31/03/2026",
+            "value": 374.4,
+            "invested": 395.34
+          },
+          {
+            "date": "30/04/2026",
+            "value": 496.34999999999997,
+            "invested": 395.34
+          },
+          {
+            "date": "29/05/2026",
+            "value": 1749.9899560000001,
+            "invested": 1677.43
+          },
+          {
+            "date": "30/06/2026",
+            "value": 1130.0900000000001,
+            "invested": 1882.26
+          },
+          {
+            "date": "31/07/2026",
+            "value": 1212.64,
+            "invested": 1882.26
+          },
+          {
+            "date": "31/08/2026",
+            "value": 1728.22,
+            "invested": 1882.26
+          },
+          {
+            "date": "30/09/2026",
+            "value": 1990.1699480000002,
+            "invested": 1882.26
+          },
+          {
+            "date": "12/10/2026",
+            "value": 2002.9099999999999,
+            "invested": 1882.26
+          },
+          {
+            "date": "12/10/2026",
+            "value": 1996.02,
+            "invested": 1882.26
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791663023794,
+            "date": "2025-03-17",
+            "qty": 3,
+            "qtyRemaining": 3,
+            "price": 131.45,
+            "frais": 0.99,
+            "reference": ""
+          },
+          {
+            "id": 1791663520806,
+            "date": "2026-05-06",
+            "qty": 4,
+            "qtyRemaining": 4,
+            "price": 159.96,
+            "frais": 0.99,
+            "reference": ""
+          },
+          {
+            "id": 1791663567287,
+            "date": "2026-05-11",
+            "qty": 3,
+            "qtyRemaining": 3,
+            "price": 165.9,
+            "frais": 0.99,
+            "reference": ""
+          },
+          {
+            "id": 1791663662120,
+            "date": "2026-05-19",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 141.58,
+            "frais": 0.99,
+            "reference": ""
+          },
+          {
+            "id": 1791663712970,
+            "date": "2026-06-10",
+            "qty": 2,
+            "qtyRemaining": 2,
+            "price": 101.92,
+            "frais": 0.99,
+            "reference": ""
+          }
+        ],
+        "name": "Strategy Inc",
+        "ticker": "MSTR",
+        "isin": "US5949724083",
+        "categories": [
+          "Action"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "HORS_GAVE",
+          "secondary": []
+        },
+        "qty": 13,
+        "frais": 4.95,
+        "invested": 1882.26,
+        "value": 1996.02,
+        "envelope": "CTO",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "MSTR",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2025-03-17",
+        "broker": "SCALABLE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Actions/ETF",
+        "cadran": "HORS_GAVE",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791664856711,
+        "name": "YEN",
+        "ticker": "JPY",
+        "categories": [
+          "Devises/Liquidités"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "MONNAIES",
+          "secondary": []
+        },
+        "cadran": "MONNAIES",
+        "qty": 1411781,
+        "frais": 72.02000000000001,
+        "invested": 8542.706,
+        "value": 7960.871771737905,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "valuationMode": "QUOTE",
+        "yahooTicker": "JPY",
+        "purchaseDate": "2024-10-30",
+        "broker": "REVOLUT",
+        "lots": [
+          {
+            "id": 1791664773228,
+            "date": "2024-10-31",
+            "qty": 165715,
+            "qtyRemaining": 165715,
+            "price": 0.0060344,
+            "frais": 0.01,
+            "reference": ""
+          },
+          {
+            "id": 1791664773319,
+            "date": "2024-11-04",
+            "qty": 1145321,
+            "qtyRemaining": 1145321,
+            "price": 0.0060507,
+            "frais": 70.01,
+            "reference": ""
+          },
+          {
+            "id": 1791664773289,
+            "date": "2025-01-01",
+            "qty": 16221,
+            "qtyRemaining": 16221,
+            "price": 0.0061648,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791664773488,
+            "date": "2025-01-28",
+            "qty": 16169,
+            "qtyRemaining": 16169,
+            "price": 0.0061846,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791664773202,
+            "date": "2025-03-02",
+            "qty": 15434,
+            "qtyRemaining": 15434,
+            "price": 0.0064145,
+            "frais": 1,
+            "reference": ""
+          },
+          {
+            "id": 1791664773038,
+            "date": "2025-03-29",
+            "qty": 15984,
+            "qtyRemaining": 15984,
+            "price": 0.0061937,
+            "frais": 1,
+            "reference": ""
+          },
+          {
+            "id": 1791664772693,
+            "date": "2026-01-13",
+            "qty": 36937,
+            "qtyRemaining": 36937,
+            "price": 0.0054145,
+            "frais": 0,
+            "reference": ""
+          }
+        ],
+        "buys": [
+          {
+            "date": "31/10/2024",
+            "type": "Import CSV",
+            "qty": 165715,
+            "price": 0.006,
+            "frais": 0,
+            "total": 994.2900000000001
+          },
+          {
+            "date": "04/11/2024",
+            "type": "Import CSV",
+            "qty": 1145321,
+            "price": 0.006,
+            "frais": 69.92,
+            "total": 6941.8460000000005
+          },
+          {
+            "date": "01/01/2025",
+            "type": "Import CSV",
+            "qty": 16221,
+            "price": 0.0061,
+            "frais": 0,
+            "total": 98.94810000000001
+          },
+          {
+            "date": "28/01/2025",
+            "type": "Import CSV",
+            "qty": 16169,
+            "price": 0.0062,
+            "frais": 0,
+            "total": 100.2478
+          },
+          {
+            "date": "28/01/2025",
+            "type": "Import CSV",
+            "qty": 161.69,
+            "price": 0.0062,
+            "frais": 0,
+            "total": 1.002478
+          },
+          {
+            "date": "02/03/2025",
+            "type": "Import CSV",
+            "qty": 15434,
+            "price": 0.0064,
+            "frais": 0.99,
+            "total": 99.7676
+          },
+          {
+            "date": "29/03/2025",
+            "type": "Import CSV",
+            "qty": 15984,
+            "price": 0.0061,
+            "frais": 0.99,
+            "total": 98.4924
+          },
+          {
+            "date": "07/01/2026",
+            "type": "Import CSV",
+            "qty": 36937,
+            "price": 0.0054,
+            "frais": 0,
+            "total": 199.4598
+          }
+        ],
+        "history": [
+          {
+            "date": "31/10/2025",
+            "value": 7717.772538452903,
+            "invested": 8400.0038827
+          },
+          {
+            "date": "28/11/2025",
+            "value": 7613.911502464418,
+            "invested": 8400.0038827
+          },
+          {
+            "date": "31/12/2025",
+            "value": 7468.325275680374,
+            "invested": 8400.0038827
+          },
+          {
+            "date": "30/01/2026",
+            "value": 7689.857835394085,
+            "invested": 8599.999269200001
+          },
+          {
+            "date": "27/02/2026",
+            "value": 7667.30570792375,
+            "invested": 8599.999269200001
+          },
+          {
+            "date": "31/03/2026",
+            "value": 7698.244179071924,
+            "invested": 8599.999269200001
+          },
+          {
+            "date": "30/04/2026",
+            "value": 7705.807543256372,
+            "invested": 8599.999269200001
+          },
+          {
+            "date": "29/05/2026",
+            "value": 7612.7311943920195,
+            "invested": 8599.999269200001
+          },
+          {
+            "date": "30/06/2026",
+            "value": 7627.950075642964,
+            "invested": 8599.999269200001
+          },
+          {
+            "date": "31/07/2026",
+            "value": 7671.47204260175,
+            "invested": 8599.999269200001
+          },
+          {
+            "date": "31/08/2026",
+            "value": 7622.184429327287,
+            "invested": 8599.999269200001
+          },
+          {
+            "date": "30/09/2026",
+            "value": 7919.341448364839,
+            "invested": 8599.999269200001
+          },
+          {
+            "date": "12/10/2026",
+            "value": 7961.3207015169455,
+            "invested": 8599.999269200001
+          },
+          {
+            "date": "12/10/2026",
+            "value": 7960.871771737905,
+            "invested": 8599.999269200001
+          }
+        ],
+        "isPaper": true,
+        "category": "Devises/Liquidités",
+        "isin": "",
+        "dividends": [],
+        "currency": "EUR",
+        "splits": [],
+        "esgScore": null
+      },
+      {
+        "id": 1791729377920,
+        "buys": [
+          {
+            "date": "11/10/2026",
+            "type": "Achat Initial",
+            "qty": 0.224746,
+            "price": 22.425316,
+            "frais": 0,
+            "total": 5.040000069736,
+            "reference": ""
+          },
+          {
+            "date": "24/01/2023",
+            "type": "Achat Additionnel",
+            "qty": 6.22108,
+            "price": 22.430189,
+            "frais": 0,
+            "total": 139.54000018411998,
+            "reference": ""
+          },
+          {
+            "date": "09/10/2025",
+            "type": "Achat Additionnel",
+            "qty": 1e-9,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "09/10/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.518082,
+            "price": 194.083176,
+            "frais": 0,
+            "total": 100.55099998843201,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "31/10/2025",
+            "value": 1107.703628464306,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "30/11/2025",
+            "value": 816.6295645041159,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "31/12/2025",
+            "value": 740.9157746035081,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "31/01/2026",
+            "value": 690.1645638631876,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "28/02/2026",
+            "value": 483.4559368846057,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "31/03/2026",
+            "value": 496.22339917049993,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "30/04/2026",
+            "value": 493.0173162201874,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "31/05/2026",
+            "value": 494.27221595056557,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "30/06/2026",
+            "value": 457.71270680712763,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "31/07/2026",
+            "value": 450.0061943108864,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "31/08/2026",
+            "value": 611.0268279727319,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "30/09/2026",
+            "value": 731.3175983082925,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "12/10/2026",
+            "value": 676.1701841292438,
+            "invested": 245.131000242288
+          },
+          {
+            "date": "12/10/2026",
+            "value": 676.4043841371299,
+            "invested": 245.131000242288
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791729378137,
+            "date": "2023-01-24",
+            "qty": 0.224746,
+            "qtyRemaining": 0.224746,
+            "price": 22.425316,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791729489141,
+            "date": "2023-01-24",
+            "qty": 6.22108,
+            "qtyRemaining": 6.22108,
+            "price": 22.430189,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791737670353,
+            "date": "2025-10-09",
+            "qty": 1e-9,
+            "qtyRemaining": 1e-9,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791737732333,
+            "date": "2025-10-09",
+            "qty": 0.518082,
+            "qtyRemaining": 0.518082,
+            "price": 194.083176,
+            "frais": 0,
+            "reference": ""
+          }
+        ],
+        "name": "Solana",
+        "ticker": "SOL",
+        "isin": "",
+        "categories": [
+          "Crypto"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "CRYPTO",
+          "secondary": []
+        },
+        "qty": 6.963908000999999,
+        "frais": 0,
+        "invested": 245.131000242288,
+        "value": 676.4043841371299,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "SOL",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2026-10-11",
+        "broker": "LEDGER",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Crypto",
+        "cadran": "CRYPTO",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791729612723,
+        "buys": [
+          {
+            "date": "11/10/2026",
+            "type": "Achat Initial",
+            "qty": 0.00189144,
+            "price": 21073.890792,
+            "frais": 5.228,
+            "total": 45.08799999962048,
+            "reference": ""
+          },
+          {
+            "date": "24/01/2023",
+            "type": "Achat Additionnel",
+            "qty": 0.079213,
+            "price": 20978.627246,
+            "frais": 7.63,
+            "total": 1669.4100000373983,
+            "reference": ""
+          },
+          {
+            "date": "01/09/2023",
+            "type": "Achat Additionnel",
+            "qty": 0.04874,
+            "price": 23917.377924,
+            "frais": 2.617,
+            "total": 1168.3500000157599,
+            "reference": ""
+          },
+          {
+            "date": "07/02/2024",
+            "type": "Achat Additionnel",
+            "qty": 0.03624,
+            "price": 39256.594923,
+            "frais": 26.901,
+            "total": 1449.56000000952,
+            "reference": ""
+          },
+          {
+            "date": "08/09/2024",
+            "type": "Achat Additionnel",
+            "qty": 0.00194808,
+            "price": 47195.187056,
+            "frais": 2.15,
+            "total": 94.0900000000525,
+            "reference": ""
+          },
+          {
+            "date": "09/09/2024",
+            "type": "Achat Additionnel",
+            "qty": 0.0374539,
+            "price": 50104.5552,
+            "frais": 1.179,
+            "total": 1877.79000000528,
+            "reference": ""
+          },
+          {
+            "date": "01/11/2024",
+            "type": "Achat Additionnel",
+            "qty": 0.0107567,
+            "price": 63187.408778,
+            "frais": 8.382,
+            "total": 688.0700000023124,
+            "reference": ""
+          },
+          {
+            "date": "03/04/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.00395269,
+            "price": 74497.620608,
+            "frais": 1.314,
+            "total": 295.78000000103555,
+            "reference": ""
+          },
+          {
+            "date": "18/05/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.0252814,
+            "price": 93037.094465,
+            "frais": 3.662,
+            "total": 2355.7700000074506,
+            "reference": ""
+          },
+          {
+            "date": "19/05/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.0252137,
+            "price": 92793.679627,
+            "frais": 1.818,
+            "total": 2341.4900000112902,
+            "reference": ""
+          },
+          {
+            "date": "27/05/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.00456001,
+            "price": 95455.273124,
+            "frais": 5.373,
+            "total": 440.6499999981712,
+            "reference": ""
+          },
+          {
+            "date": "25/07/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.00017003,
+            "price": 50385.226137,
+            "frais": 8.233,
+            "total": 16.80000000007411,
+            "reference": ""
+          },
+          {
+            "date": "29/07/2026",
+            "type": "Achat Additionnel",
+            "qty": 0.00771489,
+            "price": 101717.328439,
+            "frais": 4.702,
+            "total": 789.4400000007568,
+            "reference": ""
+          },
+          {
+            "date": "14/09/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.00199037,
+            "price": 98584.68526,
+            "frais": 0.35,
+            "total": 196.57000000094618,
+            "reference": ""
+          },
+          {
+            "date": "09/10/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.00093667,
+            "price": 104361.194444,
+            "frais": 0.858,
+            "total": 98.60999999986149,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "31/10/2025",
+            "value": 26015.534019973446,
+            "invested": 12738.028000088774
+          },
+          {
+            "date": "30/11/2025",
+            "value": 21796.487483597426,
+            "invested": 12738.028000088774
+          },
+          {
+            "date": "31/12/2025",
+            "value": 20963.842358344828,
+            "invested": 12738.028000088774
+          },
+          {
+            "date": "31/01/2026",
+            "value": 19746.29719608445,
+            "invested": 12738.028000088774
+          },
+          {
+            "date": "28/02/2026",
+            "value": 15519.285954859413,
+            "invested": 12738.028000088774
+          },
+          {
+            "date": "31/03/2026",
+            "value": 16043.940683978806,
+            "invested": 12738.028000088774
+          },
+          {
+            "date": "30/04/2026",
+            "value": 17985.22682932566,
+            "invested": 12738.028000088774
+          },
+          {
+            "date": "31/05/2026",
+            "value": 17637.722127645382,
+            "invested": 12738.028000088774
+          },
+          {
+            "date": "30/06/2026",
+            "value": 14670.083975837048,
+            "invested": 12738.028000088774
+          },
+          {
+            "date": "31/07/2026",
+            "value": 16072.41871424646,
+            "invested": 13527.468000089531
+          },
+          {
+            "date": "31/08/2026",
+            "value": 19169.397555051437,
+            "invested": 13527.468000089531
+          },
+          {
+            "date": "30/09/2026",
+            "value": 21098.04492609479,
+            "invested": 13527.468000089531
+          },
+          {
+            "date": "12/10/2026",
+            "value": 21136.619172518607,
+            "invested": 13527.468000089531
+          },
+          {
+            "date": "12/10/2026",
+            "value": 20859.426233039998,
+            "invested": 13527.468000089531
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791729613105,
+            "date": "2023-01-24",
+            "qty": 0.00189144,
+            "qtyRemaining": 0,
+            "price": 21073.890792,
+            "frais": 5.228,
+            "reference": ""
+          },
+          {
+            "id": 1791729803228,
+            "date": "2023-01-24",
+            "qty": 0.079213,
+            "qtyRemaining": 0.07691808,
+            "price": 20978.627246,
+            "frais": 7.63,
+            "reference": ""
+          },
+          {
+            "id": 1791730249452,
+            "date": "2023-09-01",
+            "qty": 0.04874,
+            "qtyRemaining": 0.04874,
+            "price": 23917.377924,
+            "frais": 2.617,
+            "reference": ""
+          },
+          {
+            "id": 1791730698543,
+            "date": "2024-02-07",
+            "qty": 0.03624,
+            "qtyRemaining": 0.03624,
+            "price": 39256.594923,
+            "frais": 26.901,
+            "reference": ""
+          },
+          {
+            "id": 1791731054198,
+            "date": "2024-09-08",
+            "qty": 0.00194808,
+            "qtyRemaining": 0.00194808,
+            "price": 47195.187056,
+            "frais": 2.15,
+            "reference": ""
+          },
+          {
+            "id": 1791731171629,
+            "date": "2024-09-09",
+            "qty": 0.0374539,
+            "qtyRemaining": 0.0374539,
+            "price": 50104.5552,
+            "frais": 1.179,
+            "reference": ""
+          },
+          {
+            "id": 1791731399718,
+            "date": "2024-11-01",
+            "qty": 0.0107567,
+            "qtyRemaining": 0.0107567,
+            "price": 63187.408778,
+            "frais": 8.382,
+            "reference": ""
+          },
+          {
+            "id": 1791732963108,
+            "date": "2025-04-03",
+            "qty": 0.00395269,
+            "qtyRemaining": 0.00395269,
+            "price": 74497.620608,
+            "frais": 1.314,
+            "reference": ""
+          },
+          {
+            "id": 1791734085201,
+            "date": "2025-05-18",
+            "qty": 0.0252814,
+            "qtyRemaining": 0.0252814,
+            "price": 93037.094465,
+            "frais": 3.662,
+            "reference": ""
+          },
+          {
+            "id": 1791734159342,
+            "date": "2025-05-19",
+            "qty": 0.0252137,
+            "qtyRemaining": 0.0252137,
+            "price": 92793.679627,
+            "frais": 1.818,
+            "reference": ""
+          },
+          {
+            "id": 1791734249336,
+            "date": "2025-05-27",
+            "qty": 0.00456001,
+            "qtyRemaining": 0.00456001,
+            "price": 95455.273124,
+            "frais": 5.373,
+            "reference": ""
+          },
+          {
+            "id": 1791735643402,
+            "date": "2025-07-25",
+            "qty": 0.00017003,
+            "qtyRemaining": 0.00017003,
+            "price": 50385.226137,
+            "frais": 8.233,
+            "reference": ""
+          },
+          {
+            "id": 1791735742769,
+            "date": "2026-07-29",
+            "qty": 0.00771489,
+            "qtyRemaining": 0.00771489,
+            "price": 101717.328439,
+            "frais": 4.702,
+            "reference": ""
+          },
+          {
+            "id": 1791737191689,
+            "date": "2025-09-14",
+            "qty": 0.00199037,
+            "qtyRemaining": 0.00199037,
+            "price": 98584.68526,
+            "frais": 0.35,
+            "reference": ""
+          },
+          {
+            "id": 1791737284489,
+            "date": "2025-10-09",
+            "qty": 0.00093667,
+            "qtyRemaining": 0.00093667,
+            "price": 104361.194444,
+            "frais": 0.858,
+            "reference": ""
+          }
+        ],
+        "name": "Bitcoin",
+        "ticker": "BTC",
+        "isin": "",
+        "categories": [
+          "Crypto"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "CRYPTO",
+          "secondary": []
+        },
+        "qty": 0.28187651999999996,
+        "frais": 80.397,
+        "invested": 13439.463728850518,
+        "value": 20859.426233039998,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "BTC",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2026-10-11",
+        "broker": "LEDGER",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Crypto",
+        "cadran": "CRYPTO",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791729913599,
+        "buys": [
+          {
+            "date": "16/02/2023",
+            "type": "Achat Initial",
+            "qty": 599.527,
+            "price": 1.230632,
+            "frais": 37.473,
+            "total": 775.2701110639999,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "31/10/2025",
+            "value": 95.47372726348188,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "30/11/2025",
+            "value": 69.06887678606078,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "31/12/2025",
+            "value": 52.511554717096956,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "31/01/2026",
+            "value": 56.533235257034335,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "28/02/2026",
+            "value": 55.29375539463332,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "31/03/2026",
+            "value": 47.35598371074561,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "30/04/2026",
+            "value": 47.51809921423021,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "31/05/2026",
+            "value": 46.283943619265095,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "30/06/2026",
+            "value": 37.168249604317225,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "31/07/2026",
+            "value": 37.257337895667675,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "31/08/2026",
+            "value": 50.253769447277215,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "30/09/2026",
+            "value": 62.14804958379894,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "12/10/2026",
+            "value": 55.17247855946435,
+            "invested": 775.2701110639999
+          },
+          {
+            "date": "12/10/2026",
+            "value": 55.206844268000005,
+            "invested": 775.2701110639999
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791729914113,
+            "date": "2023-02-16",
+            "qty": 599.527,
+            "qtyRemaining": 599.527,
+            "price": 1.230632,
+            "frais": 37.473,
+            "reference": ""
+          }
+        ],
+        "name": "POL (ex-MATIC)",
+        "ticker": "POL",
+        "isin": "",
+        "categories": [
+          "Crypto"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "CRYPTO",
+          "secondary": []
+        },
+        "qty": 599.527,
+        "frais": 37.473,
+        "invested": 775.2701110639999,
+        "value": 55.206844268000005,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "POL",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2023-02-16",
+        "broker": "LEDGER",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Crypto",
+        "cadran": "CRYPTO",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791730025480,
+        "buys": [
+          {
+            "date": "01/09/2023",
+            "type": "Achat Initial",
+            "qty": 13070.5,
+            "price": 0.058984,
+            "frais": 0.044,
+            "total": 770.994372,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "31/10/2025",
+            "value": 2058.243058349877,
+            "invested": 770.994372
+          },
+          {
+            "date": "30/11/2025",
+            "value": 1672.598627102299,
+            "invested": 770.994372
+          },
+          {
+            "date": "31/12/2025",
+            "value": 1372.0350316932224,
+            "invested": 770.994372
+          },
+          {
+            "date": "31/01/2026",
+            "value": 1279.134080218633,
+            "invested": 770.994372
+          },
+          {
+            "date": "28/02/2026",
+            "value": 1041.4430030635078,
+            "invested": 770.994372
+          },
+          {
+            "date": "31/03/2026",
+            "value": 1024.384020690156,
+            "invested": 770.994372
+          },
+          {
+            "date": "30/04/2026",
+            "value": 1160.1661162807195,
+            "invested": 770.994372
+          },
+          {
+            "date": "31/05/2026",
+            "value": 1128.3033568721053,
+            "invested": 770.994372
+          },
+          {
+            "date": "30/06/2026",
+            "value": 839.4885732960125,
+            "invested": 770.994372
+          },
+          {
+            "date": "31/07/2026",
+            "value": 800.36345502281,
+            "invested": 770.994372
+          },
+          {
+            "date": "31/08/2026",
+            "value": 925.4516696133694,
+            "invested": 770.994372
+          },
+          {
+            "date": "30/09/2026",
+            "value": 1081.7695459239524,
+            "invested": 770.994372
+          },
+          {
+            "date": "12/10/2026",
+            "value": 993.2850508579768,
+            "invested": 770.994372
+          },
+          {
+            "date": "12/10/2026",
+            "value": 991.946386,
+            "invested": 770.994372
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791730025849,
+            "date": "2023-09-01",
+            "qty": 13070.5,
+            "qtyRemaining": 13070.5,
+            "price": 0.058984,
+            "frais": 0.044,
+            "reference": ""
+          }
+        ],
+        "name": "Dogecoin",
+        "ticker": "DOGE",
+        "isin": "",
+        "categories": [
+          "Crypto"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "CRYPTO",
+          "secondary": []
+        },
+        "qty": 13070.5,
+        "frais": 0.044,
+        "invested": 770.994372,
+        "value": 991.946386,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "DOGE",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2023-09-01",
+        "broker": "LEDGER",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Crypto",
+        "cadran": "CRYPTO",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791730548886,
+        "buys": [
+          {
+            "date": "22/01/2024",
+            "type": "Achat Initial",
+            "qty": 1.79,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "01/01/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/02/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/03/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/04/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/05/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/06/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/07/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/08/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/09/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/10/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/11/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/12/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/01/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/02/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/03/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/04/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/05/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/06/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/07/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/08/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/09/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/10/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/11/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/12/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/01/2026",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/02/2026",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/03/2026",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/04/2026",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/05/2026",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/06/2026",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/07/2026",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/08/2026",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/09/2026",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/10/2026",
+            "value": 0,
+            "invested": 0
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791730549294,
+            "date": "2024-01-22",
+            "qty": 1.79,
+            "qtyRemaining": 1.79,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          }
+        ],
+        "name": "PIGcoin",
+        "ticker": "PIG",
+        "isin": "",
+        "categories": [
+          "Crypto"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "CRYPTO",
+          "secondary": []
+        },
+        "qty": 1.79,
+        "frais": 0,
+        "invested": 0,
+        "value": 0,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-01-22",
+        "broker": "LEDGER",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Crypto",
+        "cadran": "CRYPTO",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791730804835,
+        "buys": [
+          {
+            "date": "07/02/2024",
+            "type": "Achat Initial",
+            "qty": 0.215,
+            "price": 2184.827907,
+            "frais": 4.232,
+            "total": 473.970000005,
+            "reference": ""
+          },
+          {
+            "date": "27/06/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.0948981,
+            "price": 2069.282736,
+            "frais": 0.619,
+            "total": 196.99000000920162,
+            "reference": ""
+          },
+          {
+            "date": "08/08/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.0567218,
+            "price": 3325.017894,
+            "frais": 4.969,
+            "total": 193.56999997988922,
+            "reference": ""
+          },
+          {
+            "date": "08/08/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.0567218,
+            "price": 3289.758082,
+            "frais": 4.969,
+            "total": 191.5699999755876,
+            "reference": ""
+          },
+          {
+            "date": "08/08/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.0566507,
+            "price": 3300.630001,
+            "frais": 4.347,
+            "total": 191.3299999976507,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "31/10/2025",
+            "value": 1387.2565301171796,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "30/11/2025",
+            "value": 1090.9304777263262,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "31/12/2025",
+            "value": 1070.7496185916316,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "31/01/2026",
+            "value": 965.1516771817344,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "28/02/2026",
+            "value": 691.6449202142142,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "31/03/2026",
+            "value": 740.4329134299105,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "30/04/2026",
+            "value": 813.2866068667523,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "31/05/2026",
+            "value": 734.5239457090963,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "30/06/2026",
+            "value": 596.9922675290135,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "31/07/2026",
+            "value": 704.3593590205044,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "31/08/2026",
+            "value": 882.5066006529044,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "30/09/2026",
+            "value": 999.297966639321,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "12/10/2026",
+            "value": 955.5061545440143,
+            "invested": 1053.85999998744
+          },
+          {
+            "date": "12/10/2026",
+            "value": 950.0715557712999,
+            "invested": 1053.85999998744
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791730805298,
+            "date": "2024-02-07",
+            "qty": 0.215,
+            "qtyRemaining": 0.21254517,
+            "price": 2184.827907,
+            "frais": 4.232,
+            "reference": ""
+          },
+          {
+            "id": 1791734598256,
+            "date": "2025-06-27",
+            "qty": 0.0948981,
+            "qtyRemaining": 0.0948981,
+            "price": 2069.282736,
+            "frais": 0.619,
+            "reference": ""
+          },
+          {
+            "id": 1791736297249,
+            "date": "2025-08-08",
+            "qty": 0.0567218,
+            "qtyRemaining": 0.0567218,
+            "price": 3289.758082,
+            "frais": 4.969,
+            "reference": ""
+          },
+          {
+            "id": 1791736369268,
+            "date": "2025-08-08",
+            "qty": 0.0566507,
+            "qtyRemaining": 0.0566507,
+            "price": 3300.630001,
+            "frais": 4.347,
+            "reference": ""
+          }
+        ],
+        "name": "Ethereum",
+        "ticker": "ETH",
+        "isin": "",
+        "categories": [
+          "Crypto"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "CRYPTO",
+          "secondary": []
+        },
+        "qty": 0.42081577,
+        "frais": 14.167000000000002,
+        "invested": 1048.4966188964988,
+        "value": 950.0715557712999,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "ETH",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-02-07",
+        "broker": "LEDGER",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Crypto",
+        "cadran": "CRYPTO",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791731306381,
+        "buys": [
+          {
+            "date": "25/10/2024",
+            "type": "Achat Initial",
+            "qty": 1016.17,
+            "price": 492.27,
+            "frais": 0,
+            "total": 500230.0059,
+            "reference": ""
+          },
+          {
+            "date": "12/11/2024",
+            "type": "Achat Additionnel",
+            "qty": 1056.71,
+            "price": 0.618807,
+            "frais": 0,
+            "total": 653.89954497,
+            "reference": ""
+          },
+          {
+            "date": "12/11/2024",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "25/10/2024",
+            "type": "Achat Additionnel",
+            "qty": 1019.172582,
+            "price": 0.479085,
+            "frais": 0,
+            "total": 488.27029644747,
+            "reference": ""
+          },
+          {
+            "date": "13/11/2024",
+            "type": "Achat Additionnel",
+            "qty": 443.769,
+            "price": 0.655341,
+            "frais": 0,
+            "total": 290.82002022899997,
+            "reference": ""
+          },
+          {
+            "date": "13/11/2024",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "02/03/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "03/03/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "06/03/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "09/03/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "13/03/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "10/03/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "17/03/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "03/06/2025",
+            "type": "Achat Additionnel",
+            "qty": 49.7105,
+            "price": 1.98972,
+            "frais": 0,
+            "total": 98.90997606,
+            "reference": ""
+          },
+          {
+            "date": "09/06/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "14/06/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "22/06/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "03/07/2025",
+            "type": "Achat Additionnel",
+            "qty": 101.302,
+            "price": 1.932045,
+            "frais": 0,
+            "total": 195.72002259,
+            "reference": ""
+          },
+          {
+            "date": "03/07/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "29/07/2026",
+            "type": "Achat Additionnel",
+            "qty": 182.765,
+            "price": 2.710968,
+            "frais": 0,
+            "total": 495.47006651999993,
+            "reference": ""
+          },
+          {
+            "date": "08/08/2025",
+            "type": "Achat Additionnel",
+            "qty": 105.367885,
+            "price": 2.846218,
+            "frais": 0,
+            "total": 299.89997090893,
+            "reference": ""
+          },
+          {
+            "date": "08/08/2025",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "24/08/2026",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          },
+          {
+            "date": "26/08/2026",
+            "type": "Achat Additionnel",
+            "qty": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "total": 0,
+            "reference": ""
+          }
+        ],
+        "history": [
+          {
+            "date": "31/10/2025",
+            "value": 6216.25454762101,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "30/11/2025",
+            "value": 5611.322303685613,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "31/12/2025",
+            "value": 4723.381299937678,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "31/01/2026",
+            "value": 4344.5191361923835,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "28/02/2026",
+            "value": 3415.948380253188,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "31/03/2026",
+            "value": 3379.457861108647,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "30/04/2026",
+            "value": 3454.1027450582405,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "31/05/2026",
+            "value": 3399.313573369167,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "30/06/2026",
+            "value": 2731.6572906785414,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "31/07/2026",
+            "value": 2775.6697248408436,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "31/08/2026",
+            "value": 3463.465227466487,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "30/09/2026",
+            "value": 3883.9049086331006,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "11/10/2026",
+            "value": 3698.6580190410464,
+            "invested": 2521.5569513212477
+          },
+          {
+            "date": "12/10/2026",
+            "value": 3606.0759926799983,
+            "invested": 2521.5569513212477
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791731527931,
+            "date": "2024-11-12",
+            "qty": 1056.710705,
+            "qtyRemaining": 1056.710705,
+            "price": 0.618807,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791731616360,
+            "date": "2024-11-12",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791731840538,
+            "date": "2024-10-25",
+            "qty": 1016.172582,
+            "qtyRemaining": 1016.172582,
+            "price": 0.479085,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791732287120,
+            "date": "2024-11-13",
+            "qty": 443.769849,
+            "qtyRemaining": 443.769849,
+            "price": 0.655341,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791732349811,
+            "date": "2024-11-13",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791732414228,
+            "date": "2025-03-02",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791732488123,
+            "date": "2025-03-03",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791732547201,
+            "date": "2025-03-06",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791732632701,
+            "date": "2025-03-09",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791732704337,
+            "date": "2025-03-13",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791732767725,
+            "date": "2025-03-10",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791732823828,
+            "date": "2025-03-17",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791734318124,
+            "date": "2025-06-03",
+            "qty": 49.710502,
+            "qtyRemaining": 49.710502,
+            "price": 1.98972,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791734379318,
+            "date": "2025-06-09",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791734426941,
+            "date": "2025-06-14",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791734503836,
+            "date": "2025-06-22",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791734669392,
+            "date": "2025-07-03",
+            "qty": 101.302812,
+            "qtyRemaining": 101.302812,
+            "price": 1.932045,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791734753752,
+            "date": "2025-07-03",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791735839724,
+            "date": "2025-07-29",
+            "qty": 182.765643,
+            "qtyRemaining": 182.765643,
+            "price": 2.710968,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791736576803,
+            "date": "2025-08-08",
+            "qty": 105.367885,
+            "qtyRemaining": 105.367885,
+            "price": 2.846218,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791736644629,
+            "date": "2025-08-08",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791737964551,
+            "date": "2026-08-24",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          },
+          {
+            "id": 1791738011904,
+            "date": "2026-08-26",
+            "qty": 0.000001,
+            "qtyRemaining": 0.000001,
+            "price": 0,
+            "frais": 0,
+            "reference": ""
+          }
+        ],
+        "name": "XRP",
+        "ticker": "XRP",
+        "isin": "",
+        "categories": [
+          "Crypto"
+        ],
+        "taxCategory": "NON_CONCERNE",
+        "cadrans": {
+          "primary": "CRYPTO",
+          "secondary": []
+        },
+        "qty": 2955.7999939999986,
+        "frais": 0,
+        "invested": 2521.5569513212477,
+        "value": 3606.0759926799983,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "XRP",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-10-25",
+        "broker": "LEDGER",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Crypto",
+        "cadran": "CRYPTO",
+        "dividends": [],
+        "splits": []
+      },
+      {
+        "id": 1791818437441,
+        "buys": [
+          {
+            "date": "05/10/2024",
+            "type": "Achat Initial",
+            "qty": 1,
+            "price": 1304,
+            "frais": 6,
+            "total": 1310,
+            "reference": "DV02310"
+          }
+        ],
+        "history": [
+          {
+            "date": "01/10/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/11/2024",
+            "value": 1333.8750299314038,
+            "invested": 1310
+          },
+          {
+            "date": "01/12/2024",
+            "value": 1360.4438422198282,
+            "invested": 1310
+          },
+          {
+            "date": "01/01/2025",
+            "value": 1387.8982815845336,
+            "invested": 1310
+          },
+          {
+            "date": "01/02/2025",
+            "value": 1415.352720949239,
+            "invested": 1310
+          },
+          {
+            "date": "01/03/2025",
+            "value": 1440.1502790851018,
+            "invested": 1310
+          },
+          {
+            "date": "01/04/2025",
+            "value": 1467.5678173216288,
+            "invested": 1310
+          },
+          {
+            "date": "01/05/2025",
+            "value": 1494.1366296100534,
+            "invested": 1310
+          },
+          {
+            "date": "01/06/2025",
+            "value": 1521.5910689747589,
+            "invested": 1310
+          },
+          {
+            "date": "01/07/2025",
+            "value": 1548.1598812631835,
+            "invested": 1310
+          },
+          {
+            "date": "01/08/2025",
+            "value": 1575.614320627889,
+            "invested": 1310
+          },
+          {
+            "date": "01/09/2025",
+            "value": 1603.068759992594,
+            "invested": 1310
+          },
+          {
+            "date": "01/10/2025",
+            "value": 1629.6375722810187,
+            "invested": 1310
+          },
+          {
+            "date": "01/11/2025",
+            "value": 1657.1289127739024,
+            "invested": 1310
+          },
+          {
+            "date": "01/12/2025",
+            "value": 1683.697725062327,
+            "invested": 1310
+          },
+          {
+            "date": "01/01/2026",
+            "value": 1711.1521644270324,
+            "invested": 1310
+          },
+          {
+            "date": "01/02/2026",
+            "value": 1738.6066037917376,
+            "invested": 1310
+          },
+          {
+            "date": "01/03/2026",
+            "value": 1763.4041619276006,
+            "invested": 1310
+          },
+          {
+            "date": "01/04/2026",
+            "value": 1790.8217001641276,
+            "invested": 1310
+          },
+          {
+            "date": "01/05/2026",
+            "value": 1817.3905124525522,
+            "invested": 1310
+          },
+          {
+            "date": "01/06/2026",
+            "value": 1844.8449518172574,
+            "invested": 1310
+          },
+          {
+            "date": "01/07/2026",
+            "value": 1871.413764105682,
+            "invested": 1310
+          },
+          {
+            "date": "01/08/2026",
+            "value": 1898.8682034703875,
+            "invested": 1310
+          },
+          {
+            "date": "01/09/2026",
+            "value": 1926.322642835093,
+            "invested": 1310
+          },
+          {
+            "date": "01/10/2026",
+            "value": 1952.8914551235175,
+            "invested": 1310
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791818437950,
+            "date": "2024-10-05",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 1304,
+            "frais": 6,
+            "reference": "DV02310"
+          }
+        ],
+        "name": "Vera Valor 1/2 Ounce Gold (Or Pur 999.9)",
+        "ticker": "VV1/2OZ",
+        "isin": "",
+        "categories": [
+          "Or & Métaux"
+        ],
+        "taxCategory": "COURS_LEGAL",
+        "cadrans": {
+          "primary": "OR",
+          "secondary": []
+        },
+        "qty": 1,
+        "frais": 6,
+        "invested": 1310,
+        "value": 1963.43,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-10-05",
+        "broker": "AU COFFRE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Or & Métaux",
+        "cadran": "OR",
+        "dividends": [],
+        "splits": [],
+        "weightGrams": 15.55,
+        "primePct": 0.02
+      },
+      {
+        "id": 1791818855279,
+        "buys": [
+          {
+            "date": "05/10/2024",
+            "type": "Achat Initial",
+            "qty": 1,
+            "price": 669.5,
+            "frais": 3.87,
+            "total": 673.37,
+            "reference": "QV103989"
+          }
+        ],
+        "history": [
+          {
+            "date": "01/10/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/11/2024",
+            "value": 684.8352612248829,
+            "invested": 673.37
+          },
+          {
+            "date": "01/12/2024",
+            "value": 697.5941299759116,
+            "invested": 673.37
+          },
+          {
+            "date": "01/01/2025",
+            "value": 710.7782943519746,
+            "invested": 673.37
+          },
+          {
+            "date": "01/02/2025",
+            "value": 723.9624587280377,
+            "invested": 673.37
+          },
+          {
+            "date": "01/03/2025",
+            "value": 735.870736228998,
+            "invested": 673.37
+          },
+          {
+            "date": "01/04/2025",
+            "value": 749.0371799540179,
+            "invested": 673.37
+          },
+          {
+            "date": "01/05/2025",
+            "value": 761.7960487050467,
+            "invested": 673.37
+          },
+          {
+            "date": "01/06/2025",
+            "value": 774.9802130811098,
+            "invested": 673.37
+          },
+          {
+            "date": "01/07/2025",
+            "value": 787.7390818321386,
+            "invested": 673.37
+          },
+          {
+            "date": "01/08/2025",
+            "value": 800.9232462082017,
+            "invested": 673.37
+          },
+          {
+            "date": "01/09/2025",
+            "value": 814.1074105842647,
+            "invested": 673.37
+          },
+          {
+            "date": "01/10/2025",
+            "value": 826.8662793352935,
+            "invested": 673.37
+          },
+          {
+            "date": "01/11/2025",
+            "value": 840.0681643623997,
+            "invested": 673.37
+          },
+          {
+            "date": "01/12/2025",
+            "value": 852.8270331134285,
+            "invested": 673.37
+          },
+          {
+            "date": "01/01/2026",
+            "value": 866.0111974894916,
+            "invested": 673.37
+          },
+          {
+            "date": "01/02/2026",
+            "value": 879.1953618655546,
+            "invested": 673.37
+          },
+          {
+            "date": "01/03/2026",
+            "value": 891.1036393665148,
+            "invested": 673.37
+          },
+          {
+            "date": "01/04/2026",
+            "value": 904.2700830915348,
+            "invested": 673.37
+          },
+          {
+            "date": "01/05/2026",
+            "value": 917.0289518425636,
+            "invested": 673.37
+          },
+          {
+            "date": "01/06/2026",
+            "value": 930.2131162186267,
+            "invested": 673.37
+          },
+          {
+            "date": "01/07/2026",
+            "value": 942.9719849696554,
+            "invested": 673.37
+          },
+          {
+            "date": "01/08/2026",
+            "value": 956.1561493457185,
+            "invested": 673.37
+          },
+          {
+            "date": "01/09/2026",
+            "value": 969.3403137217816,
+            "invested": 673.37
+          },
+          {
+            "date": "01/10/2026",
+            "value": 982.0991824728103,
+            "invested": 673.37
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791818856269,
+            "date": "2024-10-05",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 669.5,
+            "frais": 3.87,
+            "reference": "QV103989"
+          }
+        ],
+        "name": "Vera Valor 1/4 Ounce Gold (Or Pur 999.9)",
+        "ticker": "VV1/4OZ",
+        "isin": "",
+        "categories": [
+          "Or & Métaux"
+        ],
+        "taxCategory": "COURS_LEGAL",
+        "cadrans": {
+          "primary": "OR",
+          "secondary": []
+        },
+        "qty": 1,
+        "frais": 3.87,
+        "invested": 673.37,
+        "value": 987.16,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-10-05",
+        "broker": "AU COFFRE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Or & Métaux",
+        "cadran": "OR",
+        "dividends": [],
+        "splits": [],
+        "weightGrams": 7.78,
+        "primePct": 0.025
+      },
+      {
+        "id": 1791818957367,
+        "buys": [
+          {
+            "date": "25/10/2024",
+            "type": "Achat Initial",
+            "qty": 1,
+            "price": 44.38,
+            "frais": 0.22,
+            "total": 44.6,
+            "reference": "VSV001827"
+          },
+          {
+            "date": "12/10/2026",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 41.05,
+            "frais": 0.21,
+            "total": 41.26,
+            "reference": "VSV002064"
+          },
+          {
+            "date": "02/01/2025",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 39.58,
+            "frais": 0.2,
+            "total": 39.78,
+            "reference": "VSV002217"
+          },
+          {
+            "date": "14/04/2025",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 35.39,
+            "frais": 0.18,
+            "total": 35.57,
+            "reference": "790111745"
+          },
+          {
+            "date": "23/06/2025",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 39.08,
+            "frais": 0.2,
+            "total": 39.28,
+            "reference": "790712157"
+          },
+          {
+            "date": "04/08/2025",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 40.17,
+            "frais": 0.2,
+            "total": 40.370000000000005,
+            "reference": "VSM7044297"
+          },
+          {
+            "date": "12/10/2025",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 52.86,
+            "frais": 0.26,
+            "total": 53.12,
+            "reference": "750928235"
+          },
+          {
+            "date": "07/11/2025",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 52.21,
+            "frais": 2.26,
+            "total": 54.47,
+            "reference": "750419971"
+          },
+          {
+            "date": "05/12/2025",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 61.18,
+            "frais": 0.31,
+            "total": 61.49,
+            "reference": "761209346"
+          },
+          {
+            "date": "14/01/2026",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 93.57,
+            "frais": 0.47,
+            "total": 94.03999999999999,
+            "reference": "790714281"
+          },
+          {
+            "date": "04/02/2026",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 93,
+            "frais": 2.79,
+            "total": 95.79,
+            "reference": "790111745"
+          },
+          {
+            "date": "05/02/2026",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 104.12,
+            "frais": 0.52,
+            "total": 104.64,
+            "reference": "VSV003267"
+          },
+          {
+            "date": "27/04/2026",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 80.85,
+            "frais": 0.4,
+            "total": 81.25,
+            "reference": "791368796"
+          },
+          {
+            "date": "05/05/2026",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 77.79,
+            "frais": 0.39,
+            "total": 78.18,
+            "reference": "780315874"
+          },
+          {
+            "date": "23/06/2026",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 71.35,
+            "frais": 0.36,
+            "total": 71.71,
+            "reference": "790624299"
+          },
+          {
+            "date": "28/07/2026",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 64.6,
+            "frais": 0.32,
+            "total": 64.91999999999999,
+            "reference": "791171347"
+          },
+          {
+            "date": "27/08/2026",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 73.62,
+            "frais": 0.37,
+            "total": 73.99000000000001,
+            "reference": "791171560"
+          }
+        ],
+        "history": [
+          {
+            "date": "01/10/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/11/2024",
+            "value": 43.040275044717625,
+            "invested": 44.6
+          },
+          {
+            "date": "01/12/2024",
+            "value": 36.31571236326066,
+            "invested": 44.6
+          },
+          {
+            "date": "01/01/2025",
+            "value": 70.62699759242179,
+            "invested": 85.86
+          },
+          {
+            "date": "01/02/2025",
+            "value": 103.45828282158293,
+            "invested": 125.64
+          },
+          {
+            "date": "01/03/2025",
+            "value": 97.18202431888975,
+            "invested": 125.64
+          },
+          {
+            "date": "01/04/2025",
+            "value": 90.24264921844181,
+            "invested": 125.64
+          },
+          {
+            "date": "01/05/2025",
+            "value": 119.08808653698483,
+            "invested": 161.21
+          },
+          {
+            "date": "01/06/2025",
+            "value": 112.13937176614598,
+            "invested": 161.21
+          },
+          {
+            "date": "01/07/2025",
+            "value": 144.694809084689,
+            "invested": 200.49
+          },
+          {
+            "date": "01/08/2025",
+            "value": 137.74609431385014,
+            "invested": 200.49
+          },
+          {
+            "date": "01/09/2025",
+            "value": 171.1673795430113,
+            "invested": 240.86
+          },
+          {
+            "date": "01/10/2025",
+            "value": 164.44281686155432,
+            "invested": 240.86
+          },
+          {
+            "date": "01/11/2025",
+            "value": 210.60476242032456,
+            "invested": 293.98
+          },
+          {
+            "date": "01/12/2025",
+            "value": 258.3501997388676,
+            "invested": 348.45000000000005
+          },
+          {
+            "date": "01/01/2026",
+            "value": 312.89148496802875,
+            "invested": 409.94000000000005
+          },
+          {
+            "date": "01/02/2026",
+            "value": 399.98277019718984,
+            "invested": 503.98
+          },
+          {
+            "date": "01/03/2026",
+            "value": 498.34651169449666,
+            "invested": 608.62
+          },
+          {
+            "date": "01/04/2026",
+            "value": 491.4071365940487,
+            "invested": 608.62
+          },
+          {
+            "date": "01/05/2026",
+            "value": 565.9325739125917,
+            "invested": 689.87
+          },
+          {
+            "date": "01/06/2026",
+            "value": 637.1638591417528,
+            "invested": 768.05
+          },
+          {
+            "date": "01/07/2026",
+            "value": 702.1492964602959,
+            "invested": 839.76
+          },
+          {
+            "date": "01/08/2026",
+            "value": 760.120581689457,
+            "invested": 904.68
+          },
+          {
+            "date": "01/09/2026",
+            "value": 827.1618669186181,
+            "invested": 978.67
+          },
+          {
+            "date": "01/10/2026",
+            "value": 820.4373042371611,
+            "invested": 978.67
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791818957865,
+            "date": "2024-10-25",
+            "qty": 1,
+            "qtyRemaining": 0,
+            "price": 44.38,
+            "frais": 0.22,
+            "reference": "VSV001827"
+          },
+          {
+            "id": 1791819137372,
+            "date": "2024-12-02",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 41.05,
+            "frais": 0.21,
+            "reference": "VSV002064"
+          },
+          {
+            "id": 1791819248267,
+            "date": "2025-01-02",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 39.58,
+            "frais": 0.2,
+            "reference": "VSV002217"
+          },
+          {
+            "id": 1791820144473,
+            "date": "2025-04-14",
+            "qty": 1,
+            "qtyRemaining": 0,
+            "price": 35.39,
+            "frais": 0.18,
+            "reference": "790111745"
+          },
+          {
+            "id": 1791820997468,
+            "date": "2025-06-23",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 39.08,
+            "frais": 0.2,
+            "reference": "790712157"
+          },
+          {
+            "id": 1791821432602,
+            "date": "2025-08-04",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 40.17,
+            "frais": 0.2,
+            "reference": "VSM7044297"
+          },
+          {
+            "id": 1791821593029,
+            "date": "2025-10-12",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 52.86,
+            "frais": 0.26,
+            "reference": "750928235"
+          },
+          {
+            "id": 1791821685066,
+            "date": "2025-11-07",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 52.21,
+            "frais": 2.26,
+            "reference": "750419971"
+          },
+          {
+            "id": 1791821759207,
+            "date": "2025-12-05",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 61.18,
+            "frais": 0.31,
+            "reference": "761209346"
+          },
+          {
+            "id": 1791821833679,
+            "date": "2026-01-14",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 93.57,
+            "frais": 0.47,
+            "reference": "790714281"
+          },
+          {
+            "id": 1791821978648,
+            "date": "2026-02-05",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 104.12,
+            "frais": 0.52,
+            "reference": "VSV003267"
+          },
+          {
+            "id": 1791822656858,
+            "date": "2026-04-27",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 80.85,
+            "frais": 0.4,
+            "reference": "791368796"
+          },
+          {
+            "id": 1791822767845,
+            "date": "2026-05-05",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 77.79,
+            "frais": 0.39,
+            "reference": "780315874"
+          },
+          {
+            "id": 1791822840429,
+            "date": "2026-06-23",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 71.35,
+            "frais": 0.36,
+            "reference": "790624299"
+          },
+          {
+            "id": 1791822904835,
+            "date": "2026-07-28",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 64.6,
+            "frais": 0.32,
+            "reference": "791171347"
+          },
+          {
+            "id": 1791822975035,
+            "date": "2026-08-27",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 73.62,
+            "frais": 0.37,
+            "reference": "791171560"
+          }
+        ],
+        "name": "Vera Silver 1oz Argent",
+        "ticker": "VS1OZ",
+        "isin": "",
+        "categories": [
+          "Or & Métaux"
+        ],
+        "taxCategory": "COURS_LEGAL",
+        "cadrans": {
+          "primary": "OR",
+          "secondary": []
+        },
+        "qty": 14,
+        "frais": 6.87,
+        "invested": 898.9,
+        "value": 817.77,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-10-25",
+        "broker": "AU COFFRE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Or & Métaux",
+        "cadran": "OR",
+        "dividends": [],
+        "splits": [],
+        "weightGrams": 31.1,
+        "primePct": 0.05
+      },
+      {
+        "id": 1791819051109,
+        "buys": [
+          {
+            "date": "17/11/2024",
+            "type": "Achat Initial",
+            "qty": 1,
+            "price": 2543,
+            "frais": 12.72,
+            "total": 2555.72,
+            "reference": "501656"
+          }
+        ],
+        "history": [
+          {
+            "date": "01/11/2024",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/12/2024",
+            "value": 2583.265168480927,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/01/2025",
+            "value": 2644.4401098236435,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/02/2025",
+            "value": 2705.61505116636,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/03/2025",
+            "value": 2760.869836895265,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/04/2025",
+            "value": 2821.962553854456,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/05/2025",
+            "value": 2881.1641099925687,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/06/2025",
+            "value": 2942.339051335285,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/07/2025",
+            "value": 3001.540607473398,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/08/2025",
+            "value": 3062.7155488161143,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/09/2025",
+            "value": 3123.8904901588303,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/10/2025",
+            "value": 3183.092046296943,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/11/2025",
+            "value": 3244.3492120231845,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/12/2025",
+            "value": 3303.550768161297,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/01/2026",
+            "value": 3364.7257095040136,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/02/2026",
+            "value": 3425.9006508467296,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/03/2026",
+            "value": 3481.1554365756347,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/04/2026",
+            "value": 3542.248153534826,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/05/2026",
+            "value": 3601.4497096729388,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/06/2026",
+            "value": 3662.624651015655,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/07/2026",
+            "value": 3721.8262071537674,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/08/2026",
+            "value": 3783.001148496484,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/09/2026",
+            "value": 3844.1760898392004,
+            "invested": 2555.72
+          },
+          {
+            "date": "01/10/2026",
+            "value": 3903.377645977313,
+            "invested": 2555.72
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791819051547,
+            "date": "2024-11-17",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 2543,
+            "frais": 12.72,
+            "reference": "501656"
+          }
+        ],
+        "name": "Vera Valor 1 Ounce Gold (Or Pur 999.9)",
+        "ticker": "VV1OZ",
+        "isin": "",
+        "categories": [
+          "Or & Métaux"
+        ],
+        "taxCategory": "COURS_LEGAL",
+        "cadrans": {
+          "primary": "OR",
+          "secondary": []
+        },
+        "qty": 1,
+        "frais": 12.72,
+        "invested": 2555.72,
+        "value": 3926.86,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2024-11-17",
+        "broker": "AU COFFRE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Or & Métaux",
+        "cadran": "OR",
+        "dividends": [],
+        "splits": [],
+        "weightGrams": 31.1,
+        "primePct": 0.02
+      },
+      {
+        "id": 1791820055968,
+        "buys": [
+          {
+            "date": "13/03/2025",
+            "type": "Achat Initial",
+            "qty": 1,
+            "price": 109.99,
+            "frais": 0.55,
+            "total": 110.53999999999999,
+            "reference": "VRO54492"
+          }
+        ],
+        "history": [
+          {
+            "date": "01/03/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/04/2025",
+            "value": 113.44735933086316,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/05/2025",
+            "value": 118.05814945910431,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/06/2025",
+            "value": 122.82263259162018,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/07/2025",
+            "value": 127.43342271986133,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/08/2025",
+            "value": 132.19790585237718,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/09/2025",
+            "value": 136.96238898489304,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/10/2025",
+            "value": 141.5731791131342,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/11/2025",
+            "value": 146.3440661208282,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/12/2025",
+            "value": 150.95485624906934,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/01/2026",
+            "value": 155.71933938158517,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/02/2026",
+            "value": 160.48382251410104,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/03/2026",
+            "value": 164.78722663379278,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/04/2026",
+            "value": 169.5453058911305,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/05/2026",
+            "value": 174.1560960193717,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/06/2026",
+            "value": 178.92057915188752,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/07/2026",
+            "value": 183.53136928012867,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/08/2026",
+            "value": 188.29585241264454,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/09/2026",
+            "value": 193.0603355451604,
+            "invested": 110.53999999999999
+          },
+          {
+            "date": "01/10/2026",
+            "value": 197.67112567340155,
+            "invested": 110.53999999999999
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791820056079,
+            "date": "2025-03-13",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 109.99,
+            "frais": 0.55,
+            "reference": "VRO54492"
+          }
+        ],
+        "name": "Vera One 1/20 Ounce Gold (Or Pur 999.9)",
+        "ticker": "VO1/20OZ",
+        "isin": "",
+        "categories": [
+          "Or & Métaux"
+        ],
+        "taxCategory": "COURS_LEGAL",
+        "cadrans": {
+          "primary": "OR",
+          "secondary": []
+        },
+        "qty": 1,
+        "frais": 0.55,
+        "invested": 110.53999999999999,
+        "value": 199.5,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2025-03-13",
+        "broker": "AU COFFRE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Or & Métaux",
+        "cadran": "OR",
+        "dividends": [],
+        "splits": [],
+        "weightGrams": 1.58,
+        "primePct": 0.02
+      },
+      {
+        "id": 1791820921308,
+        "buys": [
+          {
+            "date": "04/05/2025",
+            "type": "Achat Initial",
+            "qty": 1,
+            "price": 344.16,
+            "frais": 1.72,
+            "total": 345.88000000000005,
+            "reference": "23091365"
+          }
+        ],
+        "history": [
+          {
+            "date": "01/05/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/06/2025",
+            "value": 349.38007431292704,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/07/2025",
+            "value": 353.1413482014456,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/08/2025",
+            "value": 357.0279978862481,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/09/2025",
+            "value": 360.91464757105064,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/10/2025",
+            "value": 364.67592145956917,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/11/2025",
+            "value": 368.5677951358835,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/12/2025",
+            "value": 372.3290690244021,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/01/2026",
+            "value": 376.2157187092046,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/02/2026",
+            "value": 380.1023683940071,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/03/2026",
+            "value": 383.61289068995774,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/04/2026",
+            "value": 387.4943163832484,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/05/2026",
+            "value": 391.255590271767,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/06/2026",
+            "value": 395.1422399565695,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/07/2026",
+            "value": 398.90351384508807,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/08/2026",
+            "value": 402.7901635298906,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/09/2026",
+            "value": 406.6768132146931,
+            "invested": 345.88000000000005
+          },
+          {
+            "date": "01/10/2026",
+            "value": 410.43808710321167,
+            "invested": 345.88000000000005
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791820921635,
+            "date": "2025-05-04",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 344.16,
+            "frais": 1.72,
+            "reference": "23091365"
+          }
+        ],
+        "name": "Britannia 1/10oz Or (Royaume-Uni)",
+        "ticker": "BRIT1/10OZ",
+        "isin": "",
+        "categories": [
+          "Or & Métaux"
+        ],
+        "taxCategory": "COURS_LEGAL",
+        "cadrans": {
+          "primary": "OR",
+          "secondary": []
+        },
+        "qty": 1,
+        "frais": 1.72,
+        "invested": 345.88000000000005,
+        "value": 411.93,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2025-05-04",
+        "broker": "AU COFFRE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Or & Métaux",
+        "cadran": "OR",
+        "dividends": [],
+        "splits": [],
+        "weightGrams": 3.11,
+        "primePct": 0.07
+      },
+      {
+        "id": 1791821341867,
+        "buys": [
+          {
+            "date": "04/07/2025",
+            "type": "Achat Initial",
+            "qty": 1,
+            "price": 342.25,
+            "frais": 1.71,
+            "total": 343.96,
+            "reference": "23096174"
+          },
+          {
+            "date": "10/02/2026",
+            "type": "Achat Additionnel",
+            "qty": 1,
+            "price": 514.87,
+            "frais": 2.57,
+            "total": 517.44,
+            "reference": "25114083"
+          }
+        ],
+        "history": [
+          {
+            "date": "01/07/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/08/2025",
+            "value": 341.71080276248284,
+            "invested": 343.96
+          },
+          {
+            "date": "01/09/2025",
+            "value": 339.2131867255982,
+            "invested": 343.96
+          },
+          {
+            "date": "01/10/2025",
+            "value": 336.7961389479678,
+            "invested": 343.96
+          },
+          {
+            "date": "01/11/2025",
+            "value": 334.29516590028084,
+            "invested": 343.96
+          },
+          {
+            "date": "01/12/2025",
+            "value": 331.8781181226505,
+            "invested": 343.96
+          },
+          {
+            "date": "01/01/2026",
+            "value": 329.38050208576584,
+            "invested": 343.96
+          },
+          {
+            "date": "01/02/2026",
+            "value": 326.8828860488811,
+            "invested": 343.96
+          },
+          {
+            "date": "01/03/2026",
+            "value": 842.0669747897596,
+            "invested": 861.4000000000001
+          },
+          {
+            "date": "01/04/2026",
+            "value": 839.5727157636771,
+            "invested": 861.4000000000001
+          },
+          {
+            "date": "01/05/2026",
+            "value": 837.1556679860469,
+            "invested": 861.4000000000001
+          },
+          {
+            "date": "01/06/2026",
+            "value": 834.6580519491621,
+            "invested": 861.4000000000001
+          },
+          {
+            "date": "01/07/2026",
+            "value": 832.2410041715318,
+            "invested": 861.4000000000001
+          },
+          {
+            "date": "01/08/2026",
+            "value": 829.743388134647,
+            "invested": 861.4000000000001
+          },
+          {
+            "date": "01/09/2026",
+            "value": 827.2457720977624,
+            "invested": 861.4000000000001
+          },
+          {
+            "date": "01/10/2026",
+            "value": 824.8287243201321,
+            "invested": 861.4000000000001
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791821342213,
+            "date": "2025-07-04",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 342.25,
+            "frais": 1.71,
+            "reference": "23096174"
+          },
+          {
+            "id": 1791822442360,
+            "date": "2026-02-10",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 514.87,
+            "frais": 2.57,
+            "reference": "25114083"
+          }
+        ],
+        "name": "Krugerrand 1/10oz Or",
+        "ticker": "KRUG1/10OZ",
+        "isin": "",
+        "categories": [
+          "Or & Métaux"
+        ],
+        "taxCategory": "COURS_LEGAL",
+        "cadrans": {
+          "primary": "OR",
+          "secondary": []
+        },
+        "qty": 2,
+        "frais": 4.279999999999999,
+        "invested": 861.4,
+        "value": 823.87,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2025-07-04",
+        "broker": "AU COFFRE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Or & Métaux",
+        "cadran": "OR",
+        "dividends": [],
+        "splits": [],
+        "weightGrams": 3.11,
+        "primePct": 0.07
+      },
+      {
+        "id": 1791821515026,
+        "buys": [
+          {
+            "date": "14/09/2025",
+            "type": "Achat Initial",
+            "qty": 1,
+            "price": 376.64,
+            "frais": 1.88,
+            "total": 378.52,
+            "reference": "AA38163"
+          }
+        ],
+        "history": [
+          {
+            "date": "01/09/2025",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/10/2025",
+            "value": 379.1286828562038,
+            "invested": 378.52
+          },
+          {
+            "date": "01/11/2025",
+            "value": 380.2456009051492,
+            "invested": 378.52
+          },
+          {
+            "date": "01/12/2025",
+            "value": 381.3250384826535,
+            "invested": 378.52
+          },
+          {
+            "date": "01/01/2026",
+            "value": 382.4404573127412,
+            "invested": 378.52
+          },
+          {
+            "date": "01/02/2026",
+            "value": 383.555876142829,
+            "invested": 378.52
+          },
+          {
+            "date": "01/03/2026",
+            "value": 384.56335121516634,
+            "invested": 378.52
+          },
+          {
+            "date": "01/04/2026",
+            "value": 385.6772708263964,
+            "invested": 378.52
+          },
+          {
+            "date": "01/05/2026",
+            "value": 386.75670840390075,
+            "invested": 378.52
+          },
+          {
+            "date": "01/06/2026",
+            "value": 387.87212723398846,
+            "invested": 378.52
+          },
+          {
+            "date": "01/07/2026",
+            "value": 388.95156481149274,
+            "invested": 378.52
+          },
+          {
+            "date": "01/08/2026",
+            "value": 390.0669836415805,
+            "invested": 378.52
+          },
+          {
+            "date": "01/09/2026",
+            "value": 391.1824024716683,
+            "invested": 378.52
+          },
+          {
+            "date": "01/10/2026",
+            "value": 392.2618400491726,
+            "invested": 378.52
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791821515622,
+            "date": "2025-09-14",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 376.64,
+            "frais": 1.88,
+            "reference": "AA38163"
+          }
+        ],
+        "name": "Vera Max 1/10 Ounce Gold",
+        "ticker": "VMAX1/10",
+        "isin": "",
+        "categories": [
+          "Or & Métaux"
+        ],
+        "taxCategory": "JETON",
+        "cadrans": {
+          "primary": "OR",
+          "secondary": []
+        },
+        "qty": 1,
+        "frais": 1.88,
+        "invested": 378.52,
+        "value": 392.69,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2025-09-14",
+        "broker": "AU COFFRE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Or & Métaux",
+        "cadran": "OR",
+        "dividends": [],
+        "splits": [],
+        "weightGrams": 3.11,
+        "primePct": 0.02
+      },
+      {
+        "id": 1791822581826,
+        "buys": [
+          {
+            "date": "09/03/2026",
+            "type": "Achat Initial",
+            "qty": 1,
+            "price": 181.08,
+            "frais": 0.91,
+            "total": 181.99,
+            "reference": "VRO52315"
+          }
+        ],
+        "history": [
+          {
+            "date": "01/03/2026",
+            "value": 0,
+            "invested": 0
+          },
+          {
+            "date": "01/04/2026",
+            "value": 204.15796440072003,
+            "invested": 181.99
+          },
+          {
+            "date": "01/05/2026",
+            "value": 233.17784507075356,
+            "invested": 181.99
+          },
+          {
+            "date": "01/06/2026",
+            "value": 263.1650550964548,
+            "invested": 181.99
+          },
+          {
+            "date": "01/07/2026",
+            "value": 292.18493576648837,
+            "invested": 181.99
+          },
+          {
+            "date": "01/08/2026",
+            "value": 322.17214579218967,
+            "invested": 181.99
+          },
+          {
+            "date": "01/09/2026",
+            "value": 352.1593558178909,
+            "invested": 181.99
+          },
+          {
+            "date": "01/10/2026",
+            "value": 381.1792364879244,
+            "invested": 181.99
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791822582050,
+            "date": "2026-03-09",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 181.08,
+            "frais": 0.91,
+            "reference": "VRO52315"
+          }
+        ],
+        "name": "Vera One 1/10 Ounce Gold (Or Pur 999.9)",
+        "ticker": "VO1/10OZ",
+        "isin": "",
+        "categories": [
+          "Or & Métaux"
+        ],
+        "taxCategory": "JETON",
+        "cadrans": {
+          "primary": "OR",
+          "secondary": []
+        },
+        "qty": 1,
+        "frais": 0.91,
+        "invested": 181.99,
+        "value": 392.69,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2026-03-09",
+        "broker": "AU COFFRE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Or & Métaux",
+        "cadran": "OR",
+        "dividends": [],
+        "splits": [],
+        "weightGrams": 3.11,
+        "primePct": 0.02
+      },
+      {
+        "id": 1791823042966,
+        "buys": [
+          {
+            "date": "24/09/2026",
+            "type": "Achat Initial",
+            "qty": 1,
+            "price": 229.58,
+            "frais": 1.15,
+            "total": 230.73000000000002,
+            "reference": "VTM020943"
+          }
+        ],
+        "history": [
+          {
+            "date": "24/09/2026",
+            "value": 230.73000000000002,
+            "invested": 230.73000000000002
+          },
+          {
+            "date": "12/10/2026",
+            "value": 199.5,
+            "invested": 230.73000000000002
+          }
+        ],
+        "lots": [
+          {
+            "id": 1791823043103,
+            "date": "2026-09-24",
+            "qty": 1,
+            "qtyRemaining": 1,
+            "price": 229.58,
+            "frais": 1.15,
+            "reference": "VTM020943"
+          }
+        ],
+        "name": "Vera Valor 1/20 Ounce Gold (Or Pur 999.9)",
+        "ticker": "VV1/20OZ",
+        "isin": "",
+        "categories": [
+          "Or & Métaux"
+        ],
+        "taxCategory": "JETON",
+        "cadrans": {
+          "primary": "OR",
+          "secondary": []
+        },
+        "qty": 1,
+        "frais": 1.15,
+        "invested": 230.73000000000002,
+        "value": 199.5,
+        "envelope": "",
+        "envelopeOpenedAt": "",
+        "zone": "UE",
+        "yahooTicker": "",
+        "valuationMode": "QUOTE",
+        "purchaseDate": "2026-09-24",
+        "broker": "AU COFFRE",
+        "currency": "EUR",
+        "esgScore": null,
+        "isPaper": true,
+        "category": "Or & Métaux",
+        "cadran": "OR",
+        "dividends": [],
+        "splits": [],
+        "weightGrams": 1.58,
+        "primePct": 0.02
+      }
+    ],
+    "cessions": [],
+    "arbitrages": [],
+    "cadranNames": {
+      "OR": "OR",
+      "MONNAIES": "MONNAIES / DEVISES",
+      "ASIE": "ACTIONS / ASIE",
+      "PETROLE": "PÉTROLE / COMMODITIES"
+    },
+    "taxRegimeMode": "BAREME",
+    "taxTMI": 0.3
+  }
+}

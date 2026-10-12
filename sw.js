@@ -15,7 +15,7 @@
 // « fantômes » impossibles à reproduire en DevTools.
 // =====================================================================
 
-const SW_VERSION = 'v1.0.2';                    // ← Bumper à chaque deploy
+const SW_VERSION = 'v1.0.21';                   // ← Bumper à chaque deploy
 const CACHE_PREFIX = 'patrimonial';
 const CACHE_STATIC = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const CACHE_CDN    = `${CACHE_PREFIX}-cdn-${SW_VERSION}`;
@@ -31,6 +31,7 @@ const APP_SHELL = [
     './',
     './index.html',
     './style.css',
+    './tailwind-config.js',
     './manifest.json',
     './icon.svg',
 
@@ -77,6 +78,7 @@ const APP_SHELL = [
     './app41-pwa.js',
     './app42-dead-lines.js',
     './app43-mc-worker.js',
+    './app44-tab-filters.js',
     './monte-carlo-worker.js',
     './tests.js',
     './app7-init.js'

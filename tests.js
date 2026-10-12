@@ -1339,29 +1339,50 @@ _suite('_enrichSnapshotsWithVariations');
     assertEq(enriched[enriched.length - 1].month, '2024-01', '_enrichSnapshotsWithVariations : 2024-01 en queue');
 
     // Cas MoM : 2025-02 vs 2025-01 (12500 - 12000 = +500)
+    // ⚠ Test robuste : vérifie d'abord que feb et feb.mom existent
     const feb = enriched.find(s => s.month === '2025-02');
-    assertTrue(feb.mom !== null, '_enrichSnapshotsWithVariations : 2025-02 a un MoM');
-    assertEq(feb.mom.deltaEUR, 500, '_enrichSnapshotsWithVariations : MoM 2025-02 = +500 €');
-    assertApprox(feb.mom.deltaPct, 4.17, 0.01, '_enrichSnapshotsWithVariations : MoM % 2025-02 ≈ +4,17 %');
+    assertTrue(feb !== undefined, '_enrichSnapshotsWithVariations : snapshot 2025-02 trouvé');
+    if (feb && feb.mom) {
+        assertEq(feb.mom.deltaEUR, 500, '_enrichSnapshotsWithVariations : MoM 2025-02 = +500 €');
+        assertApprox(feb.mom.deltaPct, 4.17, 0.01, '_enrichSnapshotsWithVariations : MoM % 2025-02 ≈ +4,17 %');
+    } else {
+        _assert(false, '_enrichSnapshotsWithVariations : 2025-02 doit avoir un MoM',
+            'moM est null — la liste ne contient probablement pas assez de snapshots');
+    }
 
     // Cas MoM négatif : 2025-03 vs 2025-02 (11800 - 12500 = -700)
     const mar = enriched.find(s => s.month === '2025-03');
-    assertEq(mar.mom.deltaEUR, -700, '_enrichSnapshotsWithVariations : MoM 2025-03 = -700 €');
-    assertTrue(mar.mom.deltaPct < 0, '_enrichSnapshotsWithVariations : MoM % 2025-03 négatif');
+    assertTrue(mar !== undefined, '_enrichSnapshotsWithVariations : snapshot 2025-03 trouvé');
+    if (mar && mar.mom) {
+        assertEq(mar.mom.deltaEUR, -700, '_enrichSnapshotsWithVariations : MoM 2025-03 = -700 €');
+        assertTrue(mar.mom.deltaPct < 0, '_enrichSnapshotsWithVariations : MoM % 2025-03 négatif');
+    } else {
+        _assert(false, '_enrichSnapshotsWithVariations : 2025-03 doit avoir un MoM', 'moM est null');
+    }
 
     // Cas MoM null : le premier snapshot (2024-01) n'a pas de MoM
     const jan24 = enriched.find(s => s.month === '2024-01');
-    assertNull(jan24.mom, '_enrichSnapshotsWithVariations : 2024-01 n\'a pas de MoM (premier)');
+    assertTrue(jan24 !== undefined, '_enrichSnapshotsWithVariations : snapshot 2024-01 trouvé');
+    if (jan24) {
+        assertNull(jan24.mom, '_enrichSnapshotsWithVariations : 2024-01 n\'a pas de MoM (premier)');
+    }
 
-    // Cas YoY : 2025-01 vs 2024-01 (12000 - 10000 = +2000) → index 1 de la liste triée ascendante → 12 rangs plus tôt
+    // Cas YoY : 2025-01 vs 2024-01 (12000 - 10000 = +2000)
     const jan25 = enriched.find(s => s.month === '2025-01');
-    assertTrue(jan25.yoy !== null, '_enrichSnapshotsWithVariations : 2025-01 a un YoY');
-    assertEq(jan25.yoy.deltaEUR, 2000, '_enrichSnapshotsWithVariations : YoY 2025-01 = +2000 €');
-    assertApprox(jan25.yoy.deltaPct, 20.00, 0.01, '_enrichSnapshotsWithVariations : YoY % 2025-01 = +20 %');
+    assertTrue(jan25 !== undefined, '_enrichSnapshotsWithVariations : snapshot 2025-01 trouvé');
+    if (jan25 && jan25.yoy) {
+        assertEq(jan25.yoy.deltaEUR, 2000, '_enrichSnapshotsWithVariations : YoY 2025-01 = +2000 €');
+        assertApprox(jan25.yoy.deltaPct, 20.00, 0.01, '_enrichSnapshotsWithVariations : YoY % 2025-01 = +20 %');
+    } else {
+        _assert(false, '_enrichSnapshotsWithVariations : 2025-01 doit avoir un YoY', 'yoY est null');
+    }
 
     // Cas YoY null : 2024-12 (pas de 2023-12)
     const dec24 = enriched.find(s => s.month === '2024-12');
-    assertNull(dec24.yoy, '_enrichSnapshotsWithVariations : 2024-12 n\'a pas de YoY');
+    assertTrue(dec24 !== undefined, '_enrichSnapshotsWithVariations : snapshot 2024-12 trouvé');
+    if (dec24) {
+        assertNull(dec24.yoy, '_enrichSnapshotsWithVariations : 2024-12 n\'a pas de YoY');
+    }
 
     // Restaure
     localStorage.removeItem(MONTHLY_SNAPSHOTS_KEY);
@@ -2511,20 +2532,26 @@ _suite('detectStaleTheses');
     assertEq(detectStaleTheses().length, 0, 'detectStaleTheses : thèse ancienne en gain → 0');
 
     // --- Cas 4 : thèse ancienne + perte → détecté ---
+    // ⚠ Fix 2026 : vérifie que r4[0] existe AVANT d'accéder à .asset
+    // (avant, un échec silencieux de la détection faisait crasher tout le test)
     assets[0].value = 50;    // perte -50 % (sous le seuil -20 %)
     const r4 = detectStaleTheses();
     assertEq(r4.length, 1, 'detectStaleTheses : thèse ancienne + perte → 1');
-    assertEq(r4[0].asset.id, 942001, 'detectStaleTheses : bon actif');
-    assertTrue(r4[0].ageDays >= 500, 'detectStaleTheses : ageDays ≥ 500');
-    assertApprox(r4[0].pnlPct, -50, 0.5, 'detectStaleTheses : pnlPct ≈ -50 %');
+    if (r4.length > 0 && r4[0]) {
+        assertEq(r4[0].asset.id, 942001, 'detectStaleTheses : bon actif');
+        assertTrue(r4[0].ageDays >= 500, 'detectStaleTheses : ageDays ≥ 500');
+        assertApprox(r4[0].pnlPct, -50, 0.5, 'detectStaleTheses : pnlPct ≈ -50 %');
+    } else {
+        _assert(false, 'detectStaleTheses : r4[0] doit exister',
+            `r4.length = ${r4.length} — la détection a échoué silencieusement`);
+    }
 
     // --- Cas 5 : perte légère (> -20 %) → pas détecté ---
-    assets[0].value = 85;    // perte -15 % (au-dessus du seuil -20 %)
+    if (assets[0]) assets[0].value = 85;    // perte -15 % (au-dessus du seuil -20 %)
     assertEq(detectStaleTheses().length, 0, 'detectStaleTheses : perte < 20 % → 0');
 
     // --- Cas 6 : tri par sévérité décroissante ---
     assets.length = 0;
-    // Créer 3 actifs avec des profils de sévérité différents
     const createAsset = (id, name, value, invested, ageDays) => {
         assets.push({
             id, name, ticker: name,
@@ -2534,16 +2561,18 @@ _suite('detectStaleTheses');
         });
         setAssetThesis(id, 'Thèse');
         const a = assets.find(x => x.id === id);
-        a.thesis.lastReviewedAt = Date.now() - ageDays * 864e5;
+        if (a && a.thesis) a.thesis.lastReviewedAt = Date.now() - ageDays * 864e5;
     };
-    createAsset(950001, 'Light', 800, 1000, 400);      // -20 % sur 400 j → seuil juste atteint
-    createAsset(950002, 'Severe', 300, 1000, 800);     // -70 % sur 800 j → très sévère
-    createAsset(950003, 'Medium', 500, 1000, 500);     // -50 % sur 500 j → moyen
+    createAsset(950001, 'Light', 800, 1000, 400);
+    createAsset(950002, 'Severe', 300, 1000, 800);
+    createAsset(950003, 'Medium', 500, 1000, 500);
 
     const r6 = detectStaleTheses();
     assertEq(r6.length, 3, 'detectStaleTheses : 3 détectés');
-    assertEq(r6[0].asset.name, 'Severe', 'detectStaleTheses : "Severe" en 1er (plus critique)');
-    assertEq(r6[2].asset.name, 'Light', 'detectStaleTheses : "Light" en dernier');
+    if (r6.length >= 3) {
+        assertEq(r6[0].asset.name, 'Severe', 'detectStaleTheses : "Severe" en 1er (plus critique)');
+        assertEq(r6[2].asset.name, 'Light', 'detectStaleTheses : "Light" en dernier');
+    }
 
     // --- Cas 7 : paper trading exclu ---
     assets.push({

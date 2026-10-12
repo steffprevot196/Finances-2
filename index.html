@@ -43,11 +43,14 @@
                                https://api.coingecko.com
                                https://api.frankfurter.dev
                                https://finnhub.io
-                               https://xaus.com
                                https://www.googleapis.com
                                https://accounts.google.com
                                https://oauth2.googleapis.com
-                               https://api.twelvedata.com;
+                               https://api.twelvedata.com
+                               https://api.allorigins.win
+                               https://corsproxy.io
+                               https://stooq.com
+                               https://query1.finance.yahoo.com;
                    img-src 'self' data:;
                    style-src 'self' 'unsafe-inline'
                              https://fonts.googleapis.com
@@ -81,25 +84,8 @@
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        darkBg: '#0b0f19',
-                        cardBg: '#111827',
-                        cardBorder: '#1f2937',
-                        accentGreen: '#10b981',
-                        accentBlue: '#3b82f6',
-                        accentPurple: '#8b5cf6',
-                        accentAmber: '#f59e0b',
-                        accentRed: '#ef4444'
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Configuration Tailwind externalisée (Chantier CSP 2026) -->
+    <script src="tailwind-config.js"></script>
     <!-- FontAwesome icons (version épinglée, SRI désactivé) -->
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -204,8 +190,11 @@
                 </div>
             </div>
 
-            <button onclick="fetchLivePrices()" id="btn-live-prices" class="px-3 py-1.5 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-700/50 hover:bg-emerald-900/80 text-xs font-medium transition flex items-center gap-1.5 shadow" title="Actualiser crypto/devises automatiquement, puis mise à jour manuelle groupée pour le reste du portefeuille">
+            <button onclick="fetchLivePrices()" id="btn-live-prices" class="px-3 py-1.5 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-700/50 hover:bg-emerald-900/80 text-xs font-medium transition flex items-center gap-1.5 shadow" title="Actualiser crypto/devises/actions automatiquement (Or et Argent valorisés automatiquement aussi)">
                 <i class="fa-solid fa-arrows-rotate" id="icon-refresh-prices"></i> Actualiser les cours
+            </button>
+            <button onclick="forceRefreshMetals()" id="btn-refresh-metals" class="px-3 py-1.5 rounded-lg bg-amber-950/60 text-amber-300 border border-amber-700/50 hover:bg-amber-900/80 text-xs font-medium transition flex items-center gap-1.5 shadow" title="Forcer la mise à jour des cours Or et Argent (Yahoo GC=F / SI=F, cache 30 min) — valorise toutes les pièces AuCoffre et lingots">
+                <i class="fa-solid fa-coins" id="icon-refresh-metals"></i> Actualiser Or/Argent
             </button>
             <button onclick="refreshRealPriceHistory()" id="btn-refresh-history" class="px-3 py-1.5 rounded-lg bg-teal-950/60 text-teal-300 border border-teal-700/50 hover:bg-teal-900/80 text-xs font-medium transition flex items-center gap-1.5 shadow" title="Télécharger l'historique réel des cours (1 an) pour les cryptos et devises reconnues">
                 <i class="fa-solid fa-chart-line" id="icon-refresh-history"></i> Historique de prix
@@ -267,6 +256,9 @@
                 <input type="checkbox" id="paper-include-stats" onchange="setPaperIncludeInStats(this.checked)" class="accent-purple-500">
                 Inclure dans les stats
             </label>
+            <button onclick="promoteAllPaperAssets()" class="px-3 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 hover:bg-emerald-900/70 text-[11px] font-medium transition flex items-center gap-1.5" title="Convertir TOUTES les positions papier en positions réelles (ne modifie pas les calculs, juste le statut)">
+                <i class="fa-solid fa-arrow-up-right-dots text-[10px]"></i> Promouvoir tout en réel
+            </button>
             <button onclick="deleteAllPaperAssets()" class="px-3 py-1.5 rounded-lg bg-rose-950/60 border border-rose-800/50 text-rose-300 hover:bg-rose-900/70 text-[11px] font-medium transition flex items-center gap-1.5" title="Supprimer toutes les positions papier (tous scénarios confondus)">
                 <i class="fa-solid fa-trash-can text-[10px]"></i> Purger tout
             </button>
@@ -522,6 +514,62 @@
                     </div>
                 </div>
                 <div id="theses-review-wrap"></div>
+            </div>
+
+            <!-- HISTOGRAMME — P&L réalisé & potentiel par année (Ajout 2026) -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-column text-indigo-400"></i> Performance annuelle
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            P&amp;L <span class="text-blue-400 font-bold">réalisé</span> (cessions de l'année)
+                            vs P&amp;L <span class="text-purple-400 font-bold">potentiel</span> (positions acquises cette année-là, encore détenues).
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0 text-[11px] text-gray-500">
+                        <button onclick="debugPortfolioData()" class="px-2 py-1 rounded-lg bg-gray-900 border border-gray-800 text-[10px] text-gray-400 hover:text-amber-300 hover:border-amber-800/60 transition flex items-center gap-1" title="Afficher le diagnostic détaillé dans la console (F12)">
+                            <i class="fa-solid fa-bug text-[10px]"></i> Diagnostic
+                        </button>
+                        <span>Basculer :</span>
+                        <div class="flex rounded-lg bg-gray-950 border border-gray-800 p-0.5 text-[10px]">
+                            <button id="annual-pnl-btn-eur" onclick="setAnnualPnlMode('EUR')" class="px-2 py-1 rounded transition bg-indigo-950 text-indigo-300">€</button>
+                            <button id="annual-pnl-btn-pct" onclick="setAnnualPnlMode('PCT')" class="px-2 py-1 rounded transition text-gray-400 hover:text-white">%</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                    <div class="bg-gray-950 border border-blue-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">P&amp;L réalisé total</div>
+                        <div class="font-mono font-bold text-white" id="annual-pnl-stat-realized">0,00 €</div>
+                        <div class="text-[9px] text-gray-500" id="annual-pnl-stat-realized-detail">0 cession(s)</div>
+                    </div>
+                    <div class="bg-gray-950 border border-purple-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">P&amp;L latent total</div>
+                        <div class="font-mono font-bold text-white" id="annual-pnl-stat-latent">0,00 €</div>
+                        <div class="text-[9px] text-gray-500" id="annual-pnl-stat-latent-detail">0 actif(s)</div>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Meilleure année</div>
+                        <div class="font-mono font-bold text-emerald-400" id="annual-pnl-stat-best">—</div>
+                        <div class="text-[9px] text-gray-500" id="annual-pnl-stat-best-year">—</div>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Pire année</div>
+                        <div class="font-mono font-bold text-rose-400" id="annual-pnl-stat-worst">—</div>
+                        <div class="text-[9px] text-gray-500" id="annual-pnl-stat-worst-year">—</div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 h-72 relative">
+                    <canvas id="annualPnlChart"></canvas>
+                    <div id="annual-pnl-empty" class="hidden absolute inset-0 flex flex-col items-center justify-center text-gray-500 text-xs gap-2">
+                        <i class="fa-solid fa-chart-column text-3xl text-gray-700"></i>
+                        <div>Ajoutez des actifs ou enregistrez des cessions pour voir la performance annuelle.</div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -2158,7 +2206,7 @@
                             <tr>
                                 <th class="p-3">Date Cession</th>
                                 <th class="p-3">Type / Libellé</th>
-                                <th class="p-3 text-right">Prix Cession Net</th>
+                                <th class="p-3 text-right">Prix Cession Brut</th>
                                 <th class="p-3 text-right">Prix d'Achat / PRU</th>
                                 <th class="p-3">Détention / Régime</th>
                                 <th class="p-3 text-right">Plus/Moins-Value Brute</th>
@@ -2525,6 +2573,30 @@
             <button onclick="openAddGoalModal()" class="px-3.5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium flex items-center gap-1.5 shadow-lg shadow-cyan-900/40 transition whitespace-nowrap">
                 <i class="fa-solid fa-plus text-[10px]"></i> Nouvel objectif
             </button>
+        </div>
+
+        <!-- KPI GLOBAL DES OBJECTIFS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Objectifs définis</div>
+                <div class="text-lg font-bold font-mono text-cyan-400" id="goal-stat-count">0</div>
+                <div class="text-[10px] text-gray-500" id="goal-stat-atteints">0 atteint(s)</div>
+            </div>
+            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Patrimoine actuel</div>
+                <div class="text-lg font-bold font-mono text-white" id="goal-stat-current">0,00 €</div>
+                <div class="text-[10px] text-gray-500">base de tous les objectifs</div>
+            </div>
+            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Épargne mensuelle moyenne</div>
+                <div class="text-lg font-bold font-mono text-white" id="goal-stat-monthly">0,00 €</div>
+                <div class="text-[10px] text-gray-500">sur tous les objectifs</div>
+            </div>
+            <div class="bg-gray-900/60 border border-cyan-900/40 rounded-xl p-3">
+                <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Probabilité de succès</div>
+                <div class="text-lg font-bold font-mono text-cyan-400" id="goal-stat-success">—</div>
+                <div class="text-[10px] text-gray-500">Monte-Carlo, échantillon 1 000</div>
+            </div>
         </div>
 
         <!-- PANNEAU DCA PLANIFIÉ (Chantier §6) -->
@@ -3580,7 +3652,7 @@
                 <button onclick="goToSellStep2()" class="w-full mt-2 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium">Continuer</button>
             </div>
 
-            <div id="sell-step-2" class="hidden p-5 space-y-3 overflow-y-auto text-xs">
+            <div id="sell-step-2" class="hidden p-5 space-y-3 overflow-y-auto flex-1 min-h-0 text-xs">
                 <div class="flex justify-between items-center">
                     <p class="text-gray-400">Actifs possédés au <b id="sell-date-label" class="text-white"></b> :</p>
                     <button onclick="document.getElementById('sell-step-1').classList.remove('hidden'); document.getElementById('sell-step-2').classList.add('hidden');" class="text-indigo-400 hover:text-indigo-300 text-[11px]"><i class="fa-solid fa-arrow-left"></i> Changer la date</button>
@@ -3651,7 +3723,7 @@
                             <input type="date" id="cession-date-achat" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500">
                         </div>
                     </div>
-                                        <div class="grid grid-cols-3 gap-3">
+                                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-gray-400 mb-1">Quantité vendue</label>
                             <input type="number" step="any" id="cession-qty" placeholder="1" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500 font-mono">
@@ -3660,18 +3732,26 @@
                         <div>
                             <label class="block text-gray-400 mb-1">Prix de Vente Total (€) *</label>
                             <input type="number" step="any" id="cession-prix-vente" required placeholder="14470.00" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500 font-mono">
-                            <p id="cession-prix-vente-unit" class="text-[10px] text-gray-500 mt-1 font-mono">— €/unité</p>
+                            <label for="cession-prix-vente-unit" class="block text-gray-500 text-[10px] mt-1.5 mb-0.5">
+                                <i class="fa-solid fa-arrow-down-up-across-line text-[9px] mr-0.5 opacity-60"></i>
+                                Prix de vente unitaire (€/unité)
+                            </label>
+                            <input type="number" step="any" id="cession-prix-vente-unit" oninput="updateCessionTotalsFromUnit('vente')" placeholder="ex: 25.34" class="w-full bg-gray-900 border border-gray-800 rounded-lg p-1.5 text-[11px] text-gray-100 font-mono focus:outline-none focus:border-indigo-500">
                         </div>
                         <div>
                             <label class="block text-gray-400 mb-1">Prix d'Achat Total (PRU) *</label>
                             <input type="number" step="any" id="cession-prix-achat" required placeholder="9200.00" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500 font-mono">
-                            <p id="cession-prix-achat-unit" class="text-[10px] text-gray-500 mt-1 font-mono">— €/unité</p>
+                            <label for="cession-prix-achat-unit" class="block text-gray-500 text-[10px] mt-1.5 mb-0.5">
+                                <i class="fa-solid fa-arrow-down-up-across-line text-[9px] mr-0.5 opacity-60"></i>
+                                PRU unitaire (€/unité)
+                            </label>
+                            <input type="number" step="any" id="cession-prix-achat-unit" oninput="updateCessionTotalsFromUnit('achat')" placeholder="ex: 16.11" class="w-full bg-gray-900 border border-gray-800 rounded-lg p-1.5 text-[11px] text-gray-100 font-mono focus:outline-none focus:border-indigo-500">
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3 items-end">
                         <div>
                             <label class="block text-gray-400 mb-1">Frais de Cession (€)</label>
-                            <input type="number" step="any" id="cession-frais" value="0" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500 font-mono">
+                            <input type="number" step="any" id="cession-frais" value="0" oninput="updateCessionPreview()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500 font-mono">
                         </div>
                         <div id="cession-before2018-wrap" class="pb-2.5">
                             <label class="flex items-center gap-2 text-gray-300">
@@ -3684,6 +3764,38 @@
                             <input type="number" step="any" id="cession-coupons" value="0" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500 font-mono">
                         </div>
                     </div>
+
+                    <!-- APERÇU FISCAL EN DIRECT -->
+                    <div id="cession-preview" class="hidden bg-gray-950 border border-indigo-800/40 rounded-xl p-3 space-y-1.5 text-[11px] font-mono">
+                        <div class="text-[10px] text-indigo-300 uppercase tracking-wider font-bold mb-1 font-sans">
+                            <i class="fa-solid fa-calculator text-[9px] mr-1"></i> Aperçu fiscal de la cession
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Prix de vente brut</span>
+                            <span class="text-white" id="cession-preview-vente">—</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">− Prix d'achat (PRU)</span>
+                            <span class="text-white" id="cession-preview-achat">—</span>
+                        </div>
+                        <div class="flex justify-between border-t border-gray-800 pt-1">
+                            <span class="text-gray-400">= Plus-value brute</span>
+                            <span id="cession-preview-pv-brute">—</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">− Frais de cession</span>
+                            <span class="text-rose-400" id="cession-preview-frais">—</span>
+                        </div>
+                        <div class="flex justify-between border-t-2 border-gray-700 pt-1.5 mt-1">
+                            <span class="text-white font-bold font-sans">= Plus-value nette imposable</span>
+                            <span id="cession-preview-pv-nette" class="font-bold">—</span>
+                        </div>
+                        <div class="text-[10px] text-gray-500 italic font-sans mt-1">
+                            <i class="fa-solid fa-circle-info text-[9px] mr-0.5"></i>
+                            Les frais de cession sont <b>déductibles</b> du prix de vente pour le calcul de la plus-value imposable.
+                        </div>
+                    </div>
+
                     <div id="cession-enveloppe-wrap" class="grid grid-cols-3 gap-3">
                         <div>
                             <label class="block text-gray-400 mb-1">Enveloppe Fiscale</label>
@@ -4379,6 +4491,22 @@
                             <input type="number" step="any" id="add-price" required placeholder="135.00" oninput="recalculateAddTotals()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500 font-mono">
                         </div>
                     </div>
+
+                    <!-- === COÛT TOTAL D'ACQUISITION (crypto non-ETF uniquement) === -->
+                    <div id="add-total-cost-wrap" class="hidden bg-emerald-950/20 border border-emerald-800/40 rounded-lg p-3">
+                        <label class="block text-emerald-300 mb-1 text-[11px] font-bold uppercase tracking-wide">
+                            <i class="fa-solid fa-coins text-[10px] mr-1"></i>
+                            Coût total d'acquisition (€)
+                        </label>
+                        <input type="number" step="any" id="add-total-cost"
+                               placeholder="ex: 500.00"
+                               oninput="onTotalCostInput()"
+                               class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-emerald-500">
+                        <p class="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+                            Calculé automatiquement : <b>(Quantité × PRU) + Frais</b>.
+                            Modifiez cette valeur pour recalculer le PRU à partir du coût total réel (utile si vous connaissez le montant investi en € plutôt que le prix unitaire).
+                        </p>
+                    </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-gray-400 mb-1">Date d'Achat *</label>
@@ -4386,26 +4514,17 @@
                         </div>
                         <div>
                             <label class="block text-gray-400 mb-1">Courtier / Plateforme</label>
-                            <select id="add-broker-select" onchange="onBrokerSelectChange()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
-                                <option value="">— Aucun —</option>
-                                <option value="Boursorama">Boursorama</option>
-                                <option value="Bourse Direct">Bourse Direct</option>
-                                <option value="Fortuneo">Fortuneo</option>
-                                <option value="Trade Republic">Trade Republic</option>
-                                <option value="Interactive Brokers">Interactive Brokers</option>
-                                <option value="Degiro">Degiro</option>
-                                <option value="Saxo Banque">Saxo Banque</option>
-                                <option value="Binance">Binance</option>
-                                <option value="Coinbase">Coinbase</option>
-                                <option value="Kraken">Kraken</option>
-                                <option value="Ledger">Ledger</option>
-                                <option value="AuCoffre.com">AuCoffre.com</option>
-                                <option value="Linxea">Linxea</option>
-                                <option value="Yomoni">Yomoni</option>
-                                <option value="Nalo">Nalo</option>
-                                <option value="__custom__">➕ Autre (saisir manuellement)</option>
-                            </select>
-                            <input type="text" id="add-broker-custom" placeholder="Nom du courtier / plateforme" autocomplete="off" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500 mt-1.5 hidden">
+                            <div class="flex gap-1.5">
+                                <select id="add-broker-select" onchange="onBrokerSelectChange()" class="flex-1 min-w-0 bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500">
+                                    <option value="">— Aucun —</option>
+                                </select>
+                                <button type="button" onclick="promptAddBroker()" class="w-9 h-9 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-800/50 hover:bg-emerald-900/70 transition flex items-center justify-center flex-shrink-0" title="Ajouter un nouveau courtier">
+                                    <i class="fa-solid fa-plus text-[11px]"></i>
+                                </button>
+                                <button type="button" onclick="openBrokerManager()" class="w-9 h-9 rounded-lg bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-white transition flex items-center justify-center flex-shrink-0" title="Gérer les courtiers (renommer, supprimer)">
+                                    <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+                                </button>
+                            </div>
                             <input type="hidden" id="add-broker" value="">
                         </div>
                     </div>
@@ -4456,7 +4575,7 @@
                         </div>
                         <div>
                             <label class="block text-gray-400 mb-1">Frais d'Achat Total (€)</label>
-                            <input type="number" step="any" id="add-frais" value="0" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500 font-mono">
+                            <input type="number" step="any" id="add-frais" value="0" oninput="recalculateTotalCost()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-emerald-500 font-mono">
                         </div>
                     </div>
 
@@ -5013,6 +5132,7 @@
     <script src="app41-pwa.js"></script>
     <script src="app42-dead-lines.js"></script>
     <script src="app43-mc-worker.js"></script>
+    <script src="app44-tab-filters.js"></script>
     <script src="tests.js"></script>
     <script src="app7-init.js"></script>
 </body>

@@ -3,24 +3,92 @@
 // Aucune dépendance DOM. Chargé en premier.
 // =====================================================================
 
+
 // --- CATALOGUE AUCOFFRE.COM (Jetons Or/Argent, Pièces, Lingots) ---
+// Organisé par famille de produits, du format le plus GRAND au plus PETIT.
+//
+// Les prix `basePriceEUR` sont indicatifs (cours de référence à ~2500 €/oz).
+// Ils pré-remplissent le formulaire mais restent modifiables.
+//
+// taxCategory possibles :
+//   • JETON           → Art. 150 VJ CGI (exonéré si vente ≤ 5 000 €)
+//   • COURS_LEGAL     → TFMP 11,5 % ou TPV 36,2 % avec abattement 5 %/an
+//   • METAUX_PRECIEUX → Lingots : TFMP 11,5 % ou TPV
 const auCoffreCatalog = [
+    // ═══════════════════════════════════════════════════════════════
+    // VERA ONE — gamme originale (2019), jeton or 999.9
+    // ═══════════════════════════════════════════════════════════════
+    { name: 'Vera One 1 Ounce Gold (Or Pur 999.9)', ticker: 'VO1OZ', weightGrams: 31.10, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 2500.00 },
+    { name: 'Vera One 1/2 Ounce Gold (Or Pur 999.9)', ticker: 'VO1/2OZ', weightGrams: 15.55, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 1270.00 },
+    { name: 'Vera One 1/4 Ounce Gold (Or Pur 999.9)', ticker: 'VO1/4OZ', weightGrams: 7.78, primePct: 0.025, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 640.00 },
+    { name: 'Vera One 1/10 Ounce Gold (Or Pur 999.9)', ticker: 'VO1/10OZ', weightGrams: 3.11, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 268.00 },
+    { name: 'Vera One 1/20 Ounce Gold (Or Pur 999.9)', ticker: 'VO1/20OZ', weightGrams: 1.58, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 138.00 },
+
+    // ═══════════════════════════════════════════════════════════════
+    // VERA VALOR — gamme alternative, jeton or 999.9
+    // ═══════════════════════════════════════════════════════════════
     { name: 'Vera Valor 1 Ounce Gold (Or Pur 999.9)', ticker: 'VV1OZ', weightGrams: 31.10, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 2480.00 },
-    { name: 'Vera Valor 1/20 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/20OZ', weightGrams: 1.58, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 135.00 },
-    { name: 'Vera Valor 1/10 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/10OZ', weightGrams: 3.11, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 265.00 },
     { name: 'Vera Valor 1/2 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/2OZ', weightGrams: 15.55, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 1260.00 },
+    { name: 'Vera Valor 1/4 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/4OZ', weightGrams: 7.78, primePct: 0.025, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 630.00 },
+    { name: 'Vera Valor 1/10 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/10OZ', weightGrams: 3.11, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 265.00 },
+    { name: 'Vera Valor 1/20 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/20OZ', weightGrams: 1.58, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 135.00 },
+    { name: 'Vera Valor 1/25 Ounce Gold (Or Pur 999.9)', ticker: 'VV1/25OZ', weightGrams: 1.24, primePct: 0.03, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 110.00 },
+
+    // ═══════════════════════════════════════════════════════════════
+    // VERA MAX — gamme économique
+    // ═══════════════════════════════════════════════════════════════
+    { name: 'Vera Max 1/4 Ounce Gold', ticker: 'VMAX1/4', weightGrams: 7.78, primePct: 0.025, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 635.00 },
     { name: 'Vera Max 1/10 Ounce Gold', ticker: 'VMAX1/10', weightGrams: 3.11, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 270.00 },
+
+    // ═══════════════════════════════════════════════════════════════
+    // VERA SILVER — gamme argent
+    // ═══════════════════════════════════════════════════════════════
     { name: 'Vera Silver 1oz Argent', ticker: 'VS1OZ', weightGrams: 31.10, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 32.50 },
+    { name: 'Vera Silver 1/2oz Argent', ticker: 'VS1/2OZ', weightGrams: 15.55, primePct: 0.06, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'JETON', basePriceEUR: 17.50 },
+
+    // ═══════════════════════════════════════════════════════════════
+    // PIÈCES FRANÇAISES À COURS LÉGAL
+    // ═══════════════════════════════════════════════════════════════
     { name: 'Napoléon 20 Francs Or (Louis d\'Or)', ticker: 'NAP20', weightGrams: 5.80, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 445.00 },
     { name: 'Napoléon 10 Francs Or (Demi-Napoléon)', ticker: 'NAP10', weightGrams: 2.90, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 230.00 },
-    { name: 'Krugerrand 1oz Or', ticker: 'KRUG1OZ', weightGrams: 31.10, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2460.00 },
+    { name: 'Napoléon 5 Francs Or', ticker: 'NAP5', weightGrams: 1.45, primePct: 0.06, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 130.00 },
+    { name: '20 Francs Coq / Marianne Or', ticker: 'COQ20', weightGrams: 5.80, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 440.00 },
+    { name: '10 Francs Coq / Marianne Or', ticker: 'COQ10', weightGrams: 2.90, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 225.00 },
+
+    // ═══════════════════════════════════════════════════════════════
+    // PIÈCES INTERNATIONALES À COURS LÉGAL
+    // ═══════════════════════════════════════════════════════════════
+    { name: 'Krugerrand 1oz Or (Afrique du Sud)', ticker: 'KRUG1OZ', weightGrams: 31.10, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2460.00 },
+    { name: 'Krugerrand 1/2oz Or', ticker: 'KRUG1/2OZ', weightGrams: 15.55, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 1250.00 },
+    { name: 'Krugerrand 1/4oz Or', ticker: 'KRUG1/4OZ', weightGrams: 7.78, primePct: 0.06, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 640.00 },
+    { name: 'Krugerrand 1/10oz Or', ticker: 'KRUG1/10OZ', weightGrams: 3.11, primePct: 0.07, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 265.00 },
     { name: 'Souverain Elisabeth II / George V Or', ticker: 'SOV-OR', weightGrams: 7.32, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 550.00 },
+    { name: 'Maple Leaf 1oz Or (Canada)', ticker: 'MAPLE1OZ', weightGrams: 31.10, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2475.00 },
+    { name: 'Philharmonique 1oz Or (Autriche)', ticker: 'PHIL1OZ', weightGrams: 31.10, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2470.00 },
     { name: '50 Pesos Or Mexicain', ticker: 'PESO50', weightGrams: 37.50, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2980.00 },
-    { name: 'Maple Leaf 1oz Or', ticker: 'MAPLE1OZ', weightGrams: 31.10, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2475.00 },
-    { name: 'Philharmonique 1oz Or', ticker: 'PHIL1OZ', weightGrams: 31.10, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2470.00 },
-    { name: 'Lingot 1kg Or Pur 999', ticker: 'LING1KG', weightGrams: 1000, primePct: 0.01, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 78500.00 },
-    { name: 'Lingotin 100g Or Pur 999', ticker: 'LING100G', weightGrams: 100, primePct: 0.01, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 7880.00 }
+    { name: '20 Dollars US Double Eagle Or', ticker: 'USD20', weightGrams: 30.09, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2450.00 },
+    { name: 'American Eagle 1oz Or', ticker: 'EAGLE1OZ', weightGrams: 31.10, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2485.00 },
+    { name: 'Britannia 1oz Or (Royaume-Uni)', ticker: 'BRIT1OZ', weightGrams: 31.10, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2475.00 },
+    { name: 'Britannia 1/2oz Or (Royaume-Uni)', ticker: 'BRIT1/2OZ', weightGrams: 15.55, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 1255.00 },
+    { name: 'Britannia 1/4oz Or (Royaume-Uni)', ticker: 'BRIT1/4OZ', weightGrams: 7.78, primePct: 0.06, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 640.00 },
+    { name: 'Britannia 1/10oz Or (Royaume-Uni)', ticker: 'BRIT1/10OZ', weightGrams: 3.11, primePct: 0.07, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 260.00 },
+    { name: 'Panda 30g Or (Chine)', ticker: 'PANDA30G', weightGrams: 30.00, primePct: 0.05, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'COURS_LEGAL', basePriceEUR: 2400.00 },
+
+    // ═══════════════════════════════════════════════════════════════
+    // LINGOTS & LINGOTINS
+    // ═══════════════════════════════════════════════════════════════
+    { name: 'Lingot 1kg Or Pur 999.9', ticker: 'LING1KG', weightGrams: 1000, primePct: 0.01, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 79000.00 },
+    { name: 'Lingot 500g Or Pur 999.9', ticker: 'LING500G', weightGrams: 500, primePct: 0.012, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 39600.00 },
+    { name: 'Lingot 250g Or Pur 999.9', ticker: 'LING250G', weightGrams: 250, primePct: 0.015, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 19900.00 },
+    { name: 'Lingotin 100g Or Pur 999.9', ticker: 'LING100G', weightGrams: 100, primePct: 0.015, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 8000.00 },
+    { name: 'Lingotin 50g Or Pur 999.9', ticker: 'LING50G', weightGrams: 50, primePct: 0.02, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 4030.00 },
+    { name: 'Lingotin 20g Or Pur 999.9', ticker: 'LING20G', weightGrams: 20, primePct: 0.025, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 1630.00 },
+    { name: 'Lingotin 10g Or Pur 999.9', ticker: 'LING10G', weightGrams: 10, primePct: 0.03, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 830.00 },
+    { name: 'Lingotin 5g Or Pur 999.9', ticker: 'LING5G', weightGrams: 5, primePct: 0.04, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 425.00 },
+    { name: 'Lingotin 1g Or Pur 999.9', ticker: 'LING1G', weightGrams: 1, primePct: 0.08, category: 'Or & Métaux', cadran: 'OR', taxCategory: 'METAUX_PRECIEUX', basePriceEUR: 95.00 }
 ];
+
+
 
 // --- CATALOGUE ACTIONS / ETF / FOREX ---
 const popularMarketAssets = [
@@ -355,7 +423,30 @@ const MSCI_WORLD_ANNUAL_RETURNS_EUR = {
     2019: 0.300, 2020: 0.063, 2021: 0.287, 2022: -0.128, 2023: 0.196, 2024: 0.260
 };
 
-const CRYPTO_COINGECKO_IDS = { BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', ADA: 'cardano', XRP: 'ripple', DOGE: 'dogecoin', BNB: 'binancecoin', LTC: 'litecoin', DOT: 'polkadot', AVAX: 'avalanche-2', MATIC: 'matic-network', LINK: 'chainlink' };
+const CRYPTO_COINGECKO_IDS = {
+    BTC: 'bitcoin',
+    ETH: 'ethereum',
+    SOL: 'solana',
+    ADA: 'cardano',
+    XRP: 'ripple',
+    DOGE: 'dogecoin',
+    BNB: 'binancecoin',
+    LTC: 'litecoin',
+    DOT: 'polkadot',
+    AVAX: 'avalanche-2',
+    MATIC: 'matic-network',
+    POL: 'polygon-ecosystem-token',   // Polygon renommé MATIC → POL en sept. 2024
+    LINK: 'chainlink',
+    PIGCOIN: 'pigcoin-2',
+    SHIB: 'shiba-inu',
+    TRX: 'tron',
+    UNI: 'uniswap',
+    ATOM: 'cosmos',
+    NEAR: 'near',
+    APT: 'aptos',
+    ARB: 'arbitrum',
+    OP: 'optimism'
+};
 const CASH_CURRENCY_TICKERS = ['USD', 'JPY', 'CHF', 'GBP'];
 
 // =====================================================================
@@ -1991,34 +2082,281 @@ function undoCount() { return undoStack.length; }
 // =====================================================================
 // TIMELINE PORTEFEUILLE (utilisée par tous les graphiques)
 // =====================================================================
-function buildPortfolioTimeline(assetList = assets) {
-    const assetPoints = assetList.map(a => {
-        const pts = (a.history || [])
-            .map(h => ({ date: parseFlexDate(h.date), invested: h.invested ?? a.invested, value: h.value ?? a.value }))
-            .filter(p => p.date)
-            .sort((x, y) => x.date - y.date);
-        pts.push({ date: new Date(), invested: a.invested || 0, value: a.value || 0 });
+// =====================================================================
+// TIMELINE PORTEFEUILLE — v3 (fix définitif incohérence 2026)
+// ---------------------------------------------------------------------
+// 3 bugs corrigés par rapport à la v2 :
+//   A. Ne cumule PLUS les lots (1 point par actif max à la date d'acquisition)
+//      → évite les pics absurdes quand un actif a une quantité énorme
+//   B. Utilise statsAssets() pour respecter la préférence Paper Trading
+//      → plus de courbe vide quand le mode paper est actif
+//   C. Fallback en cascade : lots[].date → purchaseDate → buys[].date
+//      → aucun actif n'est plus "invisible" faute de date
+// =====================================================================
+function _getFirstAcquisitionDate(asset) {
+    let earliest = null;
+    (asset.lots || []).forEach(l => {
+        const d = parseFlexDate(l.date);
+        if (d && (!earliest || d < earliest)) earliest = d;
+    });
+    if (!earliest && asset.purchaseDate) {
+        const d = parseFlexDate(asset.purchaseDate);
+        if (d) earliest = d;
+    }
+    if (!earliest && Array.isArray(asset.buys)) {
+        for (const b of asset.buys) {
+            const d = parseFlexDate(b.date);
+            if (d && (!earliest || d < earliest)) earliest = d;
+        }
+    }
+    return earliest;
+}
+
+function buildPortfolioTimeline(assetList) {
+    // Utilise statsAssets() par défaut (respecte l'option Paper Trading)
+    const list = assetList || (typeof statsAssets === 'function' ? statsAssets() : assets);
+    const todayKey = new Date().toDateString();
+
+    const assetPoints = list.map(a => {
+        const curInv = a.invested || 0;
+        const curVal = a.value || 0;
+
+        // --- 1) Récupère l'historique existant, AVEC FILTRE ANTI-CORRUPTION ---
+        // Filtre : rejette tout point dont invested OU value est > 5× la
+        // valeur actuelle. Signature typique d'entrées historiques corrompues
+        // (imports d'anciennes versions, données Drive obsolètes, saisies
+        // fautives corrigées plus tard sans mettre à jour l'historique).
+        let pts = (a.history || [])
+            .map(h => {
+                const d = parseFlexDate(h.date);
+                if (!d) return null;
+                const inv = Number(h.invested);
+                const val = Number(h.value);
+                if (!Number.isFinite(inv) || !Number.isFinite(val)) return null;
+                return { date: d, invested: inv, value: val };
+            })
+            .filter(Boolean)
+            .filter(p => {
+                // Garde-fou anti-corruption v2 : plus strict que la v1.
+                // Un point est rejeté si invested OU value dépasse 3× la
+                // valeur actuelle. Seuil abaissé de 5× à 3× car sur des
+                // portefeuilles où plusieurs points historiques dépassent
+                // légèrement le seuil 5×, leur SOMME peut encore produire
+                // un pic incohérent.
+                if (curInv > 0 && p.invested > curInv * 3) return false;
+                if (curVal > 0 && p.value    > curVal * 3) return false;
+                return p.date.toDateString() !== todayKey;
+            });
+
+        // --- 2) Si AUCUN point valide → 1 SEUL point à la date d'acquisition ---
+        if (pts.length === 0) {
+            const acqDate = _getFirstAcquisitionDate(a);
+            if (acqDate && curInv > 0) {
+                pts.push({ date: acqDate, invested: curInv, value: curInv });
+            }
+        }
+
+        // --- 3) Toujours un point "aujourd'hui" ---
+        if (curInv > 0 || curVal > 0) {
+            pts.push({ date: new Date(), invested: curInv, value: curVal });
+        }
+
         pts.sort((x, y) => x.date - y.date);
-        return pts;
+
+        // --- 3bis) ⭐ AGRÉGATION MENSUELLE (fix 2026) ---
+        // Ne conserve qu'UN SEUL point par mois : le DERNIER du mois.
+        // Objectif : ~12 points par an sur le graphique → axe X lisible,
+        // courbe lissée, plus de dents de scie.
+        const monthlyPts = [];
+        let lastMonthKey = null;
+        pts.forEach(p => {
+            const mk = p.date.getFullYear() + '-' + String(p.date.getMonth() + 1).padStart(2, '0');
+            if (mk !== lastMonthKey) {
+                monthlyPts.push(p);
+                lastMonthKey = mk;
+            } else {
+                // Remplace le point du mois en cours par le plus récent
+                monthlyPts[monthlyPts.length - 1] = p;
+            }
+        });
+
+        return monthlyPts;
     });
 
-    const allDates = [...new Set(assetPoints.flat().map(p => p.date.getTime()))].sort((a, b) => a - b);
+    // --- 4) Union des dates (déjà mensuelles), dédupliquée par MOIS ---
+    const monthMap = new Map();
+    assetPoints.forEach(pts => pts.forEach(p => {
+        const mk = p.date.getFullYear() + '-' + String(p.date.getMonth() + 1).padStart(2, '0');
+        // Conserve la date la plus récente pour chaque mois
+        const existing = monthMap.get(mk);
+        if (!existing || p.date.getTime() > existing) {
+            monthMap.set(mk, p.date.getTime());
+        }
+    }));
+    const allDates = [...monthMap.values()].sort((a, b) => a - b);
+
     const labels = [], investedSeries = [], valueSeries = [];
 
     allDates.forEach(t => {
         let totalInvested = 0, totalValue = 0;
         assetPoints.forEach(pts => {
             let last = null;
-            for (const p of pts) { if (p.date.getTime() <= t) last = p; else break; }
-            if (last) { totalInvested += last.invested || 0; totalValue += last.value || 0; }
+            for (const p of pts) {
+                if (p.date.getTime() <= t) last = p;
+                else break;
+            }
+            if (last) {
+                totalInvested += last.invested || 0;
+                totalValue    += last.value    || 0;
+            }
         });
         labels.push(new Date(t).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
         investedSeries.push(Math.round(totalInvested * 100) / 100);
         valueSeries.push(Math.round(totalValue * 100) / 100);
     });
 
+    // --- 5) Auto-diagnostic (throttlé à 1 log par session) ---
+    // Le warning se déclenchait à chaque render (donc ~20× par chargement de
+    // page, car buildPortfolioTimeline est appelé par scoreCellHTML, riskCellHTML,
+    // calculateRiskMetrics, etc.). On le limite à un seul log par session.
+    if (!window._timelineAnomalyLogged) {
+        const realAssetCount = list.filter(a => !isPaperAsset(a)).length;
+        const hasRealAssets = realAssetCount > 0;
+        const currentTotalInv = list.reduce((s, a) => s + (a.invested || 0), 0);
+        const maxInv = Math.max(0, ...investedSeries);
+        if (hasRealAssets && currentTotalInv > 0 && maxInv > currentTotalInv * 2) {
+            window._timelineAnomalyLogged = true;
+            console.warn(
+                `[Timeline] Anomalie détectée : pic investi (${maxInv.toFixed(0)} €) ` +
+                `supérieur à 2× le total actuel (${currentTotalInv.toFixed(0)} €). ` +
+                `Lancez debugPortfolioData() dans la console pour identifier l'actif fautif.\n` +
+                `(Ce warning ne s'affichera plus pendant cette session.)`
+            );
+        }
+    }
+
     return { labels, investedSeries, valueSeries, rawDates: allDates };
 }
+
+// =====================================================================
+// DIAGNOSTIC CONSOLE — debugPortfolioData()
+// ---------------------------------------------------------------------
+// À taper dans la console (F12) pour identifier les actifs anormaux :
+//   • trie par invested décroissant
+//   • affiche les 10 premiers avec leur poids % dans le total
+//   • signale les actifs dont l'invested > 30 % du total (suspects)
+//   • distingue actifs réels et actifs papier
+// =====================================================================
+function debugPortfolioData() {
+    console.log('%c=== Diagnostic Patrimonial ===', 'color:#8b5cf6;font-weight:bold;font-size:13px;');
+
+    const real = assets.filter(a => !isPaperAsset(a));
+    const paper = assets.filter(a => isPaperAsset(a));
+
+    // Stats globales
+    const realInv = real.reduce((s, a) => s + (a.invested || 0), 0);
+    const realVal = real.reduce((s, a) => s + (a.value || 0), 0);
+    const paperInv = paper.reduce((s, a) => s + (a.invested || 0), 0);
+    const paperVal = paper.reduce((s, a) => s + (a.value || 0), 0);
+
+    console.log(`Actifs réels      : ${real.length}  (investi ${formatEUR(realInv)} · valeur ${formatEUR(realVal)})`);
+    console.log(`Actifs papier     : ${paper.length}  (investi ${formatEUR(paperInv)} · valeur ${formatEUR(paperVal)})`);
+    console.log(`Total investi     : ${formatEUR(realInv + paperInv)}`);
+    console.log(`Total valeur      : ${formatEUR(realVal + paperVal)}`);
+    console.log(`P&L latent (réel) : ${formatEUR(realVal - realInv)}`);
+    console.log('');
+
+    // Alerte si TOUS les actifs sont papier
+    if (real.length === 0 && paper.length > 0) {
+        console.warn(
+            '%c⚠️ TOUS vos actifs sont marqués comme "papier" (mode Paper Trading).\n' +
+            'Pour les convertir en positions réelles, cliquez sur le bouton\n' +
+            '"Promouvoir tout en réel" dans le bandeau violet en haut de l\'app,\n' +
+            'ou tapez : promoteAllPaperAssets()',
+            'color:#f59e0b;font-weight:bold;font-size:12px;line-height:1.6;'
+        );
+    }
+
+    // Top 10 par invested (réels d'abord, puis papier si aucun réel)
+    const displayList = real.length > 0 ? real : paper;
+    const displayLabel = real.length > 0 ? 'réels' : 'papier (⚠️ aucun réel)';
+    const sorted = [...displayList].sort((a, b) => (b.invested || 0) - (a.invested || 0));
+    const totalInv = sorted.reduce((s, a) => s + (a.invested || 0), 0);
+
+    console.log(`%cTop 10 actifs ${displayLabel} par montant investi :`, 'color:#06b6d4;font-weight:bold;');
+    console.table(sorted.slice(0, 10).map(a => {
+        const firstAcq = _getFirstAcquisitionDate(a);
+        return {
+            Nom: a.name,
+            Ticker: a.ticker || '—',
+            Investi: formatEUR(a.invested || 0),
+            Valeur: formatEUR(a.value || 0),
+            'Poids %': totalInv > 0 ? ((a.invested / totalInv) * 100).toFixed(1) + '%' : '0%',
+            'Nb lots': (a.lots || []).length,
+            'Date 1er achat': firstAcq ? firstAcq.toLocaleDateString('fr-FR') : '—',
+            Suspect: totalInv > 0 && (a.invested / totalInv) > 0.30 ? '⚠️ >30%' : ''
+        };
+    }));
+
+    return {
+        realCount: real.length,
+        paperCount: paper.length,
+        realInvested: realInv,
+        realValue: realVal,
+        paperInvested: paperInv,
+        paperValue: paperVal
+    };
+}
+
+// =====================================================================
+// PROMOTION MASSIVE — promouvoir TOUS les actifs papier en réel
+// ---------------------------------------------------------------------
+// Utilisé quand l'utilisateur réalise qu'il a créé ses actifs pendant
+// que le mode Paper Trading était actif (ce qui les a marqués isPaper).
+// Retire le flag `isPaper` et `paperScenarioId` de tous les actifs.
+//
+// ⚠ Aucune modification de valeur/invested : seul le statut change.
+// =====================================================================
+function promoteAllPaperAssets() {
+    const paperAssets = assets.filter(a => isPaperAsset(a));
+    if (!paperAssets.length) {
+        if (typeof toastInfo === 'function') {
+            toastInfo('Aucun actif à promouvoir', 'Tous vos actifs sont déjà réels.');
+        }
+        return;
+    }
+
+    const totalValue = paperAssets.reduce((s, a) => s + (a.value || 0), 0);
+    if (!confirm(
+        `Promouvoir ${paperAssets.length} actif(s) papier en positions réelles ?\n\n` +
+        `Valeur totale concernée : ${formatEUR(totalValue)}\n\n` +
+        `Effets :\n` +
+        `• Les actifs seront comptés comme positions réelles\n` +
+        `• Le mode Paper Trading pourra être désactivé proprement\n` +
+        `• Aucun montant n'est modifié (juste le statut)\n\n` +
+        `Réversible via Ctrl+Z.`
+    )) return;
+
+    if (typeof pushUndo === 'function') pushUndo('Promotion massive des actifs papier');
+
+    paperAssets.forEach(a => {
+        delete a.isPaper;
+        delete a.paperScenarioId;
+    });
+
+    saveToStorage();
+    if (typeof refreshAllUI === 'function') refreshAllUI();
+
+    if (typeof toastSuccess === 'function') {
+        toastSuccess(
+            'Actifs promus en réel',
+            `${paperAssets.length} position(s) sont désormais réelles.`
+        );
+    }
+}
+
+// Expose l'API globalement
+window.promoteAllPaperAssets = promoteAllPaperAssets;
 
 function filterTimelineByRange(tl, range) {
     if (!range || range === 'ALL') return tl;
@@ -2041,6 +2379,7 @@ function filterTimelineByRange(tl, range) {
     }
     endDate = Math.min(endDate, now);
 
+    // Trouve le dernier point ANTÉRIEUR au début de la plage
     let startInvested = 0, startValue = 0, hasPriorPoint = false;
     for (let i = 0; i < tl.rawDates.length; i++) {
         if (tl.rawDates[i] <= startDate) {
@@ -2050,10 +2389,12 @@ function filterTimelineByRange(tl, range) {
         } else break;
     }
 
+    // Points DANS la plage
     const inRangeIdx = tl.rawDates.map((d, i) => i).filter(i => tl.rawDates[i] > startDate && tl.rawDates[i] <= endDate);
 
     const labels = [], investedSeries = [], valueSeries = [], rawDates = [];
 
+    // Point d'entrée (1er du graphe)
     if (hasPriorPoint || inRangeIdx.length > 0) {
         labels.push(new Date(startDate).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
         investedSeries.push(startInvested);
@@ -2061,6 +2402,7 @@ function filterTimelineByRange(tl, range) {
         rawDates.push(startDate);
     }
 
+    // Points intermédiaires
     inRangeIdx.forEach(i => {
         labels.push(tl.labels[i]);
         investedSeries.push(tl.investedSeries[i]);
@@ -2068,12 +2410,33 @@ function filterTimelineByRange(tl, range) {
         rawDates.push(tl.rawDates[i]);
     });
 
-    if (inRangeIdx.length === 0 && hasPriorPoint) {
-        const closeDate = endDate;
-        labels.push(new Date(closeDate).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
-        investedSeries.push(startInvested);
-        valueSeries.push(startValue);
-        rawDates.push(closeDate);
+    // ✅ FIX 2026 : Point de fermeture SYSTÉMATIQUE à la fin de la plage.
+    // Avant, la courbe s'arrêtait net au dernier point connu (ex: mars 2025
+    // pour un filtre "Année 2025" alors qu'on est en 2026). Désormais, si
+    // la fin de plage est > 1 jour après le dernier point, on ajoute un
+    // point qui "prolonge" le dernier état connu — la courbe couvre donc
+    // TOUTE la période sélectionnée.
+    const lastPointTs = rawDates.length > 0 ? rawDates[rawDates.length - 1] : startDate;
+    const daysSinceLastPoint = (endDate - lastPointTs) / 864e5;
+
+    if (daysSinceLastPoint > 1) {
+        let closeInvested, closeValue;
+        if (inRangeIdx.length > 0) {
+            const lastIdx = inRangeIdx[inRangeIdx.length - 1];
+            closeInvested = tl.investedSeries[lastIdx];
+            closeValue = tl.valueSeries[lastIdx];
+        } else if (hasPriorPoint) {
+            closeInvested = startInvested;
+            closeValue = startValue;
+        } else {
+            closeInvested = 0;
+            closeValue = 0;
+        }
+
+        labels.push(new Date(endDate).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
+        investedSeries.push(closeInvested);
+        valueSeries.push(closeValue);
+        rawDates.push(endDate);
     }
 
     return { labels, investedSeries, valueSeries, rawDates };
@@ -2225,12 +2588,36 @@ function createSnapshot(label) {
     catch (err) { console.warn('Sauvegarde locale impossible (quota ?) :', err); }
 }
 
-function currentDataSnapshot() {
-    return {
+// Snapshot des données applicatives.
+//
+// `includeApiKeys` (défaut : false) :
+//   • false → export JSON, sauvegardes locales : les clés API sont EXCLUES
+//             (fichiers non chiffrés, lisibles par toute extension navigateur)
+//   • true  → push Google Drive : les clés API sont INCLUSES car l'enveloppe
+//             Drive est chiffrée AES-GCM 256 avant upload, donc illisible
+//             pour Google et pour tout tiers sans la phrase secrète.
+//
+// ⚠ Ne JAMAIS passer `true` à l'export JSON ou aux sauvegardes locales.
+function currentDataSnapshot(includeApiKeys = false) {
+    const snap = {
         assets, cessions, arbitrages, cadranNames,
         dataVersion: DATA_VERSION,
         savedAt: new Date().toISOString()
     };
+
+    if (includeApiKeys) {
+        // Clés API actuellement en mémoire volatile (session).
+        // Les clés brokers vivent dans _brokerKeysMemory (app27).
+        snap.apiKeys = {
+            finnhub:     typeof finnhubApiKey     === 'string' ? finnhubApiKey     : '',
+            twelveData:  typeof twelveDataApiKey  === 'string' ? twelveDataApiKey  : '',
+            brokerKeys:  (typeof _brokerKeysMemory === 'object' && _brokerKeysMemory)
+                          ? JSON.parse(JSON.stringify(_brokerKeysMemory))
+                          : {}
+        };
+    }
+
+    return snap;
 }
 
 function checkDailyAutoBackup() {

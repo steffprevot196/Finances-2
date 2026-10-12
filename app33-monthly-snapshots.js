@@ -136,18 +136,184 @@ function captureMonthlySnapshot() {
 }
 
 // ---------------------------------------------------------------------
-// CHECK AU BOOT + THROTTLE REFRESH
+// CHECK AU BOOT + THROTTLE REFRESH + RÉTRO-REMPLISSAGE
 // ---------------------------------------------------------------------
-// Appelée au démarrage : crée le snapshot du mois courant s'il n'existe
-// pas encore.
+// Appelée au démarrage :
+//   1. Crée (ou met à jour) le snapshot du mois courant
+//   2. Rétro-remplit les mois manquants à partir de l'historique
+//      (utile si l'app n'a pas été ouverte pendant plusieurs mois)
 function checkMonthlySnapshot() {
     const list = loadMonthlySnapshots();
     const current = _currentMonthKey();
+
     if (!list.some(s => s.month === current)) {
         console.info('[MonthlySnapshots] Création du snapshot pour', current);
-        captureMonthlySnapshot();
     }
+    // Dans tous les cas : met à jour le snapshot du mois courant avec les
+    // valeurs actuelles (les données du mois en cours évoluent en continu).
+    captureMonthlySnapshot();
+
+    // ⭐ RÉTRO-REMPLISSAGE : reconstitue les mois manquants depuis le début
+    // de l'historique. Ne remplace JAMAIS un snapshot existant.
+    try {
+        backfillMissingSnapshots();
+    } catch (err) {
+        console.warn('[MonthlySnapshots] Rétro-remplissage échoué :', err.message);
+    }
+
     _lastMonthlyRefreshAt = Date.now();
+}
+
+// ---------------------------------------------------------------------
+// RÉTRO-REMPLISSAGE DES MOIS MANQUANTS
+// ---------------------------------------------------------------------
+// Reconstruit les snapshots des mois manquants à partir de l'historique
+// des actifs (a.history) qui contient les valeurs réelles de chaque mois.
+//
+// Algorithme :
+//   1. Détermine la plage : du premier mois d'historique à aujourd'hui
+//   2. Identifie les mois manquants
+//   3. Pour chaque mois manquant : reconstitue un snapshot en agrégeant
+//      la valeur de chaque actif à la fin de ce mois (dernier point
+//      disponible dans son historique)
+//   4. Ne remplace JAMAIS un snapshot existant (pour ne pas écraser de
+//      vraies données avec des données reconstituées)
+function backfillMissingSnapshots() {
+    if (!Array.isArray(assets) || assets.length === 0) return { filled: 0 };
+
+    // ----- 1) Détermine la plage temporelle -----
+    let earliestTs = null;
+    assets.forEach(a => {
+        (a.history || []).forEach(h => {
+            const d = parseFlexDate(h.date);
+            if (d && (!earliestTs || d.getTime() < earliestTs)) earliestTs = d.getTime();
+        });
+        (a.lots || []).forEach(l => {
+            const d = parseFlexDate(l.date);
+            if (d && (!earliestTs || d.getTime() < earliestTs)) earliestTs = d.getTime();
+        });
+    });
+    if (!earliestTs) return { filled: 0 };
+
+    const startDate = new Date(earliestTs);
+    const today = new Date();
+
+    // ----- 2) Construit la liste des mois attendus -----
+    const expectedMonths = [];
+    const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    while (cursor <= today) {
+        const key = cursor.getFullYear() + '-' + String(cursor.getMonth() + 1).padStart(2, '0');
+        expectedMonths.push({
+            key,
+            endTs: new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 23, 59, 59).getTime()
+        });
+        cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    // ----- 3) Identifie les mois manquants -----
+    const existing = loadMonthlySnapshots();
+    const existingKeys = new Set(existing.map(s => s.month));
+    const missing = expectedMonths.filter(m => !existingKeys.has(m.key));
+
+    if (missing.length === 0) return { filled: 0 };
+
+    console.info(`[MonthlySnapshots] ${missing.length} mois manquants détectés — reconstruction…`);
+
+    // ----- 4) Reconstruit chaque mois manquant -----
+    const newSnapshots = missing.map(({ key, endTs }) => {
+        const realAssets = assets.filter(a => !isPaperAsset(a));
+
+        let totalValue = 0, totalInvested = 0;
+        const topFlopData = [];
+
+        realAssets.forEach(a => {
+            // Cherche le dernier point d'historique ≤ endTs
+            let lastVal = null, lastInv = null;
+            (a.history || []).forEach(h => {
+                const d = parseFlexDate(h.date);
+                if (d && d.getTime() <= endTs && Number.isFinite(h.value)) {
+                    if (!lastVal || d.getTime() > lastVal.date.getTime()) {
+                        lastVal = { date: d, value: h.value };
+                        lastInv = { date: d, value: Number.isFinite(h.invested) ? h.invested : h.value };
+                    }
+                }
+            });
+
+            // Fallback : si aucun point d'historique, utilise la date d'acquisition
+            if (!lastVal) {
+                const acq = (typeof _getFirstAcquisitionDate === 'function') ? _getFirstAcquisitionDate(a) : null;
+                if (acq && acq.getTime() <= endTs) {
+                    lastVal = { date: acq, value: a.value || 0 };
+                    lastInv = { date: acq, value: a.invested || 0 };
+                }
+            }
+
+            if (!lastVal) return;   // Actif pas encore acquis à cette date
+
+            totalValue    += lastVal.value || 0;
+            totalInvested += lastInv.value || 0;
+
+            const pnl = (lastVal.value || 0) - (lastInv.value || 0);
+            topFlopData.push({
+                id: a.id,
+                name: a.name,
+                ticker: a.ticker,
+                pnl,
+                pnlPct: lastInv.value > 0 ? (pnl / lastInv.value * 100) : 0
+            });
+        });
+
+        const pnl = totalValue - totalInvested;
+        const pnlPct = totalInvested > 0 ? (pnl / totalInvested * 100) : 0;
+
+        // Top 3 / Flop 3
+        topFlopData.sort((a, b) => b.pnl - a.pnl);
+        const top3  = topFlopData.slice(0, 3);
+        const flop3 = topFlopData.slice(-3).reverse();
+
+        // Allocation par cadran
+        const byCadran = {};
+        GAVE_QUADRANTS.forEach(q => {
+            byCadran[q] = realAssets
+                .filter(a => a.cadran === q)
+                .reduce((s, a) => {
+                    let v = 0;
+                    (a.history || []).forEach(h => {
+                        const d = parseFlexDate(h.date);
+                        if (d && d.getTime() <= endTs && Number.isFinite(h.value)) {
+                            v = h.value;
+                        }
+                    });
+                    return s + v;
+                }, 0);
+        });
+
+        return {
+            month: key,
+            capturedAt: endTs,
+            totalValue,
+            totalInvested,
+            pnl,
+            pnlPct,
+            positionsCount: topFlopData.length,
+            top3,
+            flop3,
+            byCadran,
+            _backfilled: true   // Marqueur : ce snapshot a été reconstitué
+        };
+    });
+
+    // ----- 5) Fusionne et persiste (trié chronologiquement) -----
+    const merged = existing.concat(newSnapshots)
+        .sort((a, b) => a.month.localeCompare(b.month));
+
+    while (merged.length > MONTHLY_SNAPSHOTS_MAX) merged.shift();
+
+    saveMonthlySnapshots(merged);
+    console.info(`[MonthlySnapshots] ${newSnapshots.length} snapshot(s) reconstitué(s) :`,
+        newSnapshots.map(s => s.month).join(', '));
+
+    return { filled: newSnapshots.length };
 }
 
 // Appelée par refreshAllUI() : met à jour le snapshot du mois courant
