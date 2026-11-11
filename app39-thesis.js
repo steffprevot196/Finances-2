@@ -161,7 +161,10 @@ function renderThesisPanel(asset) {
 
     // Ancre : on insère juste avant la section "Détail des achats successifs"
     const lotsTitle = content.querySelector('.text-xs.font-bold.uppercase');
-    const anchor = lotsTitle ? lotsTitle.closest('div') : null;
+    // On remonte jusqu'à l'enfant DIRECT de `content` (insertBefore exige un enfant direct)
+    let anchor = lotsTitle ? lotsTitle.closest('div') : null;
+    while (anchor && anchor.parentNode !== content) anchor = anchor.parentNode;
+    if (anchor === content || (anchor && anchor.parentNode !== content)) anchor = null;
 
     const thesis = hasThesis(asset) ? asset.thesis : null;
     const pnlPct = _getAssetPnlPct(asset);
@@ -235,7 +238,7 @@ function renderThesisPanel(asset) {
         `;
     }
 
-    if (anchor) {
+    if (anchor && anchor.parentNode === content) {
         content.insertBefore(panel, anchor);
     } else {
         content.appendChild(panel);

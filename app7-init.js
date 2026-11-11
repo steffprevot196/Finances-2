@@ -212,7 +212,24 @@ window.addEventListener('DOMContentLoaded', () => {
     //
     //          Un try/catch défensif évite qu'une erreur inattendue dans le
     //          module CSP ne bloque tout le démarrage de l'application.
-    if (typeof enableCspFallbackDelegator === 'function') {
+    //          ⚠ FIX double-exécution : si la CSP (<meta>) autorise encore
+    //          'unsafe-inline' dans script-src, les onclick= s'exécutent déjà
+    //          nativement. Activer en plus le délégateur les rejouait une
+    //          2ᵉ fois (boutons de filtre qui s'annulent, crayon qui échoue
+    //          avec « ID manquant », etc.). On ne l'active donc QUE si les
+    //          handlers inline sont réellement bloqués.
+    const _cspMeta = document.querySelector('meta[http-equiv="Content-Security-Policy" i]');
+    const _scriptSrc = ((_cspMeta ? _cspMeta.content : '').match(/script-src[^;]*/i) || [''])[0];
+    const _inlineHandlersBlocked = !!_cspMeta && _scriptSrc !== '' && !/'unsafe-inline'/i.test(_scriptSrc);
+    if (!_inlineHandlersBlocked) {
+        // app28-csp-audit.js peut s'être activé tout seul au chargement : on le coupe.
+        if (typeof isCspFallbackDelegatorActive === 'function' &&
+            typeof disableCspFallbackDelegator === 'function' &&
+            isCspFallbackDelegatorActive()) {
+            try { disableCspFallbackDelegator(); } catch (e) { console.warn('[Boot] Désactivation du délégateur CSP échouée :', e); }
+        }
+        console.info("[Boot] 'unsafe-inline' autorisé par la CSP → délégateur CSP désactivé (évite la double exécution des handlers).");
+    } else if (typeof enableCspFallbackDelegator === 'function') {
         try {
             enableCspFallbackDelegator();
         } catch (err) {

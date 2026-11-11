@@ -184,69 +184,93 @@ function openAddAssetModal() {
 // Ouverture du formulaire d'édition
 // ---------------------------------------------------------------------
 function openEditAssetModal(id) {
-    const asset = assets.find(a => a.id === id);
-    if (!asset) return;
+    try {
+        if (id === undefined || id === null || id === '') {
+            console.warn("[EditAsset] ID manquant");
+            alert("Erreur : Impossible de trouver cet actif. Veuillez rafraîchir la page.");
+            return;
+        }
+        // Sécurité : on s'assure que l'ID est bien un nombre
+        const numericId = typeof id === 'string' ? parseFloat(id) : id;
+        // Comparaison string pour éviter tout problème de typage
+        const asset = assets.find(a => String(a.id) === String(numericId));
+        
+        if (!asset) {
+            console.warn("[EditAsset] Actif introuvable pour l'ID:", id);
+            alert("Erreur : Impossible de trouver cet actif. Veuillez rafraîchir la page.");
+            return;
+        }
 
-    document.getElementById('add-edit-id').value = asset.id;
-    document.getElementById('add-name').value = asset.name;
-    document.getElementById('add-ticker').value = asset.ticker;
-    document.getElementById('add-yahoo-ticker').value = asset.yahooTicker || '';
-    document.getElementById('add-isin').value = asset.isin || '';
-    document.getElementById('add-reference').value = (asset.lots || []).map(l => l.reference).filter(Boolean).join(', ');
-    setFormTags(asset.categories);
-    updateTaxCategoryOptions(asset.taxCategory || 'NON_CONCERNE');
-    document.getElementById('add-cadran').value = asset.cadrans.primary;
-    document.getElementById('add-qty').value = asset.qty;
-    document.getElementById('add-frais').value = asset.frais || 0;
-    document.getElementById('add-value-wrap').classList.remove('hidden');
-    document.getElementById('add-value').setAttribute('required', 'required');
+        document.getElementById('add-edit-id').value = asset.id;
+        document.getElementById('add-name').value = asset.name;
+        document.getElementById('add-ticker').value = asset.ticker;
+        document.getElementById('add-yahoo-ticker').value = asset.yahooTicker || '';
+        document.getElementById('add-isin').value = asset.isin || '';
+        document.getElementById('add-reference').value = (asset.lots || []).map(l => l.reference).filter(Boolean).join(', ');
+        setFormTags(asset.categories);
+        updateTaxCategoryOptions(asset.taxCategory || 'NON_CONCERNE');
+        document.getElementById('add-cadran').value = asset.cadrans.primary;
+        document.getElementById('add-qty').value = asset.qty;
+        document.getElementById('add-frais').value = asset.frais || 0;
+        document.getElementById('add-value-wrap').classList.remove('hidden');
+        document.getElementById('add-value').setAttribute('required', 'required');
         _addValueTouched = true;   // en édition, la valeur existante ne doit pas être écrasée
-    document.getElementById('add-value').value = asset.qty
-        ? (asset.value / asset.qty).toFixed(4)
-        : asset.value;
-    document.getElementById('add-price').value = asset.qty
-        ? ((asset.invested - (asset.frais || 0)) / asset.qty).toFixed(4)
-        : asset.invested;
-    document.getElementById('add-purchase-date').value = asset.purchaseDate || '';
-    setBrokerValue(asset.broker || '');
+        
+        // Sécurité : conversion en nombre pour éviter les crashs .toFixed() sur undefined
+        const qty = Number(asset.qty) || 0;
+        const val = Number(asset.value) || 0;
+        const inv = Number(asset.invested) || 0;
+        const frais = Number(asset.frais) || 0;
 
-    document.getElementById('add-valuation-mode').value = asset.valuationMode || 'MANUAL';
-    document.getElementById('add-bond-coupon').value = asset.coupon !== undefined ? (asset.coupon * 100).toFixed(3) : '';
-    document.getElementById('add-bond-maturity').value = asset.maturity || '';
-    document.getElementById('add-bond-rating').value = asset.rating || '';
-    document.getElementById('add-bond-nominal').value = asset.nominal !== undefined ? asset.nominal : 1000;
+        document.getElementById('add-value').value = qty > 0 ? (val / qty).toFixed(4) : val;
+        document.getElementById('add-price').value = qty > 0 ? ((inv - frais) / qty).toFixed(4) : inv;
+        document.getElementById('add-purchase-date').value = asset.purchaseDate || '';
+        setBrokerValue(asset.broker || '');
 
-    updateAssetFormSections(asset.envelope);
-    document.getElementById('add-envelope-date').value = asset.envelopeOpenedAt || '';
-    document.getElementById('add-zone').value = asset.zone || 'UE';
-    updateEnvelopeDetails();
+        document.getElementById('add-valuation-mode').value = asset.valuationMode || 'MANUAL';
+        document.getElementById('add-bond-coupon').value = asset.coupon !== undefined ? (asset.coupon * 100).toFixed(3) : '';
+        document.getElementById('add-bond-maturity').value = asset.maturity || '';
+        document.getElementById('add-bond-rating').value = asset.rating || '';
+        document.getElementById('add-bond-nominal').value = asset.nominal !== undefined ? asset.nominal : 1000;
 
-    // Devise — restaure la devise et le taux d'achat (Chantier 1.2)
-    const curSel = document.getElementById('add-currency');
-    if (curSel) curSel.value = asset.currency || 'EUR';
-    const fxInput = document.getElementById('add-fx-rate');
-    if (fxInput) {
-        // En édition, on pré-remplit avec la valeur stockée SANS lancer de fetch
-        fxInput.value = asset.fxRateAtPurchase ? asset.fxRateAtPurchase.toFixed(6) : '';
+        updateAssetFormSections(asset.envelope);
+        document.getElementById('add-envelope-date').value = asset.envelopeOpenedAt || '';
+        document.getElementById('add-zone').value = asset.zone || 'UE';
+        updateEnvelopeDetails();
+
+        // Devise — restaure la devise et le taux d'achat (Chantier 1.2)
+        const curSel = document.getElementById('add-currency');
+        if (curSel) curSel.value = asset.currency || 'EUR';
+        const fxInput = document.getElementById('add-fx-rate');
+        if (fxInput) {
+            // En édition, on pré-remplit avec la valeur stockée SANS lancer de fetch
+            fxInput.value = asset.fxRateAtPurchase ? asset.fxRateAtPurchase.toFixed(6) : '';
+        }
+        // Marque comme "touche" pour empêcher un fetch automatique d'écraser la valeur
+        _addFxRateTouched = !!(asset.fxRateAtPurchase);
+        onCurrencyChange();
+
+        // Score ESG — préremplit avec la valeur stockée (Chantier §3)
+        const esgInput = document.getElementById('add-esg-score');
+        if (esgInput) {
+            esgInput.value = Number.isFinite(asset.esgScore) ? asset.esgScore : '';
+        }
+        updateEsgPreview();
+
+        document.getElementById('modal-add-asset-title').innerHTML = '<i class="fa-solid fa-pen text-emerald-400"></i> Modifier l\'Actif';
+        document.getElementById('modal-add-asset-submit-btn').innerText = 'Enregistrer les Modifications';
+        document.getElementById('search-results-container').classList.add('hidden');
+        document.getElementById('add-search-input').value = '';
+        
+        // Force le recalcul du coût total après restauration des valeurs
+        if (typeof recalculateTotalCost === 'function') recalculateTotalCost();
+        
+        document.getElementById('modal-add-asset').classList.remove('hidden');
+
+    } catch (err) {
+        console.error("Erreur d'édition de l'actif :", err);
+        alert("Impossible d'ouvrir l'éditeur : " + err.message);
     }
-    // Marque comme "touche" pour empêcher un fetch automatique d'écraser la valeur
-    _addFxRateTouched = !!(asset.fxRateAtPurchase);
-    onCurrencyChange();
-
-    // Score ESG — préremplit avec la valeur stockée (Chantier §3)
-    const esgInput = document.getElementById('add-esg-score');
-    if (esgInput) {
-        esgInput.value = Number.isFinite(asset.esgScore) ? asset.esgScore : '';
-    }
-    updateEsgPreview();
-
-    document.getElementById('modal-add-asset-title').innerHTML = '<i class="fa-solid fa-pen text-emerald-400"></i> Modifier l\'Actif';
-    document.getElementById('modal-add-asset-submit-btn').innerText = 'Enregistrer les Modifications';
-    document.getElementById('search-results-container').classList.add('hidden');
-    document.getElementById('add-search-input').value = '';
-    // Force le recalcul du coût total après restauration des valeurs
-    if (typeof recalculateTotalCost === 'function') recalculateTotalCost();
-    document.getElementById('modal-add-asset').classList.remove('hidden');
 }
 
 // ---------------------------------------------------------------------
@@ -743,133 +767,104 @@ async function triggerAssetSearch() {
 
     const results = [];
 
+    // ⭐ FIX 2026 : Résolution ISIN
+    const isinRegex = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i;
+    if (isinRegex.test(query)) {
+        const upperIsin = query.toUpperCase();
+        
+        // On vérifie d'abord si l'ISIN est déjà dans le catalogue local
+        const inCatalog = popularMarketAssets.some(a => (a.isin || '').toUpperCase() === upperIsin) ||
+                          (typeof auCoffreCatalog !== 'undefined' && auCoffreCatalog.some(a => (a.isin || '').toUpperCase() === upperIsin));
+
+        // Si on l'a en local, on n'affiche pas l'entrée générique (qui fait doublon)
+        if (!inCatalog) {
+            const isinResult = {
+                type: 'isin-generic',
+                badge: 'Recherche en cours…',
+            badgeColor: 'bg-amber-950 text-amber-300 border-amber-800/50',
+            name: `Actif ISIN ${upperIsin}`,
+            ticker: upperIsin.slice(0, 6),
+            yahooTicker: '',
+            isin: upperIsin,
+            category: 'Actions/ETF',
+            cadran: 'ASIE',
+            taxCategory: 'NON_CONCERNE',
+            priceEUR: 0,
+            _resolving: true,
+            _resolved: false
+        };
+        results.push(isinResult);
+
+        if (typeof resolveIsinToYahooTicker === 'function') {
+            resolveIsinToYahooTicker(upperIsin).then(resolved => {
+                const currentQuery = (document.getElementById('add-search-input')?.value || '').trim().toUpperCase();
+                if (currentQuery !== upperIsin) return;
+
+                if (resolved) {
+                    isinResult.name        = resolved.name;
+                    isinResult.ticker      = resolved.ticker;
+                    isinResult.yahooTicker = resolved.yahooTicker;
+                    isinResult.exchange    = resolved.exchange;
+                    isinResult.badge       = resolved.source + (resolved.exchange ? ' · ' + resolved.exchange : '');
+                    isinResult.badgeColor  = 'bg-emerald-950 text-emerald-300 border-emerald-800/50';
+                    isinResult._resolved   = true;
+                } else {
+                    isinResult.badge       = 'ISIN générique (non résolu)';
+                    isinResult.badgeColor  = 'bg-amber-950 text-amber-300 border-amber-800/50';
+                }
+                isinResult._resolving = false;
+                renderSearchResults(results);
+            }).catch(() => {
+                isinResult.badge = 'ISIN générique';
+                isinResult._resolving = false;
+                renderSearchResults(results);
+            });
+        } else {
+            isinResult.badge = 'ISIN générique';
+            isinResult._resolving = false;
+        }
+    }
+    }
+
     // 1) Catalogue AuCoffre
     auCoffreCatalog.forEach(c => {
         if (c.name.toLowerCase().includes(qLower) || c.ticker.toLowerCase().includes(qLower) || (c.isin || '').toLowerCase().includes(qLower)) {
-            results.push({
-                type: 'aucoffre',
-                badge: c.taxCategory === 'JETON' ? 'Jeton Or (Exo < 5k€)' : 'Or Cours Légitime',
-                badgeColor: c.taxCategory === 'JETON'
-                    ? 'bg-emerald-950 text-emerald-300 border-emerald-800/50'
-                    : 'bg-amber-950 text-amber-300 border-amber-800/50',
-                name: c.name,
-                ticker: c.ticker,
-                category: c.category,
-                cadran: c.cadran,
-                taxCategory: c.taxCategory,
-                priceEUR: c.basePriceEUR
-            });
+            results.push({ type: 'aucoffre', badge: c.taxCategory === 'JETON' ? 'Jeton Or (Exo < 5k€)' : 'Or Cours Légitime', badgeColor: c.taxCategory === 'JETON' ? 'bg-emerald-950 text-emerald-300 border-emerald-800/50' : 'bg-amber-950 text-amber-300 border-amber-800/50', name: c.name, ticker: c.ticker, category: c.category, cadran: c.cadran, taxCategory: c.taxCategory, priceEUR: c.basePriceEUR });
         }
     });
 
-        // 2) Catalogue Actions / ETF / Forex
-        popularMarketAssets.forEach(m => {
-            if (m.name.toLowerCase().includes(qLower) || m.ticker.toLowerCase().includes(qLower) || (m.isin || '').toLowerCase().includes(qLower)) {
-                results.push({
-                    type: 'market',
-                    badge: m.category === 'Devises/Liquidités' ? 'Devise / Forex' : 'Action / ETF',
-                    badgeColor: m.category === 'Devises/Liquidités'
-                        ? 'bg-blue-950 text-blue-300 border-blue-800/50'
-                        : 'bg-indigo-950 text-indigo-300 border-indigo-800/50',
-                    name: m.name,
-                    ticker: m.ticker,
-                    category: m.category,
-                    cadran: m.cadran,
-                    taxCategory: m.taxCategory || 'NON_CONCERNE',
-                    priceEUR: m.basePriceEUR
-                });
-            }
-        });
-    
-        // 2bis) Catalogue Crypto (Correction 4)
-        cryptoCatalog.forEach(c => {
-            if (c.name.toLowerCase().includes(qLower) || c.ticker.toLowerCase().includes(qLower) || (c.isin || '').toLowerCase().includes(qLower)) {
-                results.push({
-                    type: 'crypto',
-                    badge: 'Crypto',
-                    badgeColor: 'bg-purple-950 text-purple-300 border-purple-800/50',
-                    name: c.name,
-                    ticker: c.ticker,
-                    tags: ['Crypto'],
-                    cadran: 'CRYPTO',
-                    taxCategory: 'NON_CONCERNE',
-                    priceEUR: c.basePriceEUR
-                });
-            }
-        });
-    
-        // 3) Détection directe des devises courantes
-    if (qLower.includes('yen') || qLower === 'jpy') {
-        if (!results.some(r => r.ticker === 'JPY')) {
-            results.push({
-                name: 'Yen Japonais (JPY/EUR)', ticker: 'JPY', category: 'Devises/Liquidités',
-                cadran: 'MONNAIES', taxCategory: 'NON_CONCERNE',
-                badge: 'Devise Forex', badgeColor: 'bg-blue-950 text-blue-300 border-blue-800',
-                priceEUR: 0.0062
-            });
+    // 2) Catalogue Actions / ETF / Forex
+    popularMarketAssets.forEach(m => {
+        if (m.name.toLowerCase().includes(qLower) || m.ticker.toLowerCase().includes(qLower) || (m.isin || '').toLowerCase().includes(qLower)) {
+            results.push({ type: 'market', badge: m.category === 'Devises/Liquidités' ? 'Devise / Forex' : 'Action / ETF', badgeColor: m.category === 'Devises/Liquidités' ? 'bg-blue-950 text-blue-300 border-blue-800/50' : 'bg-indigo-950 text-indigo-300 border-indigo-800/50', name: m.name, ticker: m.ticker, category: m.category, cadran: m.cadran, taxCategory: m.taxCategory || 'NON_CONCERNE', priceEUR: m.basePriceEUR });
         }
-    } else if (qLower.includes('dollar') || qLower === 'usd') {
-        if (!results.some(r => r.ticker === 'USD')) {
-            results.push({
-                name: 'Dollar Américain (USD/EUR)', ticker: 'USD', category: 'Devises/Liquidités',
-                cadran: 'MONNAIES', taxCategory: 'NON_CONCERNE',
-                badge: 'Devise Forex', badgeColor: 'bg-blue-950 text-blue-300 border-blue-800',
-                priceEUR: 0.92
-            });
+    });
+
+    // 3) Crypto
+    cryptoCatalog.forEach(c => {
+        if (c.name.toLowerCase().includes(qLower) || c.ticker.toLowerCase().includes(qLower)) {
+            results.push({ type: 'crypto', badge: 'Crypto', badgeColor: 'bg-purple-950 text-purple-300 border-purple-800/50', name: c.name, ticker: c.ticker, tags: ['Crypto'], cadran: 'CRYPTO', taxCategory: 'NON_CONCERNE', priceEUR: c.basePriceEUR });
         }
-    } else if (qLower.includes('franc suisse') || qLower === 'chf') {
-        if (!results.some(r => r.ticker === 'CHF')) {
-            results.push({
-                name: 'Franc Suisse (CHF/EUR)', ticker: 'CHF', category: 'Devises/Liquidités',
-                cadran: 'MONNAIES', taxCategory: 'NON_CONCERNE',
-                badge: 'Devise Forex', badgeColor: 'bg-blue-950 text-blue-300 border-blue-800',
-                priceEUR: 1.05
-            });
-        }
-    }
+    });
 
     renderSearchResults(results);
 
-    // Complément Finnhub (asynchrone, ne bloque pas)
+    // Compléments (Finnhub, CoinGecko...)
     if (typeof finnhubApiKey !== 'undefined' && finnhubApiKey && query.length >= 2) {
         searchFinnhubSymbol(query).then(finnhubResults => {
             if (finnhubResults.length) {
-                // Si la requête ressemble à un ISIN, on le propage aux résultats
-                // (l'API Finnhub ne renvoie pas l'ISIN dans sa réponse)
-                const isIsinQuery = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(query);
-                const enriched = isIsinQuery
-                    ? finnhubResults.map(r => ({ ...r, isin: query.toUpperCase() }))
-                    : finnhubResults;
-                const combined = [...results, ...enriched];
-                renderSearchResults(combined);
+                const isIsinQuery = isinRegex.test(query);
+                const enriched = isIsinQuery ? finnhubResults.map(r => ({ ...r, isin: query.toUpperCase() })) : finnhubResults;
+                renderSearchResults([...results, ...enriched]);
             }
         });
     }
-
-    // Complément CoinGecko live (Partie 4.2)
     if (query.length >= 2) {
-        fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`)
-            .then(r => r.ok ? r.json() : null)
-            .then(data => {
-                if (!data || !data.coins) return;
-                const liveResults = data.coins.slice(0, 6).map(c => ({
-                    type: 'crypto',
-                    badge: 'Crypto (live)',
-                    badgeColor: 'bg-purple-950 text-purple-300 border-purple-800/50',
-                    name: c.name,
-                    ticker: c.symbol.toUpperCase(),
-                    tags: ['Crypto'],
-                    cadran: 'CRYPTO',
-                    taxCategory: 'NON_CONCERNE',
-                    priceEUR: 0,
-                    coingeckoId: c.id
-                }));
-                if (liveResults.length) {
-                    const currentResults = document.querySelectorAll('#search-results-container > div').length;
-                    if (currentResults <= 1) renderSearchResults(liveResults);
-                }
-            })
-            .catch(err => console.warn('CoinGecko search failed:', err));
+        fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`).then(r => r.ok ? r.json() : null).then(data => {
+            if (!data || !data.coins) return;
+            const liveResults = data.coins.slice(0, 6).map(c => ({ type: 'crypto', badge: 'Crypto (live)', badgeColor: 'bg-purple-950 text-purple-300 border-purple-800/50', name: c.name, ticker: c.symbol.toUpperCase(), tags: ['Crypto'], cadran: 'CRYPTO', taxCategory: 'NON_CONCERNE', priceEUR: 0, coingeckoId: c.id }));
+            if (liveResults.length && document.querySelectorAll('#search-results-container > div').length <= 1) renderSearchResults(liveResults);
+        }).catch(() => {});
     }
 }
 
@@ -887,14 +882,6 @@ function renderSearchResults(results) {
         div.className = 'p-2.5 hover:bg-gray-800/80 cursor-pointer transition flex items-center justify-between text-xs';
         div.onclick = () => selectSearchResult(item);
 
-        // ── SECURITY (audit B3) ──
-        // `item.badgeColor` est interpolé dans un attribut `class`.
-        // Aujourd'hui il provient de catalogues statiques, mais la fonction
-        // est aussi alimentée par `searchFinnhubSymbol()` (réponse API
-        // distante) : une réponse compromise pourrait injecter des
-        // attributs via des guillemets. On échappe par défense en profondeur.
-        // Note : les autres champs (`name`, `badge`, `ticker`, `category`)
-        // sont déjà échappés — le seul trou était `badgeColor`.
         const safeBadgeColor = escapeHTML(item.badgeColor || '');
         const safeName       = escapeHTML(item.name);
         const safeBadge      = escapeHTML(item.badge || '');
@@ -902,17 +889,20 @@ function renderSearchResults(results) {
         const safeCategory   = escapeHTML(item.category || '');
         const safePrice      = formatEUR(item.priceEUR);
 
+        const spinnerHTML = item._resolving ? '<i class="fa-solid fa-spinner fa-spin text-[10px] text-amber-400 ml-1"></i>' : (item._resolved ? '<i class="fa-solid fa-circle-check text-[10px] text-emerald-400 ml-1"></i>' : '');
+        const yahooHint = item.yahooTicker ? `<div class="text-[9px] text-emerald-300 font-mono mt-0.5">Yahoo : ${escapeHTML(item.yahooTicker)}</div>` : '';
+
         div.innerHTML = `
-            <div>
-                <div class="font-bold text-white flex items-center gap-2">
-                    ${safeName}
-                    <span class="text-[9px] px-1.5 py-0.5 rounded border font-mono ${safeBadgeColor}">${safeBadge}</span>
+            <div class="min-w-0 flex-1">
+                <div class="font-bold text-white flex items-center gap-2 min-w-0">
+                    <span class="truncate">${safeName}</span>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded border font-mono flex-shrink-0 ${safeBadgeColor}">${safeBadge}</span>
+                    ${spinnerHTML}
                 </div>
                 <div class="text-[10px] text-gray-400 font-mono">${safeTicker} • ${safeCategory}</div>
+                ${yahooHint}
             </div>
-            <div class="text-right font-mono font-bold text-emerald-400">
-                ${safePrice}
-            </div>
+            <div class="text-right font-mono font-bold text-emerald-400 flex-shrink-0 ml-2">${safePrice}</div>
         `;
         container.appendChild(div);
     });
@@ -3148,4 +3138,47 @@ function deleteSplit(assetId, splitId) {
         const refreshed = assets.find(a => a.id === assetId);
         if (refreshed) renderAssetLotsTable(refreshed);
     }
+}
+
+// ---------------------------------------------------------------------
+// BOUTON « MODIFIER » DE LA FICHE ACTIF — robuste
+// ---------------------------------------------------------------------
+// Problèmes corrigés :
+//  1) window.currentAssetDetailId peut être remis à null (closeModal, etc.)
+//     avant qu'un second déclenchement du handler ne s'exécute
+//     (le délégateur CSP rejoue les handlers inline) → « ID manquant ».
+//  2) On mémorise donc le dernier actif ouvert dans la fiche, et on ignore
+//     les appels répétés dans un court laps de temps.
+var _lastAssetDetailOpenedId = null;
+var _editCurrentAssetLastCall = 0;
+
+(function _trackAssetDetailId() {
+    const orig = window.openAssetDetailModal;
+    if (typeof orig !== 'function' || orig._idTracked) return;
+    const wrapped = function (...args) {
+        if (args[0] !== undefined && args[0] !== null && args[0] !== '') {
+            _lastAssetDetailOpenedId = args[0];
+        }
+        return orig.apply(this, args);
+    };
+    wrapped._idTracked = true;
+    wrapped._originalFn = orig._originalFn || orig;
+    // Conserve les marqueurs posés par les autres hooks (slide panel, thèse)
+    Object.keys(orig).forEach(k => { wrapped[k] = orig[k]; });
+    window.openAssetDetailModal = wrapped;
+})();
+
+function editCurrentAsset() {
+    const now = Date.now();
+    if (now - _editCurrentAssetLastCall < 600) return;   // anti double-déclenchement
+    _editCurrentAssetLastCall = now;
+
+    let id = window.currentAssetDetailId;
+    if (id === undefined || id === null || id === '') id = _lastAssetDetailOpenedId;
+    if (id === undefined || id === null || id === '') {
+        console.warn('[EditAsset] Aucun actif ouvert dans la fiche');
+        return;
+    }
+    openEditAssetModal(id);
+    if (typeof closeModal === 'function') closeModal('modal-asset-detail');
 }

@@ -997,7 +997,8 @@ body.sidebar-collapsed .sidebar-header > div:first-child {
 
 /* --- Masquage de la nav horizontale sur desktop quand la sidebar est là --- */
 @media (min-width: 1024px) {
-    body.has-sidebar > nav {
+    body.has-sidebar > nav,
+    body.has-sidebar #legacy-tab-nav {
         display: none !important;
     }
 }

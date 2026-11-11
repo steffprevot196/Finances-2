@@ -92,6 +92,7 @@ const auCoffreCatalog = [
 
 // --- CATALOGUE ACTIONS / ETF / FOREX ---
 const popularMarketAssets = [
+    { name: 'iShares MSCI EM Asia UCITS ETF USD (Acc)', ticker: 'CEBL', isin: 'IE00B5L8K969', yahooTicker: 'CEBL.DE', category: 'Actions/ETF', cadran: 'ASIE', taxCategory: 'NON_CONCERNE', basePriceEUR: 250.00 },
     { name: 'Yen Japonais (JPY/EUR)', ticker: 'JPY', category: 'Devises/Liquidités', cadran: 'MONNAIES', taxCategory: 'NON_CONCERNE', basePriceEUR: 0.0062 },
     { name: 'Dollar Américain (USD/EUR)', ticker: 'USD', category: 'Devises/Liquidités', cadran: 'MONNAIES', taxCategory: 'NON_CONCERNE', basePriceEUR: 0.92 },
     { name: 'Franc Suisse (CHF/EUR)', ticker: 'CHF', category: 'Devises/Liquidités', cadran: 'MONNAIES', taxCategory: 'NON_CONCERNE', basePriceEUR: 1.05 },

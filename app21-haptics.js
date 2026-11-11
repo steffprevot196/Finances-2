@@ -62,6 +62,9 @@ function setHapticsEnabled(enabled) {
 function haptic(profile = 'tap') {
     if (!isHapticsEnabled()) return;
     if (!navigator || typeof navigator.vibrate !== 'function') return;
+    // Chrome bloque vibrate() tant que l'utilisateur n'a pas touché la page
+    // (évite les « [Intervention] Blocked call to navigator.vibrate » au boot).
+    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
 
     const pattern = HAPTIC_PATTERNS[profile] ?? HAPTIC_PATTERNS.tap;
     try {

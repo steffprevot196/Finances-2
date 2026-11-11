@@ -244,6 +244,13 @@ async function runMCWithdrawalAsync(payload) {
         const result = await _callWorker('withdrawal', payload);
         return result;
     } catch (err) {
+        // Erreur de VALIDATION renvoyée par le Worker (invalid_current, invalid_months…) :
+        // le Worker fonctionne, c'est l'entrée qui est invalide. On renvoie l'erreur
+        // telle quelle, sans marquer le Worker cassé (sinon il serait désactivé
+        // pour toute la session au premier paramètre invalide).
+        if (err && /^invalid_/.test(err.message || '')) {
+            return { error: err.message };
+        }
         console.warn('[MCWorker] Appel async échoué, fallback sync :', err.message);
         _mcWorkerBroken = true;
         if (_mcWorkerInstance) {

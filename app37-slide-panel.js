@@ -24,35 +24,38 @@
 
 const SLIDE_PANEL_MODE_KEY = 'patriMonial_slidePanelMode';
 
-// État : 'modal' (défaut) ou 'slide'
+// État : 'modal' (défaut), 'slide' (panneau latéral) ou 'full' (plein écran)
 let slidePanelMode = localStorage.getItem(SLIDE_PANEL_MODE_KEY) || 'modal';
+if (!['modal', 'slide', 'full'].includes(slidePanelMode)) slidePanelMode = 'modal';
 
 // ---------------------------------------------------------------------
 // APPLICATION DU MODE
 // ---------------------------------------------------------------------
 function applySlidePanelMode() {
     document.body.classList.toggle('slide-panel-mode', slidePanelMode === 'slide');
+    document.body.classList.toggle('full-panel-mode', slidePanelMode === 'full');
     updateSlidePanelToggleUI();
 }
 
 function setSlidePanelMode(mode) {
-    if (mode !== 'modal' && mode !== 'slide') return;
+    if (mode !== 'modal' && mode !== 'slide' && mode !== 'full') return;
     slidePanelMode = mode;
     localStorage.setItem(SLIDE_PANEL_MODE_KEY, mode);
     applySlidePanelMode();
     _injectKeyboardHint();
     if (typeof toastInfo === 'function') {
-        toastInfo(
-            mode === 'slide' ? 'Vue slide-in activée' : 'Vue modal centré activée',
-            mode === 'slide'
-                ? 'Navigation clavier ← / → pour passer d\'un actif à l\'autre.'
-                : 'Affichage classique en modal centré.'
-        );
+        const _msgs = {
+            slide: ['Vue slide-in activée', 'Navigation clavier ← / → pour passer d\'un actif à l\'autre.'],
+            full:  ['Vue plein écran activée', 'Navigation clavier ← / → pour passer d\'un actif à l\'autre.'],
+            modal: ['Vue modal centré activée', 'Affichage classique en modal centré.']
+        };
+        toastInfo(_msgs[mode][0], _msgs[mode][1]);
     }
 }
 
 function toggleSlidePanelMode() {
-    setSlidePanelMode(slidePanelMode === 'slide' ? 'modal' : 'slide');
+    const next = { modal: 'slide', slide: 'full', full: 'modal' };
+    setSlidePanelMode(next[slidePanelMode] || 'modal');
 }
 
 // ---------------------------------------------------------------------
@@ -63,9 +66,12 @@ function updateSlidePanelToggleUI() {
     const icon = document.getElementById('slide-panel-toggle-icon');
     if (!btn || !icon) return;
 
-    if (slidePanelMode === 'slide') {
-        icon.className = 'fa-solid fa-window-maximize';
-        btn.title = 'Passer en vue modal centré';
+    if (slidePanelMode === 'full') {
+        icon.className = 'fa-solid fa-compress';
+        btn.title = 'Quitter le plein écran (retour au modal centré)';
+    } else if (slidePanelMode === 'slide') {
+        icon.className = 'fa-solid fa-expand';
+        btn.title = 'Passer en plein écran';
     } else {
         icon.className = 'fa-solid fa-window-restore';
         btn.title = 'Passer en vue slide-in latérale';
@@ -201,7 +207,7 @@ function _injectKeyboardHint() {
     const oldHint = document.getElementById('slide-panel-keyboard-hint');
     if (oldHint) oldHint.remove();
 
-    if (slidePanelMode !== 'slide') return;
+    if (slidePanelMode === 'modal') return;
 
     const subtitle = document.getElementById('modal-asset-subtitle');
     if (!subtitle) return;
@@ -281,6 +287,38 @@ function _injectSlidePanelStyles() {
             opacity: 0.7;
         }
 
+        /* ============================================================
+           PLEIN ÉCRAN — fiche de détail sur toute la page
+           Activé par body.full-panel-mode
+           ============================================================ */
+        body.full-panel-mode #modal-asset-detail {
+            align-items: stretch !important;
+            justify-content: stretch !important;
+            padding: 0 !important;
+        }
+        body.full-panel-mode #modal-asset-detail > div {
+            width: 100vw !important;
+            max-width: none !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
+            border-radius: 0 !important;
+            border: none !important;
+        }
+        body.full-panel-mode.light #modal-asset-detail > div {
+            background-color: #ffffff !important;
+        }
+        /* Contenu centré et lisible sur grand écran, graphique plus haut */
+        body.full-panel-mode #modal-asset-detail .p-6.space-y-4 {
+            width: 100%;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        body.full-panel-mode #modal-asset-detail .h-64 {
+            height: 45vh !important;
+            min-height: 280px;
+        }
+
         /* Réduit les animations si l'utilisateur le demande */
         @media (prefers-reduced-motion: reduce) {
             body.slide-panel-mode #modal-asset-detail > div {
@@ -354,7 +392,7 @@ function _showNavBadge() {
             _injectSlidePanelToggle();
             updateSlidePanelToggleUI();
             _injectKeyboardHint();
-            if (slidePanelMode === 'slide') _showNavBadge();
+            if (slidePanelMode !== 'modal') _showNavBadge();
         }, 30);
         return r;
     };

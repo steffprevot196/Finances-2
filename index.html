@@ -33,7 +33,7 @@
     -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
-                   script-src 'self'
+                   script-src 'self' 'unsafe-inline'
                               https://cdn.tailwindcss.com
                               https://cdn.jsdelivr.net
                               https://cdnjs.cloudflare.com
@@ -47,9 +47,12 @@
                                https://accounts.google.com
                                https://oauth2.googleapis.com
                                https://api.twelvedata.com
+                               https://api.openfigi.com
                                https://api.allorigins.win
-                               https://corsproxy.io
+                               https://api.codetabs.com
+                               https://patrimonial-proxy.steffprevot196.workers.dev
                                https://stooq.com
+                               https://cdn.jsdelivr.net
                                https://query1.finance.yahoo.com;
                    img-src 'self' data:;
                    style-src 'self' 'unsafe-inline'
@@ -58,7 +61,7 @@
                    font-src 'self' https://fonts.gstatic.com
                             https://cdnjs.cloudflare.com;
                    base-uri 'self';
-                   worker-src 'self';">
+                   worker-src 'self' blob:;">
 
         <title>PatriMonial - Gestion & Suivi de Patrimoine</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
@@ -290,49 +293,52 @@
         </div>
     </div>
 
-        <!-- NAVIGATION TABS -->
-    <nav class="flex items-center gap-2 md:gap-6 border-b border-gray-800 mb-6 overflow-x-auto text-sm pb-1">
-        <button onclick="switchTab('tab-accueil')" id="btn-tab-accueil" class="nav-tab active py-3 px-2 flex items-center gap-2 whitespace-nowrap text-gray-400 hover:text-gray-200">
-            <i class="fa-solid fa-house"></i> Accueil
-        </button>
-        <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-gray-400 hover:text-gray-200">
-            <i class="fa-solid fa-gauge-high"></i> Vue d'ensemble
-        </button>
-        <button onclick="switchTab('tab-inventaire')" id="btn-tab-inventaire" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-gray-400 hover:text-gray-200">
-            <i class="fa-solid fa-list-check"></i> Inventaire
-        </button>
-        <button onclick="switchTab('tab-gave')" id="btn-tab-gave" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-gray-400 hover:text-gray-200">
-            <i class="fa-solid fa-compass text-amber-400"></i> 4 Cadrans de Gave
-        </button>
-        <button onclick="switchTab('tab-crypto')" id="btn-tab-crypto" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-gray-400 hover:text-gray-200">
-            <i class="fa-brands fa-bitcoin text-purple-400"></i> Cryptomonnaies
-        </button>
-        <button onclick="switchTab('tab-hors-gave')" id="btn-tab-hors-gave" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-gray-400 hover:text-gray-200">
-            <i class="fa-solid fa-building-columns text-blue-400"></i> Hors-Cadran
-        </button>
-        <button onclick="switchTab('tab-piliers')" id="btn-tab-piliers" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-gray-400 hover:text-gray-200">
-            <i class="fa-solid fa-scale-balanced text-cyan-400"></i> Évaluation 3 Piliers
-        </button>
-        <button onclick="switchTab('tab-annee-n1')" id="btn-tab-annee-n1" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-amber-400 hover:text-amber-300">
-            <i class="fa-solid fa-receipt text-amber-400"></i> Fiscalité & Cessions
-        </button>
-        <button onclick="switchTab('tab-strategies')" id="btn-tab-strategies" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-purple-400 hover:text-purple-300">
-            <i class="fa-solid fa-flask text-purple-400"></i> Stratégies Paper
-        </button>
-        <button onclick="switchTab('tab-objectifs')" id="btn-tab-objectifs" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-cyan-400 hover:text-cyan-300">
-            <i class="fa-solid fa-bullseye text-cyan-400"></i> Objectifs &amp; Projections
-        </button>
-        <button onclick="switchTab('tab-watchlist')" id="btn-tab-watchlist" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-amber-400 hover:text-amber-300 relative">
-            <i class="fa-solid fa-binoculars text-amber-400"></i> Watchlist
-            <span id="watchlist-nav-badge" class="hidden absolute -top-0.5 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center border border-gray-900">0</span>
-        </button>
-        <button onclick="switchTab('tab-ledger')" id="btn-tab-ledger" class="nav-tab py-3 px-2 flex items-center gap-2 whitespace-nowrap text-slate-300 hover:text-white">
-            <i class="fa-solid fa-scroll text-slate-400"></i> Historique
-        </button>
-    </nav>
+        <!-- LAYOUT PRINCIPAL : NAVIGATION VERTICALE (SIDEBAR) + CONTENU -->
+    <div class="flex flex-col lg:flex-row gap-6 flex-grow">
 
-    <!-- MAIN CONTENT AREA -->
-    <main class="flex-grow">
+        <!-- NAVIGATION TABS VERTICALE -->
+        <nav id="legacy-tab-nav" class="flex flex-col gap-1 lg:w-56 shrink-0 border-b lg:border-b-0 lg:border-r border-gray-800 pb-4 lg:pb-0 lg:pr-4 mb-2 lg:mb-0 text-sm">
+            <button onclick="switchTab('tab-accueil')" id="btn-tab-accueil" class="nav-tab active py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 text-left w-full transition">
+                <i class="fa-solid fa-house w-5 text-center"></i> Accueil
+            </button>
+            <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="nav-tab py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 text-left w-full transition">
+                <i class="fa-solid fa-gauge-high w-5 text-center"></i> Vue d'ensemble
+            </button>
+            <button onclick="switchTab('tab-inventaire')" id="btn-tab-inventaire" class="nav-tab py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 text-left w-full transition">
+                <i class="fa-solid fa-list-check w-5 text-center"></i> Inventaire
+            </button>
+            <button onclick="switchTab('tab-gave')" id="btn-tab-gave" class="nav-tab py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 text-left w-full transition">
+                <i class="fa-solid fa-compass text-amber-400 w-5 text-center"></i> 4 Cadrans de Gave
+            </button>
+            <button onclick="switchTab('tab-crypto')" id="btn-tab-crypto" class="nav-tab py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 text-left w-full transition">
+                <i class="fa-brands fa-bitcoin text-purple-400 w-5 text-center"></i> Cryptomonnaies
+            </button>
+            <button onclick="switchTab('tab-hors-gave')" id="btn-tab-hors-gave" class="nav-tab py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 text-left w-full transition">
+                <i class="fa-solid fa-building-columns text-blue-400 w-5 text-center"></i> Hors-Cadran
+            </button>
+            <button onclick="switchTab('tab-piliers')" id="btn-tab-piliers" class="nav-tab py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 text-left w-full transition">
+                <i class="fa-solid fa-scale-balanced text-cyan-400 w-5 text-center"></i> Évaluation 3 Piliers
+            </button>
+            <button onclick="switchTab('tab-annee-n1')" id="btn-tab-annee-n1" class="nav-tab py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-amber-400 hover:text-amber-300 hover:bg-gray-800/50 text-left w-full transition">
+                <i class="fa-solid fa-receipt text-amber-400 w-5 text-center"></i> Fiscalité & Cessions
+            </button>
+            <button onclick="switchTab('tab-strategies')" id="btn-tab-strategies" class="nav-tab py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-purple-400 hover:text-purple-300 hover:bg-gray-800/50 text-left w-full transition">
+                <i class="fa-solid fa-flask text-purple-400 w-5 text-center"></i> Stratégies Paper
+            </button>
+            <button onclick="switchTab('tab-objectifs')" id="btn-tab-objectifs" class="nav-tab py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-cyan-400 hover:text-cyan-300 hover:bg-gray-800/50 text-left w-full transition">
+                <i class="fa-solid fa-bullseye text-cyan-400 w-5 text-center"></i> Objectifs &amp; Projections
+            </button>
+            <button onclick="switchTab('tab-watchlist')" id="btn-tab-watchlist" class="nav-tab py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-amber-400 hover:text-amber-300 hover:bg-gray-800/50 text-left w-full transition relative">
+                <i class="fa-solid fa-binoculars text-amber-400 w-5 text-center"></i> Watchlist
+                <span id="watchlist-nav-badge" class="hidden absolute top-1/2 -translate-y-1/2 right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center border border-gray-900">0</span>
+            </button>
+            <button onclick="switchTab('tab-ledger')" id="btn-tab-ledger" class="nav-tab py-2.5 px-3 rounded-lg flex items-center gap-2.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-gray-800/50 text-left w-full transition">
+                <i class="fa-solid fa-scroll text-slate-400 w-5 text-center"></i> Historique
+            </button>
+        </nav>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-grow min-w-0">
 
         <!-- TAB 0 : ACCUEIL (KPI synthèse — page d'atterrissage) -->
         <section id="tab-accueil" class="tab-content space-y-6">
@@ -3848,7 +3854,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="openSplitModal(currentAssetDetailId)" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:text-cyan-400" title="Enregistrer un split ou reverse split (neutre fiscalement)"><i class="fa-solid fa-scissors"></i></button>
-                    <button id="modal-asset-edit-btn" onclick="openEditAssetModal(currentAssetDetailId); closeModal('modal-asset-detail');" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:text-indigo-400"><i class="fa-solid fa-pen"></i></button>
+                    <button id="modal-asset-edit-btn" onclick="editCurrentAsset()" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:text-indigo-400"><i class="fa-solid fa-pen"></i></button>
                     <button onclick="closeModal('modal-asset-detail')" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
                 </div>
             </div>
@@ -5133,7 +5139,6 @@
     <script src="app42-dead-lines.js"></script>
     <script src="app43-mc-worker.js"></script>
     <script src="app44-tab-filters.js"></script>
-    <script src="tests.js"></script>
     <script src="app7-init.js"></script>
 </body>
 </html>

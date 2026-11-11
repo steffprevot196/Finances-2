@@ -116,9 +116,16 @@ function saveTwelveDataKey() {
 // L'API Yahoo Finance ne renvoie pas d'en-tête CORS, il faut donc passer
 // par un proxy. On utilise une liste ordonnée : si le premier échoue
 // (timeout, 5xx, blocage réseau), on essaie le suivant.
+// Proxies CORS publics pour Yahoo Finance (liste ordonnée, cascade).
+// ⚠ Février 2026 : corsproxy.io est devenu payant (HTTP 401 partout).
+// → Remplacé par codetabs.com (gratuit, stable, ~1 req/s).
+// ⚠ allorigins.win est très instable : timeout par défaut à 12 s.
 const YAHOO_PROXIES = [
-    { name: 'allorigins.win', prefix: 'https://api.allorigins.win/raw?url=' },
-    { name: 'corsproxy.io',   prefix: 'https://corsproxy.io/?url=' }
+    // ✅ VOTRE WORKER CLOUDFLARE (100% fiable)
+    { name: 'cloudflare-worker', prefix: 'https://patrimonial-proxy.steffprevot196.workers.dev/?url=', timeout: 15000 },
+    // Fallbacks publics (au cas où le worker tomberait)
+    { name: 'codetabs.com',   prefix: 'https://api.codetabs.com/v1/proxy?quest=', timeout: 8000  },
+    { name: 'allorigins.win', prefix: 'https://api.allorigins.win/raw?url=',      timeout: 8000  }
 ];
 
 function yahooChartUrl(symbol, range) {
@@ -130,12 +137,18 @@ function yahooChartUrl(symbol, range) {
 async function _fetchViaProxy(url, timeoutMs = 5000) {
     for (const proxy of YAHOO_PROXIES) {
         const proxiedUrl = proxy.prefix + encodeURIComponent(url);
+        const effectiveTimeout = proxy.timeout || timeoutMs;
         try {
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            const timer = setTimeout(() => controller.abort(), effectiveTimeout);
             const res = await fetch(proxiedUrl, { signal: controller.signal });
             clearTimeout(timer);
 
+            // 401 = proxy devenu payant (corsproxy.io) → log discret, on saute
+            if (res.status === 401) {
+                console.info(`[Yahoo] ${proxy.name} → 401 (proxy payant, on saute)`);
+                continue;
+            }
             if (!res.ok) {
                 console.warn(`[Yahoo] ${proxy.name} → HTTP ${res.status}`);
                 continue;
@@ -1072,8 +1085,14 @@ async function _fetchWithRetry(url, options = {}, maxRetries = 3) {
             return res;
         } catch (err) {
             lastErr = err;
+            // CoinGecko renvoie parfois 429 SANS header CORS → le navigateur
+            // lève "TypeError: Failed to fetch" au lieu de "429". On le traite
+            // comme un rate-limit pour que le backoff soit plus long.
+            const isCorsLike = /Failed to fetch|NetworkError|CORS/i.test(err.message || '');
             if (attempt < maxRetries - 1) {
-                const waitMs = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+                const base = isCorsLike ? 4000 : 1000;
+                const waitMs = Math.pow(2, attempt) * base + Math.random() * 500;
+                console.warn(`[Fetch] Retry ${attempt + 1}/${maxRetries} dans ${Math.round(waitMs)}ms (${err.message})`);
                 await new Promise(r => setTimeout(r, waitMs));
             }
         }
@@ -1262,8 +1281,8 @@ async function fetchLivePrices() {
 
     // --- Pièces AuCoffre ---
     try {
-        const auCoffreUpdated = await updateAuCoffreAssetsFromGoldPrice();
-        if (auCoffreUpdated > 0) updated += auCoffreUpdated;
+        const metalResult = await updateAuCoffreAssetsFromGoldPrice();
+        if (metalResult.updated > 0) updated += metalResult.updated;
     } catch (err) { console.warn('AuCoffre update failed:', err); }
 
     if (updated > 0) {
@@ -1483,36 +1502,104 @@ function setDriveClientId(id)  { localStorage.setItem('patriMonial_driveClientId
 // mémorisée (une seule dérivation PBKDF2 par appareil, pas par sauvegarde).
 // Format v1 reste déchiffrable pour la compatibilité avec les anciennes
 // sauvegardes Drive (schéma d'origine : sel par enveloppe).
+// ⚠️ FIX CRITIQUE 2026 : le sel de dérivation PBKDF2 est désormais STOCKÉ
+// DANS L'ENVELOPPE (format v3). Sans ce sel, impossible de re-dériver la
+// même clé sur un autre appareil → c'était la cause racine du bug de
+// synchronisation Drive entre PC et smartphone.
+//
+// Le sel n'est PAS secret (son rôle = prévenir les rainbow tables), il
+// peut être stocké en clair avec le backup.
 async function encryptPayload(obj, passphrase) {
-    const { key } = await getOrCreateMasterKey(passphrase);
+    const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+
+    let key, salt;
+
+    if (passphrase) {
+        // Nouvelle phrase secrète → nouveau sel + nouvelle clé
+        salt = crypto.getRandomValues(new Uint8Array(16));
+        key = await deriveMasterKey(passphrase, salt);
+        // Mémorise ce couple (clé, sel) localement pour les sauvegardes
+        // suivantes sur le même appareil
+        const ivWitness = crypto.getRandomValues(new Uint8Array(12));
+        const witness = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv: ivWitness }, key, new TextEncoder().encode(KEY_WITNESS)
+        );
+        await keyDBSet('driveMasterKey', {
+            key,
+            salt: Array.from(salt),
+            witness: Array.from(new Uint8Array(witness)),
+            witnessIv: Array.from(ivWitness),
+            createdAt: Date.now()
+        });
+    } else {
+        // Sentinel : utilise la clé + le sel mémorisés localement
+        const stored = await keyDBGet('driveMasterKey');
+        if (!stored || !stored.key || !stored.salt) {
+            throw new Error('Aucune clé mémorisée — saisissez la phrase secrète.');
+        }
+        key = stored.key;
+        salt = new Uint8Array(stored.salt);
+    }
+
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const cipher = await crypto.subtle.encrypt(
         { name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj))
     );
-    const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
-    return { v: 2, iv: toB64(iv), data: toB64(cipher) };
+
+    return {
+        v: 3,
+        salt: toB64(salt),      // ← LE FIX : sel embarqué dans l'enveloppe
+        iv: toB64(iv),
+        data: toB64(cipher)
+    };
 }
 
 async function decryptPayload(envelope, passphrase) {
     const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 
-    // Compatibilité avec les sauvegardes v1 (ancien format, sel par enveloppe)
+    // ── Format v3 (nouveau, 2026) : sel embarqué → multi-appareil ──
+    if (envelope.v === 3 && envelope.salt) {
+        const salt = fromB64(envelope.salt);
+        const key = await deriveMasterKey(passphrase, salt);
+        const plain = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: fromB64(envelope.iv) }, key, fromB64(envelope.data)
+        );
+        console.info('[Decrypt] ✓ Format v3 (sel embarqué) — compatible multi-appareil');
+        return JSON.parse(new TextDecoder().decode(plain));
+    }
+
+    // ── Format v1 (legacy) : sel embarqué aussi ──
     if (envelope.v === 1 && envelope.salt) {
         const key = await deriveMasterKey(passphrase, fromB64(envelope.salt));
         const plain = await crypto.subtle.decrypt(
             { name: 'AES-GCM', iv: fromB64(envelope.iv) }, key, fromB64(envelope.data)
         );
+        console.info('[Decrypt] ✓ Format v1 (sel embarqué)');
         return JSON.parse(new TextDecoder().decode(plain));
     }
 
-    // ⚠️ FIX 2026 : mode 'decrypt' → la clé ne sera JAMAIS écrasée même
-    //    si la passphrase est erronée (évite la perte du backup en cas de
-    //    faute de frappe).
-    const { key } = await getOrCreateMasterKey(passphrase, { mode: 'decrypt' });
-    const plain = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: fromB64(envelope.iv) }, key, fromB64(envelope.data)
-    );
-    return JSON.parse(new TextDecoder().decode(plain));
+    // ── Format v2 (legacy cassé) : PAS de sel → déchiffrable UNIQUEMENT
+    //    sur l'appareil d'origine (qui possède la clé + sel en IndexedDB) ──
+    if (envelope.v === 2) {
+        const stored = await keyDBGet('driveMasterKey');
+        if (!stored || !stored.key) {
+            throw new Error(
+                '🔐 Ce backup est au format v2 (obsolète) qui n\'embarque pas ' +
+                'le sel de dérivation.\n\n' +
+                'Il ne peut être déchiffré QUE sur l\'appareil qui l\'a créé.\n\n' +
+                'Solution : restaurez-le sur votre PC (où la clé est mémorisée), ' +
+                'puis cliquez à nouveau sur « Envoyer une sauvegarde » — le nouveau ' +
+                'backup sera en format v3 et fonctionnera sur tous vos appareils.'
+            );
+        }
+        const plain = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: fromB64(envelope.iv) }, stored.key, fromB64(envelope.data)
+        );
+        console.info('[Decrypt] ✓ Format v2 (clé locale uniquement)');
+        return JSON.parse(new TextDecoder().decode(plain));
+    }
+
+    throw new Error('Format de sauvegarde inconnu : v' + (envelope.v || '?'));
 }
 
 // --- Modal de synchronisation ---
@@ -2189,15 +2276,45 @@ function _detectMetalType(asset) {
 
 // --- Enrichit un asset avec weightGrams / primePct depuis le catalogue ---
 function _enrichAssetFromCatalog(asset) {
+    // Si on a déjà le poids, pas besoin de chercher
     if (asset.weightGrams && asset.primePct !== undefined) return false;
 
-    const ticker = String(asset.ticker || '').toUpperCase();
-    if (!ticker) return false;
+    // On nettoie le ticker (on enlève les espaces et caractères spéciaux)
+    const ticker = String(asset.ticker || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const name = String(asset.name || '').toLowerCase();
+    if (!ticker && !name) return false;
 
-    const catalogItem = (typeof auCoffreCatalog !== 'undefined' ? auCoffreCatalog : [])
-        .find(c => c.ticker.toUpperCase() === ticker);
+    const catalog = (typeof auCoffreCatalog !== 'undefined' ? auCoffreCatalog : []);
+    
+    // 1) Recherche par ticker (nettoyé)
+    let catalogItem = catalog.find(c => 
+        c.ticker.toUpperCase().replace(/[^A-Z0-9]/g, '') === ticker
+    );
 
-    if (!catalogItem) return false;
+    // 2) Si échec, recherche par nom (ex: "Vera Valor 1/10" reconnaîtra "Vera Valor 1/10 Ounce Gold")
+    if (!catalogItem) {
+        catalogItem = catalog.find(c => {
+            const catName = c.name.toLowerCase();
+            return name.includes(catName) || catName.includes(name);
+        });
+    }
+
+    // 3) Si on a toujours rien trouvé, on tente une extraction via expression régulière
+    if (!catalogItem) {
+        let guessedWeight = 0;
+        if (name.includes('1 once') || name.includes('1oz') || name.includes('1 oz')) guessedWeight = 31.10;
+        else if (name.includes('1/2')) guessedWeight = 15.55;
+        else if (name.includes('1/4')) guessedWeight = 7.78;
+        else if (name.includes('1/10')) guessedWeight = 3.11;
+        else if (name.includes('1/20')) guessedWeight = 1.58;
+
+        if (guessedWeight > 0) {
+            if (!asset.weightGrams) asset.weightGrams = guessedWeight;
+            if (asset.primePct === undefined) asset.primePct = 0.02; // Prime par défaut 2%
+            return true;
+        }
+        return false;
+    }
 
     if (!asset.weightGrams && catalogItem.weightGrams) {
         asset.weightGrams = catalogItem.weightGrams;
@@ -2222,9 +2339,15 @@ async function updateAuCoffreAssetsFromGoldPrice() {
         !a.manualValueOverride
     );
 
+    // Log si des actifs Or sont ignorés faute de poids
+    const ignoredAssets = assets.filter(a => hasTag(a, 'Or & Métaux') && !a.weightGrams && !a.manualValueOverride);
+    if (ignoredAssets.length > 0) {
+        console.warn(`[Metals] ${ignoredAssets.length} actif(s) ignoré(s) faute de poids connu :`, ignoredAssets.map(a => a.name).join(', '));
+    }
+
     if (metalAssets.length === 0) {
         if (enriched > 0) saveToStorage();
-        return enriched;
+        return { updated: 0, enriched, error: enriched > 0 ? null : 'Aucun actif Or/Argent avec poids connu.' };
     }
 
     // Récupère les cours des 2 métaux en parallèle
@@ -2234,55 +2357,63 @@ async function updateAuCoffreAssetsFromGoldPrice() {
     ]);
 
     if (!goldPrice && !silverPrice) {
-        console.warn('[Metals] Aucun cours disponible, valorisation annulée');
-        return enriched;
+        console.warn('[Metals] Aucun cours disponible (API Yahoo/Stooq en échec)');
+        return { updated: 0, enriched, error: 'Cours de l\'or/argent indisponible (API en échec).' };
     }
 
     let updated = 0;
-    const errors = [];
-
     metalAssets.forEach(a => {
         try {
             const metal = _detectMetalType(a);
             const pricePerGram = metal === 'silver' ? silverPrice : goldPrice;
 
-            if (!pricePerGram) {
-                errors.push(`${a.name} (${metal} indisponible)`);
-                return;
-            }
+            if (!pricePerGram) return;
 
             const prime = Number(a.primePct) || 0;
             const estimatedValue = a.qty * a.weightGrams * pricePerGram * (1 + prime);
 
             if (Math.abs(estimatedValue - a.value) > 0.5) {
-                const oldValue = a.value;
                 a.value = Math.round(estimatedValue * 100) / 100;
                 upsertTodayHistoryPoint(a, a.value, a.invested);
                 updated++;
-                console.info(`[Metals] ${a.name} : ${oldValue.toFixed(2)} € → ${a.value.toFixed(2)} €`);
             }
         } catch (err) {
-            errors.push(`${a.name} : ${err.message}`);
+            console.warn(`[Metals] Erreur sur ${a.name} :`, err);
         }
     });
 
-    if (updated > 0 || enriched > 0) {
-        saveToStorage();
-    }
+    if (updated > 0 || enriched > 0) saveToStorage();
 
-    if (errors.length > 0) {
-        console.warn('[Metals] Erreurs partielles :\n' + errors.join('\n'));
-    }
-
-    return updated + enriched;
+    return { updated, enriched, error: null };
 }
 
 // Force un rafraîchissement (ignore le cache 30 min)
 async function forceRefreshMetals() {
+    if (window._metalsRefreshInProgress) return;
+    window._metalsRefreshInProgress = true;
+
+    const btn  = document.getElementById('btn-refresh-metals');
+    const icon = document.getElementById('icon-refresh-metals');
+    
+    if (icon) icon.classList.add('fa-spin');
+    if (btn)  btn.disabled = true;
+
     try { localStorage.removeItem(METALS_CACHE_KEY); } catch (_) {}
-    const n = await updateAuCoffreAssetsFromGoldPrice();
-    if (n > 0 && typeof refreshAllUI === 'function') refreshAllUI();
-    return n;
+    
+    const result = await updateAuCoffreAssetsFromGoldPrice();
+    
+    if (result.error) {
+        if (typeof toastError === 'function') toastError('Or & Argent', result.error);
+    } else if (result.updated > 0) {
+        if (typeof refreshAllUI === 'function') refreshAllUI();
+        if (typeof toastSuccess === 'function') toastSuccess('Or & Argent', `${result.updated} actif(s) valorisé(s).`);
+    } else {
+        if (typeof toastInfo === 'function') toastInfo('Or & Argent', 'Cours inchangés (ou pas de variation détectée).');
+    }
+
+    if (icon) icon.classList.remove('fa-spin');
+    if (btn)  btn.disabled = false;
+    window._metalsRefreshInProgress = false;
 }
 
 // Expose globalement
@@ -2775,3 +2906,159 @@ async function applyCompaction() {
 window.onCompactionYearsChange = onCompactionYearsChange;
 window.refreshCompactionPreview = refreshCompactionPreview;
 window.applyCompaction = applyCompaction;
+
+
+// =====================================================================
+// RÉSOLUTION ISIN → TICKER YAHOO (fix 2026)
+// ---------------------------------------------------------------------
+// Objectif : quand l'utilisateur tape un ISIN (ex: IE00B5L8K969), on
+// interroge des APIs publiques pour retrouver automatiquement le nom,
+// le ticker et le ticker Yahoo → la mise à jour des cours devient
+// automatique après ajout de l'actif.
+//
+// Sources (cascade) :
+//   1. OpenFIGI  — gratuit, 25 req/jour sans clé, couvre tous les ISIN
+//   2. Twelve Data — si clé configurée (800 req/jour)
+//   3. Finnhub — fallback US uniquement
+// =====================================================================
+
+// Mapping des codes de place OpenFIGI vers les suffixes Yahoo Finance
+const OPENFIGI_TO_YAHOO_SUFFIX = {
+    FP: '.PA',   // Euronext Paris
+    GR: '.DE',   // Xetra
+    GY: '.DE',   // Xetra (alias)
+    LN: '.L',    // London Stock Exchange
+    NA: '.AS',   // Euronext Amsterdam
+    SM: '.MC',   // BME Madrid
+    IM: '.MI',   // Borsa Italiana
+    SW: '.SW',   // SIX Swiss Exchange
+    BB: '.BR',   // Euronext Brussels
+    MU: '.MU',   // Börse München
+    US: '',      // US (NYSE, pas de suffixe Yahoo)
+    UW: '',      // US (NASDAQ Global Select)
+    UN: '',      // US (NYSE)
+    UQ: '',      // US (NASDAQ)
+    UA: '',      // US
+    UR: ''       // US
+};
+
+// Priorité des places : les plus courantes pour un investisseur FR d'abord
+const OPENFIGI_PRIORITY = ['FP', 'GR', 'GY', 'LN', 'NA', 'IM', 'SM', 'BB', 'MU', 'US', 'UW', 'UN', 'UQ', 'UA', 'UR'];
+
+async function resolveIsinToYahooTicker(isin) {
+    if (!/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(isin)) return null;
+    const upperIsin = isin.toUpperCase();
+
+    // ── 0) Vérification dans le catalogue local (instantané et sans API) ──
+    const localMatch = popularMarketAssets.find(a => (a.isin || '').toUpperCase() === upperIsin) ||
+                       (typeof auCoffreCatalog !== 'undefined' && auCoffreCatalog.find(a => (a.isin || '').toUpperCase() === upperIsin));
+    if (localMatch) {
+        return {
+            name:        localMatch.name,
+            ticker:      localMatch.ticker,
+            yahooTicker: localMatch.yahooTicker || localMatch.ticker,
+            isin:        upperIsin,
+            exchange:    'Catalogue local',
+            source:      'Catalogue local'
+        };
+    }
+
+    // ── 1) OpenFIGI ──
+    try {
+        const res = await fetch('https://api.openfigi.com/v3/mapping', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify([{ idType: 'ID_ISIN', idValue: upperIsin }])
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const items = (data && data[0] && data[0].data) || [];
+            if (items.length > 0) {
+                // Trie par priorité de place
+                items.sort((a, b) => {
+                    const ia = OPENFIGI_PRIORITY.indexOf(a.exchCode);
+                    const ib = OPENFIGI_PRIORITY.indexOf(b.exchCode);
+                    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+                });
+                const best = items[0];
+                const suffix = OPENFIGI_TO_YAHOO_SUFFIX[best.exchCode];
+                // Si le suffixe est undefined (place inconnue), on utilise le
+                // ticker brut sans suffixe (Yahoo tentera sa chance)
+                const yahooTicker = suffix !== undefined ? (best.ticker + suffix) : (best.ticker || '');
+                console.info(`[ISIN] ${upperIsin} → ${yahooTicker} (OpenFIGI, ${best.exchCode})`);
+                return {
+                    name:        best.name || `Actif ISIN ${upperIsin}`,
+                    ticker:      best.ticker || upperIsin.slice(0, 6),
+                    yahooTicker: yahooTicker,
+                    isin:        upperIsin,
+                    exchange:    best.exchCode || '',
+                    source:      'OpenFIGI'
+                };
+            }
+        }
+    } catch (err) {
+        console.warn('[ISIN] OpenFIGI échoué :', err.message);
+    }
+
+    // ── 2) Twelve Data ──
+    if (typeof twelveDataApiKey !== 'undefined' && twelveDataApiKey) {
+        try {
+            const res = await fetch(
+                `https://api.twelvedata.com/symbol_search?symbol=${encodeURIComponent(upperIsin)}&apikey=${encodeURIComponent(twelveDataApiKey)}`
+            );
+            if (res.ok) {
+                const data = await res.json();
+                const items = data.data || [];
+                if (items.length > 0) {
+                    const best = items[0];
+                    console.info(`[ISIN] ${upperIsin} → ${best.symbol} (Twelve Data)`);
+                    return {
+                        name:        best.instrument_name || `Actif ISIN ${upperIsin}`,
+                        ticker:      best.symbol || upperIsin.slice(0, 6),
+                        yahooTicker: best.symbol || '',
+                        isin:        upperIsin,
+                        exchange:    best.exchange || '',
+                        source:      'Twelve Data'
+                    };
+                }
+            }
+        } catch (err) {
+            console.warn('[ISIN] Twelve Data échoué :', err.message);
+        }
+    }
+
+    // ── 3) Finnhub (limité aux US) ──
+    if (typeof finnhubApiKey !== 'undefined' && finnhubApiKey) {
+        try {
+            const res = await fetch(
+                `https://finnhub.io/api/v1/search?q=${encodeURIComponent(upperIsin)}&token=${encodeURIComponent(finnhubApiKey)}`
+            );
+            if (res.ok) {
+                const data = await res.json();
+                const items = (data.result || []).filter(r =>
+                    r.type === 'Common Stock' || r.type === 'ETP' || r.type === 'ETFs'
+                );
+                if (items.length > 0) {
+                    const best = items[0];
+                    console.info(`[ISIN] ${upperIsin} → ${best.symbol} (Finnhub)`);
+                    return {
+                        name:        best.description || `Actif ISIN ${upperIsin}`,
+                        ticker:      best.symbol || upperIsin.slice(0, 6),
+                        yahooTicker: best.symbol || '',
+                        isin:        upperIsin,
+                        exchange:    best.exchange || '',
+                        source:      'Finnhub'
+                    };
+                }
+            }
+        } catch (err) {
+            console.warn('[ISIN] Finnhub échoué :', err.message);
+        }
+    }
+
+    console.warn(`[ISIN] ${upperIsin} → non résolu (toutes les sources ont échoué)`);
+    return null;
+}
+
+// Expose globalement
+window.resolveIsinToYahooTicker = resolveIsinToYahooTicker;

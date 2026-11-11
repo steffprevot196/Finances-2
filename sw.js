@@ -15,7 +15,7 @@
 // « fantômes » impossibles à reproduire en DevTools.
 // =====================================================================
 
-const SW_VERSION = 'v1.0.21';                   // ← Bumper à chaque deploy
+const SW_VERSION = 'v1.0.39';                   // ← Bumper à chaque deploy
 const CACHE_PREFIX = 'patrimonial';
 const CACHE_STATIC = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const CACHE_CDN    = `${CACHE_PREFIX}-cdn-${SW_VERSION}`;
@@ -80,7 +80,6 @@ const APP_SHELL = [
     './app43-mc-worker.js',
     './app44-tab-filters.js',
     './monte-carlo-worker.js',
-    './tests.js',
     './app7-init.js'
 ];
 
@@ -119,6 +118,10 @@ const NEVER_CACHE_PATTERNS = [
     /xaus\.com/,
     /api\.twelvedata\.com/,
     /api\.allorigins\.win/,
+    /api\.codetabs\.com/,
+    /corsproxy\.io/,
+    /\.workers\.dev/,              // ← Votre Worker Cloudflare
+    /stooq\.com/,
     /googleapis\.com/,
     /accounts\.google\.com/,
     /oauth2\.googleapis\.com/,
@@ -163,12 +166,23 @@ self.addEventListener('install', (event) => {
         //     l'install échoue → on veut le savoir tout de suite.
         try {
             const cache = await caches.open(CACHE_STATIC);
-            await cache.addAll(APP_SHELL);
-            console.info(`[SW] App shell précaché (${APP_SHELL.length} fichiers).`);
+            // ⚠ FIX 2026 : cache.addAll() utilise le cache HTTP du navigateur.
+            // GitHub Pages envoie Cache-Control agressif → le SW précachait
+            // une version OBSOLÈTE d'index.html. On force cache:'reload' pour
+            // que chaque fichier soit re-téléchargé depuis le réseau.
+            const results = await Promise.allSettled(
+                APP_SHELL.map(async (url) => {
+                    const req = new Request(url, { cache: 'reload' });
+                    const res = await fetch(req);
+                    if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+                    await cache.put(url, res);
+                })
+            );
+            const ok = results.filter(r => r.status === 'fulfilled').length;
+            const ko = results.length - ok;
+            console.info(`[SW] App shell précaché : ${ok}/${APP_SHELL.length} fichiers${ko > 0 ? ` (⚠ ${ko} échec(s))` : ''}.`);
         } catch (err) {
             console.error('[SW] Échec precache app shell :', err);
-            // On continue quand même — l'app peut fonctionner partiellement
-            // en ligne. Ne pas bloquer l'installation pour un asset manquant.
         }
 
         // 4b. CDN : precache best-effort (un échec réseau ici ne doit PAS

@@ -829,7 +829,8 @@ function updateGaveSection() {
 
 function toggleGaveDetailFilter(code) {
     if (code === 'ALL') {
-        gaveDetailFilter = new Set(GAVE_QUADRANTS);
+        // Un Set vide signifie "Tous les cadrans sélectionnés"
+        gaveDetailFilter.clear();
     } else if (gaveDetailFilter.has(code)) {
         gaveDetailFilter.delete(code);
     } else {
@@ -839,7 +840,9 @@ function toggleGaveDetailFilter(code) {
 }
 
 function renderGaveDetailTable() {
-    const allSelected = GAVE_QUADRANTS.every(q => gaveDetailFilter.has(q));
+    // Si le Set est vide, tous les boutons sont considérés comme "actifs"
+    const allSelected = gaveDetailFilter.size === 0;
+
     const activeClasses = {
         OR: 'bg-amber-950 text-amber-300 border-amber-800',
         MONNAIES: 'bg-blue-950 text-blue-300 border-blue-800',
@@ -847,17 +850,26 @@ function renderGaveDetailTable() {
         PETROLE: 'bg-rose-950 text-rose-300 border-rose-800'
     };
 
+    // Mise à jour des boutons
     const group = document.getElementById('gave-detail-filter-group');
     group.innerHTML = `<button onclick="toggleGaveDetailFilter('ALL')" class="px-3 py-1.5 rounded-lg text-xs border font-medium ${allSelected ? 'bg-gray-800 text-white border-gray-700' : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'}">Tous</button>` +
         GAVE_QUADRANTS.map(q => {
-            const active = gaveDetailFilter.has(q);
+            const active = allSelected || gaveDetailFilter.has(q);
             return `<button onclick="toggleGaveDetailFilter('${q}')" class="px-3 py-1.5 rounded-lg text-xs border font-medium ${active ? activeClasses[q] : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'}">${escapeHTML(cadranLabel(q))}</button>`;
         }).join('');
 
-    const items = assets.filter(a => GAVE_QUADRANTS.includes(a.cadran) && gaveDetailFilter.has(a.cadran));
+    // Filtrage des actifs
+    const items = assets.filter(a => {
+        if (!GAVE_QUADRANTS.includes(a.cadran)) return false;
+        // Si Set vide, on affiche tout
+        if (allSelected) return true;
+        // Sinon, on n'affiche que les cadrans sélectionnés
+        return gaveDetailFilter.has(a.cadran);
+    });
+
     const tbody = document.getElementById('table-gave-detail-body');
 
-        tbody.innerHTML = items.length ? items.map(a => {
+    tbody.innerHTML = items.length ? items.map(a => {
         const pnl = (a.value || 0) - (a.invested || 0);
         const isPos = pnl >= 0;
         return `<tr class="clickable-row ${rowTintClass(a)}" onclick="openAssetDetailModal(${a.id})">
@@ -872,7 +884,6 @@ function renderGaveDetailTable() {
             </td>
             <td class="p-3">${cadranBadgeHTML(a.cadran)}</td>
             <td class="p-3 text-right font-mono">${fmtQty(a.qty)}</td>
-
             <td class="p-3 text-right font-mono text-gray-400">${formatEUR(a.frais || 0)}</td>
             <td class="p-3 text-right font-mono">${formatEUR(a.invested)}</td>
             <td class="p-3 text-right font-mono font-bold text-white">${formatEUR(a.value)}</td>
@@ -1390,7 +1401,7 @@ function getCommandList() {
         { label: 'Basculer la sidebar latérale', hint: 'Replier / déployer (desktop uniquement)', icon: 'fa-bars-staggered', category: 'Action', run: () => { if (typeof toggleSidebarCollapsed === 'function') toggleSidebarCollapsed(); } },
         { label: 'Rouvrir la sidebar mobile', hint: 'Ouvrir en drawer (mobile uniquement)', icon: 'fa-bars', category: 'Action', run: () => { if (typeof openSidebarMobile === 'function') openSidebarMobile(); } },
         { label: 'Importer depuis un exchange', hint: 'Binance, Coinbase ou Kraken (lecture seule)', icon: 'fa-plug', category: 'Données', run: () => { if (typeof openBrokerImportModal === 'function') openBrokerImportModal(); else alert('Module broker non chargé.'); } },
-        { label: 'Lancer les tests unitaires', hint: 'Vérifier l\'intégrité du code (~85 assertions)', icon: 'fa-flask-vial', category: 'Action', run: () => { if (typeof runTests === 'function') runTests(); else alert('Module de tests non chargé.'); } },
+        { label: 'Lancer les tests unitaires', hint: 'Vérifier l\'intégrité du code (~85 assertions) — chargés à la demande', icon: 'fa-flask-vial', category: 'Action', run: () => { const go = () => { if (typeof runTests === 'function') runTests(); else alert('Module de tests non chargé.'); }; if (typeof runTests === 'function') return go(); if (!confirm('Les tests manipulent temporairement les données en mémoire (puis les restaurent). Pensez à exporter une sauvegarde avant. Continuer ?')) return; const sc = document.createElement('script'); sc.src = 'tests.js'; sc.onload = go; sc.onerror = () => alert('Fichier tests.js introuvable.'); document.head.appendChild(sc); } },
         { label: 'Audit CSP (handlers inline)', hint: 'Rapport console des onclick= présents dans le DOM', icon: 'fa-shield-halved', category: 'Action', run: () => { if (typeof runCspAudit === 'function') runCspAudit(); else alert('Module audit CSP non chargé.'); } },
         { label: (typeof isCspFallbackDelegatorActive === 'function' && isCspFallbackDelegatorActive() ? 'Désactiver' : 'Activer') + ' le délégateur CSP', hint: 'Rejouer les handlers inline sans unsafe-inline (test)', icon: 'fa-toggle-on', category: 'Action', run: () => { if (typeof enableCspFallbackDelegator !== 'function') return alert('Module CSP non chargé.'); if (isCspFallbackDelegatorActive()) { disableCspFallbackDelegator(); toastInfo('Délégateur désactivé', 'Les handlers inline natifs reprennent la main.'); } else { enableCspFallbackDelegator(); } } },
         { label: 'Vider tout',                    hint: 'Effacer actifs, cessions et arbitrages', icon: 'fa-trash-can',           category: 'Action',     run: () => clearAllData() },
