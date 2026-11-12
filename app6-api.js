@@ -1100,6 +1100,11 @@ async function _fetchWithRetry(url, options = {}, maxRetries = 3) {
     throw lastErr || new Error('Fetch failed after retries');
 }
 
+// Fraîcheur des cours (app46-price-freshness.js) — appels protégés : si le module
+// n'est pas chargé, l'actualisation des cours fonctionne exactement comme avant.
+function _pfUpdated(asset, source, ts) { if (typeof markPriceUpdated === 'function') markPriceUpdated(asset, source, ts); }
+function _pfFailed(asset, reason)      { if (typeof markPriceFailed  === 'function') markPriceFailed(asset, reason); }
+
 async function fetchLivePrices() {
     if (_priceFetchInProgress) {
         console.warn('[Prices] Actualisation déjà en cours — ignorée.');
@@ -1137,10 +1142,14 @@ async function fetchLivePrices() {
                     if (priceEUR) {
                         a.value = a.qty * priceEUR;
                         upsertTodayHistoryPoint(a, a.value, a.invested);
+                        _pfUpdated(a, 'coingecko');
                         updated++;
+                    } else {
+                        _pfFailed(a, 'prix absent de la réponse CoinGecko');
                     }
                 });
             } catch (err) {
+                cryptoAssets.forEach(a => _pfFailed(a, err.message));
                 sourceErrors.push(`Crypto (CoinGecko) : ${err.message}`);
             }
         }
@@ -1163,10 +1172,14 @@ async function fetchLivePrices() {
                     if (rate) {
                         a.value = a.qty * (1 / rate);
                         upsertTodayHistoryPoint(a, a.value, a.invested);
+                        _pfUpdated(a, 'frankfurter');
                         updated++;
+                    } else {
+                        _pfFailed(a, 'taux absent de la réponse Frankfurter');
                     }
                 });
             } catch (err) {
+                currencyAssets.forEach(a => _pfFailed(a, err.message));
                 sourceErrors.push(`Devises (Frankfurter) : ${err.message}`);
             }
         }
@@ -1222,6 +1235,7 @@ async function fetchLivePrices() {
             if (r && r.price) {
                 a.value = a.qty * r.price;
                 upsertTodayHistoryPoint(a, a.value, a.invested);
+                _pfUpdated(a, 'yahoo');
                 updatedStockIds.add(a.id);
             }
         });
@@ -1268,9 +1282,11 @@ async function fetchLivePrices() {
                 if (price) {
                     a.value = a.qty * price;
                     upsertTodayHistoryPoint(a, a.value, a.invested);
+                    _pfUpdated(a, 'fallback');
                     updatedStockIds.add(a.id);
                 } else {
                     const yahooErr = yahooResults[symbol]?.error || 'aucune source';
+                    _pfFailed(a, yahooErr);
                     sourceErrors.push(`${a.name} (${symbol}) : ${yahooErr}`);
                 }
             }
@@ -1285,10 +1301,10 @@ async function fetchLivePrices() {
         if (metalResult.updated > 0) updated += metalResult.updated;
     } catch (err) { console.warn('AuCoffre update failed:', err); }
 
-    if (updated > 0) {
-        saveToStorage();
-        refreshAllUI();
-    }
+    // Même sans aucun cours récupéré, on enregistre et on réaffiche : les échecs
+    // sont notés sur chaque actif (badge « Échec actualisation »).
+    saveToStorage();
+    refreshAllUI();
 
     if (icon) icon.classList.remove('fa-spin');
     if (btn)  btn.disabled = false;
@@ -1382,6 +1398,7 @@ function saveManualRefresh() {
         const newValue = qty * newUnitValue;
         if (newValue === asset.value) return;
         asset.value = newValue;
+        _pfUpdated(asset, 'manual');
         upsertTodayHistoryPoint(asset, asset.value, asset.invested);
         updated++;
     });
@@ -1473,6 +1490,8 @@ function refreshAllUI() {
     if (typeof evaluateDca === 'function') evaluateDca();
 
     // Chantier §10 — section "Thèses à revoir" + histogramme annuel (accueil)
+    if (typeof renderPriceFreshnessSummary === 'function') renderPriceFreshnessSummary();
+
     if (activeTab === 'tab-accueil') {
         if (typeof renderThesesReviewSection === 'function') renderThesesReviewSection();
         if (typeof renderAnnualPnlChart === 'function') renderAnnualPnlChart();
@@ -2358,16 +2377,21 @@ async function updateAuCoffreAssetsFromGoldPrice() {
 
     if (!goldPrice && !silverPrice) {
         console.warn('[Metals] Aucun cours disponible (API Yahoo/Stooq en échec)');
+        metalAssets.forEach(a => _pfFailed(a, 'API Yahoo/Stooq indisponible'));
+        saveToStorage();
         return { updated: 0, enriched, error: 'Cours de l\'or/argent indisponible (API en échec).' };
     }
 
     let updated = 0;
+    let stamped = 0;
     metalAssets.forEach(a => {
         try {
             const metal = _detectMetalType(a);
             const pricePerGram = metal === 'silver' ? silverPrice : goldPrice;
 
-            if (!pricePerGram) return;
+            if (!pricePerGram) { _pfFailed(a, 'cours ' + (metal === 'silver' ? 'de l\'argent' : 'de l\'or') + ' indisponible'); stamped++; return; }
+            // Cours bien reçu, même si la valeur ne change pas : on date la mise à jour
+            _pfUpdated(a, 'metals'); stamped++;
 
             const prime = Number(a.primePct) || 0;
             const estimatedValue = a.qty * a.weightGrams * pricePerGram * (1 + prime);
@@ -2382,7 +2406,7 @@ async function updateAuCoffreAssetsFromGoldPrice() {
         }
     });
 
-    if (updated > 0 || enriched > 0) saveToStorage();
+    if (updated > 0 || enriched > 0 || stamped > 0) saveToStorage();
 
     return { updated, enriched, error: null };
 }
@@ -2401,11 +2425,11 @@ async function forceRefreshMetals() {
     try { localStorage.removeItem(METALS_CACHE_KEY); } catch (_) {}
     
     const result = await updateAuCoffreAssetsFromGoldPrice();
+    if (typeof refreshAllUI === 'function') refreshAllUI();   // met à jour les badges de fraîcheur
     
     if (result.error) {
         if (typeof toastError === 'function') toastError('Or & Argent', result.error);
     } else if (result.updated > 0) {
-        if (typeof refreshAllUI === 'function') refreshAllUI();
         if (typeof toastSuccess === 'function') toastSuccess('Or & Argent', `${result.updated} actif(s) valorisé(s).`);
     } else {
         if (typeof toastInfo === 'function') toastInfo('Or & Argent', 'Cours inchangés (ou pas de variation détectée).');
@@ -2443,6 +2467,7 @@ function handleManualGoldUpdate(e) {
     asset.manualValueOverride = true;
     asset.manualUpdateDate = updateDate;
     asset.manualUpdateSource = source;
+    _pfUpdated(asset, 'manual', updateDate ? new Date(updateDate).getTime() : undefined);
     const dateFR = new Date(updateDate).toLocaleDateString('fr-FR');
     asset.history = (asset.history || []).filter(h => h.date !== dateFR);
     asset.history.push({ date: dateFR, value: asset.value, invested: asset.invested });

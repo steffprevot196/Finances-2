@@ -488,7 +488,7 @@ function renderInventoryTable(filterCat = inventoryFilter, searchQuery) {
                 <div class="flex items-center gap-1.5 min-w-0">
                     ${assetClassIconHTML(asset)}
                     <div class="min-w-0 flex-1">
-                        <div class="font-bold text-white truncate" title="${escapeHTML(asset.name)}">${escapeHTML(asset.name)}${sessionBadgeHTML('asset', asset.id)}${concentrationBadgeHTML(asset)}${paperBadgeHTML(asset)}${typeof thesisBadgeHTML === 'function' ? thesisBadgeHTML(asset) : ''}</div>
+                        <div class="font-bold text-white truncate" title="${escapeHTML(asset.name)}">${escapeHTML(asset.name)}${sessionBadgeHTML('asset', asset.id)}${concentrationBadgeHTML(asset)}${paperBadgeHTML(asset)}${typeof priceFreshnessBadgeHTML === 'function' ? priceFreshnessBadgeHTML(asset) : ''}${typeof thesisBadgeHTML === 'function' ? thesisBadgeHTML(asset) : ''}</div>
                         <div class="text-[10px] text-gray-500 font-mono truncate">${assetSubtitleHTML(asset)}</div>
                     </div>
                 </div>
@@ -538,7 +538,7 @@ function renderInventoryTable(filterCat = inventoryFilter, searchQuery) {
                 <div class="flex items-start gap-1.5 min-w-0 flex-1">
                     ${assetClassIconHTML(asset)}
                     <div class="min-w-0 flex-1">
-                        <div class="font-bold text-white text-sm truncate">${escapeHTML(asset.name)}${sessionBadgeHTML('asset', asset.id)}${concentrationBadgeHTML(asset)}${paperBadgeHTML(asset)}</div>
+                        <div class="font-bold text-white text-sm truncate">${escapeHTML(asset.name)}${sessionBadgeHTML('asset', asset.id)}${concentrationBadgeHTML(asset)}${paperBadgeHTML(asset)}${typeof priceFreshnessBadgeHTML === 'function' ? priceFreshnessBadgeHTML(asset) : ''}</div>
                         <div class="text-[10px] text-gray-500 font-mono">${assetSubtitleHTML(asset)}</div>
                     </div>
                 </div>
@@ -616,7 +616,7 @@ function renderCryptoTable() {
                     ${assetClassIconHTML(a)}
                     <div class="min-w-0 flex-1">
                     
-                                    <div class="font-bold text-white truncate">${escapeHTML(a.name)}${sessionBadgeHTML('asset', a.id)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}${typeof thesisBadgeHTML === 'function' ? thesisBadgeHTML(a) : ''}</div>
+                                    <div class="font-bold text-white truncate">${escapeHTML(a.name)}${sessionBadgeHTML('asset', a.id)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}${typeof priceFreshnessBadgeHTML === 'function' ? priceFreshnessBadgeHTML(a) : ''}${typeof thesisBadgeHTML === 'function' ? thesisBadgeHTML(a) : ''}</div>
                 <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(a.ticker)}</div>
             </div>
         </div>
@@ -755,7 +755,7 @@ function renderHorsGaveTable(filterCat = horsGaveFilter) {
                 <div class="flex items-center gap-1.5 min-w-0">
                     ${assetClassIconHTML(a)}
                     <div class="min-w-0 flex-1">
-                        <div class="font-bold text-white truncate">${escapeHTML(a.name)}${sessionBadgeHTML('asset', a.id)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}</div>
+                        <div class="font-bold text-white truncate">${escapeHTML(a.name)}${sessionBadgeHTML('asset', a.id)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}${typeof priceFreshnessBadgeHTML === 'function' ? priceFreshnessBadgeHTML(a) : ''}</div>
                         <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(a.ticker)}</div>
                     </div>
                 </div>
@@ -877,7 +877,7 @@ function renderGaveDetailTable() {
                 <div class="flex items-center gap-1.5 min-w-0">
                     ${assetClassIconHTML(a)}
                     <div class="min-w-0 flex-1">
-                        <div class="font-bold text-white truncate">${escapeHTML(a.name)}${sessionBadgeHTML('asset', a.id)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}</div>
+                        <div class="font-bold text-white truncate">${escapeHTML(a.name)}${sessionBadgeHTML('asset', a.id)}${concentrationBadgeHTML(a)}${paperBadgeHTML(a)}${typeof priceFreshnessBadgeHTML === 'function' ? priceFreshnessBadgeHTML(a) : ''}</div>
                         <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(a.ticker)}</div>
                     </div>
                 </div>

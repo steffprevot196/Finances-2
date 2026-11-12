@@ -362,8 +362,8 @@
                     <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 relative overflow-hidden">
                         <div class="text-xs font-medium text-gray-400 mb-1">Valeur de Marché</div>
                         <div class="text-2xl font-bold text-white font-mono" id="stat-total-value">0,00 €</div>
-                        <div class="text-xs text-emerald-400 mt-1 flex items-center gap-1">
-                            <i class="fa-solid fa-circle-check text-[10px]"></i> Mis à jour en temps réel
+                        <div id="stat-price-freshness" class="text-xs text-gray-400 mt-1 flex items-center gap-1 flex-wrap">
+                            <i class="fa-solid fa-clock text-[10px]" aria-hidden="true"></i> <span>Fraîcheur des cours…</span>
                         </div>
                         <div class="absolute right-3 bottom-2 text-emerald-500/10 text-5xl pointer-events-none"><i class="fa-solid fa-chart-line"></i></div>
                     </div>
@@ -3852,6 +3852,7 @@
                     <div>
                         <h3 id="modal-asset-title" class="font-bold text-white text-base">Actif</h3>
                         <p id="modal-asset-subtitle" class="text-xs text-gray-400">Ticker • Catégorie</p>
+                        <p id="modal-asset-freshness" class="text-[11px] mt-1 hidden"></p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -5142,6 +5143,7 @@
     <script src="app43-mc-worker.js" defer></script>
     <script src="app44-tab-filters.js" defer></script>
     <script src="app45-a11y.js" defer></script>
+    <script src="app46-price-freshness.js" defer></script>
     <script src="app7-init.js" defer></script>
 </body>
 </html>

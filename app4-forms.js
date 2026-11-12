@@ -596,12 +596,18 @@ function handleAddAsset(e) {
     if (editId) {
         const asset = assets.find(a => a.id === parseFloat(editId));
         if (asset) {
+            const _oldValue = asset.value;
             Object.assign(asset, fields);
             delete asset.needsReclass;
             delete asset.reclassSuggestion;
             if (bond) Object.assign(asset, bond);
             else { delete asset.coupon; delete asset.maturity; delete asset.rating; delete asset.nominal; }
             normalizeAsset(asset);
+            // Valeur réellement modifiée à la main (tolérance 1 % + 0,50 € : le champ du
+            // formulaire est arrondi, une simple correction de nom ne doit pas « rajeunir » un cours)
+            if (typeof markPriceUpdated === 'function' && Math.abs((asset.value || 0) - (_oldValue || 0)) > Math.max(0.5, Math.abs(_oldValue || 0) * 0.01)) {
+                markPriceUpdated(asset, 'manual');
+            }
             upsertTodayHistoryPoint(asset, value, invested);
         }
     } else {
@@ -701,6 +707,7 @@ function handleAddAsset(e) {
         // La qty réelle peut différer de la qty saisie si le nombre de références
         // ne correspond pas (cf. confirm() ci-dessus). On réaligne `value` en conséquence.
         newAsset.value = newAsset.qty * unitValue;
+        if (typeof markPriceUpdated === 'function') markPriceUpdated(newAsset, 'manual');
         upsertTodayHistoryPoint(newAsset, newAsset.value, newAsset.invested);
         assets.push(newAsset);
     }
