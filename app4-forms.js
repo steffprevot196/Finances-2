@@ -2098,9 +2098,12 @@ function handleImportCSVFile(e) {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
         try {
-            if (typeof XLSX === 'undefined') { alert('SheetJS non chargé — vérifiez votre connexion internet.'); return; }
+            if (typeof XLSX === 'undefined') {
+                try { await ensureXLSX(); }
+                catch (_) { alert('SheetJS n\'a pas pu être chargé — vérifiez votre connexion internet.'); return; }
+            }
             const data = new Uint8Array(ev.target.result);
             const wb = XLSX.read(data, { type: 'array', cellDates: true });
             const ws = wb.Sheets[wb.SheetNames[0]];

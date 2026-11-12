@@ -353,13 +353,39 @@ function _xlsxBuildArbitragesSheet() {
 }
 
 // ---------------------------------------------------------------------
+// CHARGEMENT À LA DEMANDE DE SHEETJS (≈ 880 Ko) — avec SRI
+// ---------------------------------------------------------------------
+// Appelé avant tout import/export Excel. Résout quand `XLSX` est disponible.
+let _xlsxLoadPromise = null;
+function ensureXLSX() {
+    if (typeof XLSX !== 'undefined') return Promise.resolve();
+    if (_xlsxLoadPromise) return _xlsxLoadPromise;
+    _xlsxLoadPromise = new Promise((resolve, reject) => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        sc.integrity = 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw';
+        sc.crossOrigin = 'anonymous';
+        sc.referrerPolicy = 'no-referrer';
+        sc.onload = () => (typeof XLSX !== 'undefined')
+            ? resolve()
+            : (_xlsxLoadPromise = null, reject(new Error('SheetJS chargé mais XLSX indisponible')));
+        sc.onerror = () => { _xlsxLoadPromise = null; sc.remove(); reject(new Error('Chargement de SheetJS échoué')); };
+        document.head.appendChild(sc);
+    });
+    return _xlsxLoadPromise;
+}
+
+// ---------------------------------------------------------------------
 // POINT D'ENTRÉE
 // ---------------------------------------------------------------------
-function exportToExcel() {
-    // Vérification : SheetJS doit être chargé
+async function exportToExcel() {
+    // SheetJS est chargé à la demande (première utilisation)
     if (typeof XLSX === 'undefined') {
-        alert('SheetJS (XLSX) n\'est pas chargé. Vérifiez votre connexion internet et rechargez la page.');
-        return;
+        try { await ensureXLSX(); }
+        catch (err) {
+            alert('SheetJS (XLSX) n\'a pas pu être chargé. Vérifiez votre connexion internet et réessayez.');
+            return;
+        }
     }
 
     // Feedback visuel sur le bouton

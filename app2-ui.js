@@ -1704,6 +1704,58 @@ function closePortfolioMenu() {
     if (menu) menu.classList.add('hidden');
 }
 
+// ---------------------------------------------------------------------
+// MENUS DE L'EN-TÊTE (« Marché », « Données »)
+// ---------------------------------------------------------------------
+function closeHeaderMenus(except) {
+    document.querySelectorAll('[data-header-menu]').forEach(wrap => {
+        const menu = wrap.querySelector('[role="menu"]');
+        const btn  = wrap.querySelector('[aria-haspopup="menu"]');
+        if (!menu || menu.id === except) return;
+        menu.classList.add('hidden');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+    });
+}
+
+function toggleHeaderMenu(menuId, evt) {
+    if (evt) evt.stopPropagation();
+    const menu = document.getElementById(menuId);
+    if (!menu) return;
+    const willOpen = menu.classList.contains('hidden');
+    closeHeaderMenus();
+    if (typeof closePortfolioMenu === 'function') closePortfolioMenu();
+    if (willOpen) {
+        menu.classList.remove('hidden');
+        const btn = menu.parentElement && menu.parentElement.querySelector('[aria-haspopup="menu"]');
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+    }
+}
+
+// Clic hors d'un menu → fermeture (phase de capture : fonctionne même si un
+// autre handler fait stopPropagation). Clic sur un élément de menu → fermeture
+// juste après l'exécution de son action.
+document.addEventListener('click', (e) => {
+    const inMenu = e.target.closest && e.target.closest('[data-header-menu]');
+    if (!inMenu) { closeHeaderMenus(); return; }
+    if (e.target.closest('[role="menuitem"]')) setTimeout(closeHeaderMenus, 0);
+}, true);
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const open = document.querySelector('[data-header-menu] [role="menu"]:not(.hidden)');
+    if (!open) return;
+    closeHeaderMenus();
+    const btn = open.parentElement.querySelector('[aria-haspopup="menu"]');
+    if (btn) btn.focus();
+});
+
+// « Démo » écrase les données courantes : on demande confirmation
+// (l'action reste annulable via l'historique d'annulation).
+function confirmResetData() {
+    if (confirm('Remplacer toutes vos données actuelles par les données de démonstration ?\n\n(Annulable ensuite avec Ctrl+Z.)')) {
+        resetData();
+    }
+}
+
 function updatePortfolioLabel() {
     const el = document.getElementById('current-portfolio-label');
     if (!el) return;
