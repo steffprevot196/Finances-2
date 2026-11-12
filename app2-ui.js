@@ -1743,6 +1743,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     const open = document.querySelector('[data-header-menu] [role="menu"]:not(.hidden)');
     if (!open) return;
+    e.preventDefault();   // Échap traité : ne ferme pas en plus une modale
     closeHeaderMenus();
     const btn = open.parentElement.querySelector('[aria-haspopup="menu"]');
     if (btn) btn.focus();

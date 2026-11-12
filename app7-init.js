@@ -688,10 +688,13 @@ if (isinInput) {
             return;
         }
         if (e.key === 'Escape') {
-            // Si la palette est ouverte, c'est elle qui gère son propre Échap
-            const palette = document.getElementById('modal-command-palette');
-            if (palette && !palette.classList.contains('hidden')) return;
-            document.querySelectorAll('.fixed.inset-0:not(.hidden)').forEach(m => m.classList.add('hidden'));
+            // Échap déjà traité par un autre élément (palette, édition inline, menu d'en-tête…)
+            if (e.defaultPrevented) return;
+            // app45-a11y.js : ferme UNIQUEMENT la modale du dessus (les `modal-*`).
+            // L'ancien code masquait tout `.fixed.inset-0`, y compris l'overlay du
+            // menu mobile (#mobile-drawer-overlay), qui n'est jamais censé recevoir `hidden`.
+            if (typeof closeTopmostModal === 'function') { closeTopmostModal(); return; }
+            document.querySelectorAll('[id^="modal-"].fixed.inset-0:not(.hidden)').forEach(m => m.classList.add('hidden'));
         }
     });
 

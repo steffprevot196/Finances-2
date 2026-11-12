@@ -1233,7 +1233,7 @@
         </section>
 
         <!-- MODAL : EXPLICATION D'UN RATIO DE RISQUE -->
-        <div id="modal-risk-metric" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div id="modal-risk-metric" aria-label="Détail de l'indicateur de risque" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
             <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
                 <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
                     <h3 id="risk-modal-title" class="font-bold text-white text-sm flex items-center gap-2"></h3>
@@ -1439,7 +1439,7 @@
                                 <label class="text-[11px] text-gray-400">Conserver les points des N dernières années :</label>
                                 <span id="compaction-years-label" class="text-sm font-bold font-mono text-white">2 ans</span>
                             </div>
-                            <input type="range" id="compaction-years-slider" min="1" max="10" step="1" value="2"
+                            <input aria-label="Années d'historique à conserver" type="range" id="compaction-years-slider" min="1" max="10" step="1" value="2"
                                    oninput="onCompactionYearsChange(this.value)"
                                    class="w-full accent-amber-500">
                             <div class="flex justify-between text-[9px] text-gray-600 mt-0.5">
@@ -2240,19 +2240,19 @@
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs font-mono mb-4">
                     <div class="bg-gray-950 p-3 rounded-xl border border-gray-800">
                         <span class="text-gray-400">Exemple Prix Vente :</span>
-                        <input type="number" id="sim-sell-price" value="4800" oninput="calculateMetalTaxSim()" class="w-full bg-gray-900 border border-gray-800 rounded p-1 text-white text-right mt-1 font-mono">
+                        <input aria-label="Prix de vente (exemple)" type="number" id="sim-sell-price" value="4800" oninput="calculateMetalTaxSim()" class="w-full bg-gray-900 border border-gray-800 rounded p-1 text-white text-right mt-1 font-mono">
                     </div>
                     <div class="bg-gray-950 p-3 rounded-xl border border-gray-800">
                         <span class="text-gray-400">Prix d'Achat (PRU) :</span>
-                        <input type="number" id="sim-buy-price" value="3200" oninput="calculateMetalTaxSim()" class="w-full bg-gray-900 border border-gray-800 rounded p-1 text-white text-right mt-1 font-mono">
+                        <input aria-label="Prix d'achat (PRU)" type="number" id="sim-buy-price" value="3200" oninput="calculateMetalTaxSim()" class="w-full bg-gray-900 border border-gray-800 rounded p-1 text-white text-right mt-1 font-mono">
                     </div>
                     <div class="bg-gray-950 p-3 rounded-xl border border-gray-800">
                         <span class="text-gray-400">Durée Détention (Ans) :</span>
-                        <input type="number" id="sim-years" value="5" oninput="calculateMetalTaxSim()" class="w-full bg-gray-900 border border-gray-800 rounded p-1 text-white text-right mt-1 font-mono">
+                        <input aria-label="Durée de détention en années" type="number" id="sim-years" value="5" oninput="calculateMetalTaxSim()" class="w-full bg-gray-900 border border-gray-800 rounded p-1 text-white text-right mt-1 font-mono">
                     </div>
                     <div class="bg-gray-950 p-3 rounded-xl border border-gray-800">
                         <span class="text-gray-400">Type de support :</span>
-                        <select id="sim-type" onchange="calculateMetalTaxSim()" class="w-full bg-gray-900 border border-gray-800 rounded p-1 text-white mt-1 font-sans text-xs">
+                        <select aria-label="Type de support" id="sim-type" onchange="calculateMetalTaxSim()" class="w-full bg-gray-900 border border-gray-800 rounded p-1 text-white mt-1 font-sans text-xs">
                             <option value="JETON">Jeton (Vera Valor, Vera Max...)</option>
                             <option value="COURS_LEGAL">Pièce Cours Légal (Napoléon, Krugerrand)</option>
                             <option value="LINGOT">Lingot / Métal Précieux</option>
@@ -2409,10 +2409,10 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
                     <input type="text" id="ledger-search" oninput="renderLedgerTab()" placeholder="Rechercher (nom, ticker, note)..." class="bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-teal-500">
-                    <select id="ledger-year" onchange="renderLedgerTab()" class="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500">
+                    <select aria-label="Filtrer par année" id="ledger-year" onchange="renderLedgerTab()" class="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500">
                         <option value="">Toutes les années</option>
                     </select>
-                    <select id="ledger-pool" onchange="renderLedgerTab()" class="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500">
+                    <select aria-label="Filtrer par pool fiscal" id="ledger-pool" onchange="renderLedgerTab()" class="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500">
                         <option value="ALL">Tous les pools fiscaux</option>
                         <option value="TITRES">Titres (CTO)</option>
                         <option value="CRYPTO">Cryptomonnaies</option>
@@ -4767,7 +4767,7 @@
     </div>
 
     <!-- MODAL : PALETTE DE COMMANDES (Ctrl+K) -->
-    <div id="modal-command-palette" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-[12vh] z-[70] hidden">
+    <div id="modal-command-palette" aria-label="Palette de commandes" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-[12vh] z-[70] hidden">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col">
             <div class="flex items-center gap-3 p-3 border-b border-gray-800 bg-gray-950">
                 <i class="fa-solid fa-terminal text-teal-400"></i>
@@ -4946,7 +4946,7 @@
     </div>
 
     <!-- MODAL : RECHERCHE RAPIDE Ctrl+P (Chantier §9) -->
-    <div id="modal-quick-search" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-[10vh] z-[70] hidden">
+    <div id="modal-quick-search" aria-label="Recherche rapide" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-[10vh] z-[70] hidden">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col">
             <div class="flex items-center gap-3 p-3 border-b border-gray-800 bg-gray-950">
                 <i class="fa-solid fa-magnifying-glass text-teal-400"></i>
@@ -5022,8 +5022,8 @@
                 <div>
                     <label class="block text-gray-400 mb-1.5">Quantité à vendre</label>
                     <div class="flex items-center gap-3">
-                        <input type="range" id="sim-quantity-slider" min="0" max="1" step="any" oninput="onSimQuantityInput('slider')" class="flex-1 accent-purple-500 cursor-pointer">
-                        <input type="number" id="sim-quantity" step="any" oninput="onSimQuantityInput('number')" class="w-28 bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono text-right focus:outline-none focus:border-purple-500">
+                        <input aria-label="Quantité à vendre (curseur)" type="range" id="sim-quantity-slider" min="0" max="1" step="any" oninput="onSimQuantityInput('slider')" class="flex-1 accent-purple-500 cursor-pointer">
+                        <input aria-label="Quantité à vendre" type="number" id="sim-quantity" step="any" oninput="onSimQuantityInput('number')" class="w-28 bg-gray-950 border border-gray-800 rounded-lg p-2 text-white font-mono text-right focus:outline-none focus:border-purple-500">
                     </div>
                     <div class="flex justify-between mt-1.5">
                         <button type="button" onclick="simSetQuantityPct(25)"  class="text-[10px] text-indigo-400 hover:text-indigo-300">25 %</button>
@@ -5141,6 +5141,7 @@
     <script src="app42-dead-lines.js" defer></script>
     <script src="app43-mc-worker.js" defer></script>
     <script src="app44-tab-filters.js" defer></script>
+    <script src="app45-a11y.js" defer></script>
     <script src="app7-init.js" defer></script>
 </body>
 </html>

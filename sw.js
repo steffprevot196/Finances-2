@@ -15,7 +15,7 @@
 // « fantômes » impossibles à reproduire en DevTools.
 // =====================================================================
 
-const SW_VERSION = 'v1.0.40';                   // ← Bumper à chaque deploy
+const SW_VERSION = 'v1.0.41';                   // ← Bumper à chaque deploy
 const CACHE_PREFIX = 'patrimonial';
 const CACHE_STATIC = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const CACHE_CDN    = `${CACHE_PREFIX}-cdn-${SW_VERSION}`;
@@ -79,6 +79,7 @@ const APP_SHELL = [
     './app42-dead-lines.js',
     './app43-mc-worker.js',
     './app44-tab-filters.js',
+    './app45-a11y.js',
     './monte-carlo-worker.js',
     './app7-init.js'
 ];
