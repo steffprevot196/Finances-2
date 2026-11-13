@@ -1728,6 +1728,11 @@ function toggleHeaderMenu(menuId, evt) {
         menu.classList.remove('hidden');
         const btn = menu.parentElement && menu.parentElement.querySelector('[aria-haspopup="menu"]');
         if (btn) btn.setAttribute('aria-expanded', 'true');
+        // Ouvert au clavier (Entrée/Espace → click avec detail === 0) : le focus entre dans le menu
+        if (evt && evt.detail === 0) {
+            const first = menu.querySelector('[role="menuitem"]');
+            if (first) first.focus();
+        }
     }
 }
 

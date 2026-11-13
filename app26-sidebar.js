@@ -134,9 +134,9 @@ function _buildSidebarHTML() {
         <aside id="app-sidebar" class="app-sidebar fixed left-0 top-0 bottom-0 z-[45] bg-gray-950 border-r border-gray-800 flex flex-col transition-all duration-250"
                style="width: 240px;">
             ${headerHTML}
-            <div class="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden py-3">
+            <nav aria-label="Navigation principale" class="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden py-3">
                 ${sectionsHTML}
-            </div>
+            </nav>
             ${footerHTML}
         </aside>
     `;
@@ -152,7 +152,10 @@ function initSidebarModule() {
     // Injection dans le body
     const wrapper = document.createElement('div');
     wrapper.innerHTML = _buildSidebarHTML();
-    document.body.appendChild(wrapper);
+    // Ordre de tabulation = ordre visuel : la barre latérale (à gauche) doit être atteinte
+    // AVANT le contenu, et non après toute la page. Elle vient juste après le lien d'évitement.
+    const skip = document.querySelector('.skip-link');
+    document.body.insertBefore(wrapper, skip ? skip.nextSibling : document.body.firstChild);
 
     // Applique l'état visuel initial (replié / déployé + visible selon viewport)
     _handleSidebarResize();
@@ -249,6 +252,9 @@ function updateSidebarActiveState() {
         const isActive = btn.dataset.sidebarTab === active;
         btn.classList.toggle('bg-emerald-950/40', isActive);
         btn.classList.toggle('text-white', isActive);
+        // Accessibilité : l'onglet courant est annoncé par les lecteurs d'écran
+        if (isActive) btn.setAttribute('aria-current', 'page');
+        else btn.removeAttribute('aria-current');
 
         const indicator = btn.querySelector('.sidebar-active-indicator');
         if (indicator) indicator.style.opacity = isActive ? '1' : '0';

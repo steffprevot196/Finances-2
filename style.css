@@ -511,12 +511,53 @@ button, a, .clickable-row, .interactive-card, tr, [class*="hover:"] {
 }
 ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, .3); background-clip: content-box; }
 
-/* --- Focus accessible et élégant --- */
-:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-    border-radius: 4px;
+/* --- Focus clavier TOUJOURS visible (WCAG 2.4.7) ---
+   Avant : la règle simple `:focus-visible` perdait contre les ~150 classes Tailwind
+   `focus:outline-none` (plus spécifiques) → ces éléments n'avaient aucun repère au
+   clavier. `!important` + `:where()` (spécificité nulle) garantit l'anneau partout.
+   On ne force plus `border-radius` : il déformait les boutons ronds au focus. */
+:root { --focus-ring: #34d399; }          /* émeraude 400 : ≈ 10:1 sur fond sombre */
+body.light { --focus-ring: #047857; }     /* émeraude 700 : ≈ 5,5:1 sur fond clair  */
+
+:where(a, button, input, select, textarea, summary, [tabindex], [role="button"], [role="menuitem"]):focus-visible {
+    outline: 2px solid var(--focus-ring) !important;
+    outline-offset: 2px !important;
 }
+/* Éléments où un anneau extérieur serait rogné par overflow:hidden / bords du conteneur */
+tr:focus-visible, th:focus-visible, td:focus-visible,
+[role="menuitem"]:focus-visible,
+.sidebar-nav-item:focus-visible {
+    outline-offset: -2px !important;
+}
+/* Cibles de focus programmatique (conteneurs de modale, <main>) : pas d'anneau plein écran */
+:where([tabindex="-1"]):focus,
+:where([tabindex="-1"]):focus-visible {
+    outline: none !important;
+}
+@media (forced-colors: active) {
+    :where(a, button, input, select, textarea, summary, [tabindex], [role="button"], [role="menuitem"]):focus-visible {
+        outline: 2px solid Highlight !important;
+    }
+}
+
+/* --- Lien d'évitement « Aller au contenu » (visible seulement au focus) --- */
+.skip-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 10000;
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.5rem;
+    background: #065f46;
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .5);
+    transform: translateY(-250%);
+    transition: none !important;   /* une règle globale anime sinon le lien à son apparition */
+}
+.skip-link:focus { transform: translateY(0); }
 
 /* --- Boutons : micro-rebond au clic --- */
 button:active:not(:disabled) {

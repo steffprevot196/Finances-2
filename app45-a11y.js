@@ -12,7 +12,11 @@
 //   4. donne un nom accessible aux boutons-icônes (×, crayon, corbeille…),
 //      associe les <label> à leur champ (for/id), masque les icônes
 //      décoratives aux lecteurs d'écran.
-// Les points 4 s'appliquent au chargement ET au contenu généré ensuite
+//   5. rend atteignables / activables au clavier (Tab, Entrée, Espace) les
+//      éléments cliquables non natifs (lignes de tableau, en-têtes de tri…) ;
+//   6. complète les menus role="menu" (↑ ↓ Début Fin, Tab referme) ;
+//   7. lien d'évitement « Aller au contenu principal ».
+// Les points 4 et 5 s'appliquent au chargement ET au contenu généré ensuite
 // par le JS (innerHTML), via un MutationObserver (nœuds ajoutés seulement).
 // Idempotent : on peut rappeler enhanceAccessibility(root) sans risque.
 // =====================================================================
@@ -246,12 +250,114 @@
         matchAll(root, 'i[class*="fa-"]:not([aria-hidden])').forEach(i => i.setAttribute('aria-hidden', 'true'));
     }
 
+    // ----------------------------------------------------------------
+    // 5) Éléments cliquables non natifs → atteignables et activables au clavier
+    // ----------------------------------------------------------------
+    // Les lignes de tableau (ouvrent la fiche d'un actif), en-têtes de tri, cartes
+    // cliquables… sont des <tr>/<th>/<div onclick> : ni focusables ni activables au
+    // clavier. On leur ajoute tabindex="0" et l'activation Entrée / Espace.
+    //  • <tr>/<th>/<td> : pas de role (on garde la sémantique du tableau) ;
+    //  • autres éléments sans contrôle imbriqué : role="button" (si un nom existe) ;
+    //  • on ignore : éléments déjà natifs, déjà focusables, imbriqués dans un
+    //    bouton/lien, simples barrières `event.stopPropagation()`, et la palette
+    //    (pilotée au clavier par son champ de saisie).
+    const NATIVE = 'button, a[href], input, select, textarea, label, summary, option';
+    const INTERACTIVE_INSIDE = 'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const STOP_ONLY = /^\s*event\.stopPropagation\(\)\s*;?\s*$/;
+    const CELL_TAGS = /^(TR|TH|TD)$/;
+
+    function enhanceClickable(root) {
+        // On teste la PROPRIÉTÉ `onclick` (et non l'attribut) : elle couvre à la fois
+        // onclick="…" dans le HTML et `el.onclick = () => …` posé par le JS (lignes de
+        // l'inventaire, cartes mobiles…), que le sélecteur [onclick] ne voyait pas.
+        const nodes = [root, ...root.querySelectorAll('*')];
+        nodes.forEach(el => {
+            if (el.nodeType !== 1 || el.dataset.a11yClick || el.hasAttribute('tabindex') || el.matches(NATIVE)) return;
+            if (typeof el.onclick !== 'function' && !el.matches('tr.clickable-row')) return;
+            if (el.closest('button, a[href], [role="button"]')) return;            // déjà dans un contrôle
+            const handler = el.getAttribute('onclick') || '';
+            if (STOP_ONLY.test(handler) || /runCommandPaletteItem|closeMobileDrawer/.test(handler)) return;
+            const isCell = CELL_TAGS.test(el.tagName);
+            if (!isCell && !el.querySelector(INTERACTIVE_INSIDE)) {
+                const name = el.getAttribute('aria-label') || el.textContent.trim() || el.getAttribute('title');
+                if (!name) return;                                                  // pas de bouton « muet »
+                el.setAttribute('role', 'button');
+            }
+            el.setAttribute('tabindex', '0');
+            el.dataset.a11yClick = '1';
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if ((e.key !== 'Enter' && e.key !== ' ') || e.repeat || e.defaultPrevented) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const el = e.target;
+        // Uniquement quand c'est l'élément lui-même qui a le focus : un bouton imbriqué
+        // (modifier / supprimer dans une ligne) garde sa propre action.
+        if (!el || !el.dataset || el.dataset.a11yClick !== '1') return;
+        e.preventDefault();      // Espace : pas de défilement de la page
+        el.click();
+    });
+
+    // ----------------------------------------------------------------
+    // 6) Menus (role="menu") : flèches, Début/Fin, Tab referme
+    // ----------------------------------------------------------------
+    function menuItems(menu) {
+        return [...menu.querySelectorAll('[role="menuitem"]:not([disabled])')].filter(isVisible);
+    }
+    document.addEventListener('keydown', (e) => {
+        const t = e.target;
+        if (!t || !t.closest) return;
+        // Bouton déclencheur : ↓ ouvre et va au 1er élément, ↑ au dernier
+        const trigger = t.closest('[aria-haspopup="menu"]');
+        if (trigger && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+            const menu = document.getElementById(trigger.getAttribute('aria-controls'));
+            if (!menu) return;
+            e.preventDefault();
+            if (menu.classList.contains('hidden') && typeof toggleHeaderMenu === 'function') toggleHeaderMenu(menu.id);
+            const items = menuItems(menu);
+            if (items.length) (e.key === 'ArrowDown' ? items[0] : items[items.length - 1]).focus();
+            return;
+        }
+        const menu = t.closest('[role="menu"]');
+        if (!menu) return;
+        const items = menuItems(menu);
+        if (!items.length) return;
+        const i = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+        else if (e.key === 'Home') { e.preventDefault(); items[0].focus(); }
+        else if (e.key === 'End') { e.preventDefault(); items[items.length - 1].focus(); }
+        else if (e.key === 'Tab' && typeof closeHeaderMenus === 'function') {
+            // On laisse le navigateur déplacer le focus, puis on referme (setTimeout 0 :
+            // le focus a déjà bougé ; refermer avant ferait « perdre » la position de Tab).
+            setTimeout(closeHeaderMenus, 0);
+        }
+    });
+
+    // ----------------------------------------------------------------
+    // 7) Lien d'évitement : focus sur le contenu principal sans polluer l'URL
+    // ----------------------------------------------------------------
+    function initSkipLink() {
+        const skip = document.querySelector('.skip-link');
+        if (!skip || skip.dataset.a11yBound) return;
+        skip.dataset.a11yBound = '1';
+        skip.addEventListener('click', (e) => {
+            e.preventDefault();
+            const main = document.getElementById('main-content');
+            if (!main) return;
+            main.focus({ preventScroll: true });
+            main.scrollIntoView({ block: 'start' });
+        });
+    }
+
     function enhanceAccessibility(root) {
         root = root || document.body;
         if (!root || root.nodeType !== 1) return;
         matchAll(root, MODAL_SELECTOR).forEach(enhanceDialog);
         enhanceFields(root);        // avant les boutons : pas de dépendance, mais ordre stable
         enhanceButtons(root);
+        enhanceClickable(root);
         hideDecorativeIcons(root);
     }
     window.enhanceAccessibility = enhanceAccessibility;
@@ -271,6 +377,7 @@
     });
 
     function init() {
+        initSkipLink();
         enhanceAccessibility(document.body);
         domObserver.observe(document.body, { childList: true, subtree: true });
         console.info('[A11y] Module chargé \u2014 ' + document.querySelectorAll(MODAL_SELECTOR).length + ' modale(s) équipée(s).');

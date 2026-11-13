@@ -111,6 +111,7 @@
 
 </head>
 <body class="p-4 md:p-6 min-h-screen flex flex-col">
+    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
 
     <!-- INPUTS FICHIERS MASQUÉS -->
     <input type="file" id="input-import-json" accept=".json" class="hidden" onchange="handleImportJSON(event)">
@@ -340,7 +341,7 @@
         </nav>
 
         <!-- MAIN CONTENT AREA -->
-        <main class="flex-grow min-w-0">
+        <main id="main-content" tabindex="-1" class="flex-grow min-w-0">
 
         <!-- TAB 0 : ACCUEIL (KPI synthèse — page d'atterrissage) -->
         <section id="tab-accueil" class="tab-content space-y-6">

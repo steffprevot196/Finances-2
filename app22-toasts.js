@@ -76,9 +76,39 @@ function _getToastContainer() {
         // z-index élevé pour passer au-dessus des modals.
         container.className = 'fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none';
         container.style.maxWidth = 'calc(100vw - 2rem)';
+        container.setAttribute('role', 'region');
+        container.setAttribute('aria-label', 'Notifications');
         document.body.appendChild(container);
     }
     return container;
+}
+
+// Régions « live » persistantes, invisibles : c'est ELLES qui sont lues par les lecteurs
+// d'écran (un toast inséré d'un bloc dans le DOM n'est pas toujours annoncé). Elles doivent
+// exister avant le premier message → créées à l'init du module.
+// L'alert() natif était annoncé automatiquement : sans ceci, remplacer alert() par un toast
+// serait une RÉGRESSION d'accessibilité.
+const _VISUALLY_HIDDEN = 'position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;';
+function _getLiveRegion(assertive) {
+    const id = assertive ? 'toast-live-assertive' : 'toast-live-polite';
+    let region = document.getElementById(id);
+    if (!region) {
+        region = document.createElement('div');
+        region.id = id;
+        region.setAttribute('aria-live', assertive ? 'assertive' : 'polite');
+        region.setAttribute('aria-atomic', 'true');
+        region.setAttribute('role', assertive ? 'alert' : 'status');
+        region.style.cssText = _VISUALLY_HIDDEN;
+        document.body.appendChild(region);
+    }
+    return region;
+}
+function _announce(type, title, message) {
+    const region = _getLiveRegion(type === 'error');
+    const text = [title, message].filter(Boolean).join(' : ');
+    region.textContent = '';
+    // Léger différé : vider puis remplir force une nouvelle annonce, même pour un texte identique
+    setTimeout(() => { region.textContent = text; }, 60);
 }
 
 // Échappe le contenu pour éviter toute injection (les messages viennent
@@ -107,12 +137,19 @@ function showToast(opts = {}) {
     const type = TOAST_STYLES[opts.type] ? opts.type : 'info';
     const style = TOAST_STYLES[type];
     const container = _getToastContainer();
+    // Durée explicite : sans elle, la barre de progression recevait « undefinedms »
+    if (opts.duration === undefined) opts = Object.assign({}, opts, { duration: TOAST_DEFAULT_DURATION });
 
-    // Limite le nombre de toasts visibles simultanément
-    const currentToasts = container.querySelectorAll('.pm-toast');
-    if (currentToasts.length >= TOAST_MAX_VISIBLE) {
-        // Ferme le plus ancien
-        _removeToast(currentToasts[0]);
+    // Limite le nombre de toasts visibles simultanément.
+    // On ne compte QUE les toasts qui ne sont pas déjà en train de sortir (leur animation
+    // de sortie dure ~400 ms : ils sont encore dans le DOM), sinon le même toast serait
+    // « fermé » plusieurs fois et la limite ne serait jamais respectée lors d'une rafale.
+    // On épargne les erreurs tant qu'il reste un autre message à fermer.
+    const stayingToasts = Array.from(container.querySelectorAll('.pm-toast')).filter(t => !t.dataset.pmLeaving);
+    while (stayingToasts.length >= TOAST_MAX_VISIBLE) {
+        const victim = stayingToasts.find(t => t.dataset.pmType !== 'error') || stayingToasts[0];
+        stayingToasts.splice(stayingToasts.indexOf(victim), 1);
+        _removeToast(victim);
     }
 
     // --- Construction du DOM ---
@@ -124,6 +161,7 @@ function showToast(opts = {}) {
     toast.style.maxWidth = 'calc(100vw - 2rem)';
     toast.style.transform = 'translateX(120%)';
     toast.style.opacity = '0';
+    toast.dataset.pmType = type;
 
     // Actions (boutons optionnels)
     const actionsHTML = (opts.actions && opts.actions.length)
@@ -193,13 +231,36 @@ function showToast(opts = {}) {
         });
     });
 
-    // Auto-fermeture
-    const duration = (opts.duration === undefined) ? TOAST_DEFAULT_DURATION : opts.duration;
+    // Annonce aux lecteurs d'écran (régions live persistantes)
+    _announce(type, opts.title, opts.message);
+
+    // Auto-fermeture — SUSPENDUE tant que la souris survole le toast ou que le focus
+    // est dedans (WCAG 2.2.1 : le temps de lecture doit pouvoir être prolongé).
+    const duration = opts.duration;
     if (duration > 0) {
-        toast._pmAutoCloseTimer = setTimeout(() => {
-            _removeToast(toast);
-            if (typeof opts.onClose === 'function') opts.onClose();
-        }, duration);
+        const bar = toast.lastElementChild && toast.lastElementChild.classList.contains('h-0.5') ? toast.lastElementChild : null;
+        toast._pmRemaining = duration;
+        const arm = () => {
+            toast._pmStart = Date.now();
+            toast._pmAutoCloseTimer = setTimeout(() => {
+                _removeToast(toast);
+                if (typeof opts.onClose === 'function') opts.onClose();
+            }, toast._pmRemaining);
+            if (bar) bar.style.animationPlayState = 'running';
+        };
+        const pause = () => {
+            if (!toast._pmAutoCloseTimer) return;
+            clearTimeout(toast._pmAutoCloseTimer);
+            toast._pmAutoCloseTimer = null;
+            toast._pmRemaining = Math.max(1500, toast._pmRemaining - (Date.now() - toast._pmStart));
+            if (bar) bar.style.animationPlayState = 'paused';
+        };
+        const resume = () => { if (!toast._pmAutoCloseTimer && toast.parentElement) arm(); };
+        toast.addEventListener('mouseenter', pause);
+        toast.addEventListener('mouseleave', () => { if (!toast.contains(document.activeElement)) resume(); });
+        toast.addEventListener('focusin', pause);
+        toast.addEventListener('focusout', (e) => { if (!toast.contains(e.relatedTarget) && !toast.matches(':hover')) resume(); });
+        arm();
     }
 
     return toast;
@@ -209,7 +270,8 @@ function showToast(opts = {}) {
 // FERMETURE D'UN TOAST
 // ---------------------------------------------------------------------
 function _removeToast(toast) {
-    if (!toast || !toast.parentElement) return;
+    if (!toast || !toast.parentElement || toast.dataset.pmLeaving) return;
+    toast.dataset.pmLeaving = '1';
     if (toast._pmAutoCloseTimer) clearTimeout(toast._pmAutoCloseTimer);
 
     // Animation de sortie
@@ -310,6 +372,39 @@ function _withAlertAsToast(fnName, toastType = 'info') {
 }
 
 // ---------------------------------------------------------------------
+// alert() GLOBAL → TOAST
+// ---------------------------------------------------------------------
+const ALERT_NATIVE_MAX_CHARS = 320;   // au-delà : lecture attentive → boîte native
+const ALERT_NATIVE_MAX_LINES = 7;
+const _nativeAlert = window.alert.bind(window);
+
+function _inferAlertType(m) {
+    if (/erreur|échec|échoué|impossible|introuvable|n'a pas pu|non chargé|refusé/i.test(m)) return 'error';
+    if (/attention|avertissement|⚠|veuillez|invalide|manquant|obligatoire|incohérent|requis|doit /i.test(m)) return 'warning';
+    if (/réussi|succès|✅|effectué|importé|enregistré|mis à jour|créé|supprimé|restauré|dupliqué|activé/i.test(m)) return 'success';
+    return 'info';
+}
+
+function pmAlert(msg) {
+    const m = (msg === undefined || msg === null) ? '' : String(msg);
+    if (!m.trim()) return;
+    if (m.length > ALERT_NATIVE_MAX_CHARS || m.split('\n').length > ALERT_NATIVE_MAX_LINES) {
+        return _nativeAlert(m);
+    }
+    const type = _inferAlertType(m);
+    const titles = { success: 'Succès', error: 'Erreur', warning: 'Attention', info: 'Information' };
+    // Temps de lecture proportionnel au texte (≈ 50 ms / caractère), plus long pour une erreur
+    const duration = Math.min(15000, Math.max(5000, 3500 + m.length * 50) + (type === 'error' ? 2000 : 0));
+    showToast({ type, title: titles[type], message: m, duration });
+}
+
+function _installAlertAsToast() {
+    if (window.alert === pmAlert) return;
+    window.pmNativeAlert = _nativeAlert;     // accès à la boîte native si vraiment nécessaire
+    window.alert = pmAlert;
+}
+
+// ---------------------------------------------------------------------
 // INITIALISATION
 // ---------------------------------------------------------------------
 function initToastsModule() {
@@ -331,41 +426,16 @@ function initToastsModule() {
         document.head.appendChild(styleEl);
     }
 
-    // Wraps ciblés : liste des fonctions dont l'alert() d'info devient un toast.
-    // Ces fonctions sont identifiées comme affichant un message de confirmation
-    // post-action (jamais de question binaire).
-    const INFO_ALERT_FUNCTIONS = [
-        // Chantier 1.2 — devise
-        // (aucune alert critique)
-
-        // Chantier 1.8 — récolte MV
-        // (confirm() uniquement → non wrappé)
-
-        // Import / Export
-        'handleImportJSON',          // « Import réussi : … »
-        'exportToExcel',             // (peut échouer avec alert → toast error)
-        'confirmCsvImport',          // (récap d'import → toast info)
-        'saveManualRefresh',         // « 3 actifs mis à jour manuellement »
-        'handleManualGoldUpdate',    // « Valeur mise à jour : … »
-        'restoreLocalBackup',        // « Sauvegarde restaurée »
-        'pullFromDrive',             // « Données restaurées depuis Google Drive »
-        'pushToDrive',               // « Sauvegarde envoyée sur Google Drive »
-        'connectDrive',              // « Connecté à Google Drive »
-        'deleteDriveBackup',         // (alert succès ou erreur)
-        'forceAutoDriveBackup',      // (alert succès ou erreur)
-        'forgetMasterKey',           // « Phrase oubliée »
-        'addPortfolio',              // « Portefeuille créé et activé »
-        'deletePortfolio',           // (confirm en amont, mais alert en cas d'erreur)
-        'resetData',                 // (si message succès)
-        'handleDuplicateAsset',      // (déjà silencieux mais au cas où)
-        'duplicatePaperScenario',    // « Scénario dupliqué : … »
-        'promotePaperAsset',         // (confirm en amont, mais retour silencieux)
-        'promoteWatchlistToAsset',   // (aucun alert mais préventif)
-        'downloadCurrentLedgerCSV',  // (éventuelle erreur)
-        'handleSaveFireConfig'       // (validation → alert si erreur)
-    ];
-
-    INFO_ALERT_FUNCTIONS.forEach(fnName => _withAlertAsToast(fnName, 'info'));
+    // alert() → toast, de façon GLOBALE et permanente.
+    // L'ancien mécanisme enveloppait ~22 fonctions et rétablissait alert() dès que la
+    // fonction rendait la main : tout alert() survenant après un `await` (Drive, import,
+    // export Excel…) restait donc une boîte native bloquante. Un remplacement unique couvre
+    // les ~130 appels, synchrones ou non. Les messages longs ou multi-lignes (rapports
+    // d'import, détails d'erreur) exigent une lecture attentive : ils restent natifs.
+    _installAlertAsToast();
+    _getToastContainer();      // crée tout de suite le conteneur ET les régions live
+    _getLiveRegion(false);
+    _getLiveRegion(true);
 
     console.info('[Toasts] Module initialisé.');
 }
