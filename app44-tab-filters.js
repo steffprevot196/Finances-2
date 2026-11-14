@@ -256,7 +256,7 @@ function _buildFilterButtonsHTML(setterName, activeFilter, barId) {
             type="button"
             data-tab-filter-bar="${barId}"
             data-tab-filter-code="${escapeHTML(item.code)}"
-            onclick="${setterName}(${safeInlineArg(item.code)})"
+            data-onclick="${setterName}(${safeInlineArg(item.code)})"
             class="tab-filter-btn px-3 py-1.5 rounded-lg text-xs border transition ${cls}">${escapeHTML(item.label)}</button>`;
     });
     return html;

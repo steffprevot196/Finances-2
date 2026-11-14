@@ -281,13 +281,13 @@ function renderGoalCard(g) {
 
             <!-- Actions -->
             <div class="flex justify-end gap-1 pt-2 border-t border-gray-800 flex-wrap">
-                <button onclick="toggleGoalDetail(${g.id})" class="px-2 py-1 rounded bg-gray-800 hover:bg-cyan-900/60 text-gray-300 hover:text-cyan-300 text-[10px] transition" title="Voir le détail et la simulation Monte-Carlo">
+                <button data-onclick="toggleGoalDetail(${g.id})" class="px-2 py-1 rounded bg-gray-800 hover:bg-cyan-900/60 text-gray-300 hover:text-cyan-300 text-[10px] transition" title="Voir le détail et la simulation Monte-Carlo">
                     <i class="fa-solid fa-chart-line text-[9px]"></i> Simuler
                 </button>
-                <button onclick="editGoal(${g.id})" class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Modifier">
+                <button data-onclick="editGoal(${g.id})" class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Modifier">
                     <i class="fa-solid fa-pen text-[9px]"></i>
                 </button>
-                <button onclick="deleteGoal(${g.id})" class="px-2 py-1 rounded bg-gray-800 hover:bg-rose-900/60 text-gray-300 hover:text-rose-300 text-[10px] transition" title="Supprimer">
+                <button data-onclick="deleteGoal(${g.id})" class="px-2 py-1 rounded bg-gray-800 hover:bg-rose-900/60 text-gray-300 hover:text-rose-300 text-[10px] transition" title="Supprimer">
                     <i class="fa-solid fa-trash text-[9px]"></i>
                 </button>
             </div>
@@ -329,7 +329,7 @@ function renderGoalsTab() {
         grid.innerHTML = `<div class="col-span-full bg-gray-900/60 border border-dashed border-gray-700 rounded-xl p-8 text-center text-sm text-gray-500">
             <i class="fa-solid fa-bullseye text-3xl text-cyan-500/40 mb-2 block"></i>
             Aucun objectif défini pour le moment.<br>
-            <button onclick="openAddGoalModal()" class="mt-3 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-medium transition">
+            <button data-onclick="openAddGoalModal()" class="mt-3 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-medium transition">
                 <i class="fa-solid fa-plus text-[10px]"></i> Créer un premier objectif
             </button>
         </div>`;
@@ -393,7 +393,7 @@ function renderGoalDetail(id) {
                     <div class="font-bold text-white text-base truncate">${escapeHTML(g.name)}</div>
                     <div class="text-[11px] text-gray-500 font-mono">Cible ${formatEUR(g.targetAmount)} au ${new Date(g.targetDate).toLocaleDateString('fr-FR')}</div>
                 </div>
-                <button onclick="toggleGoalDetail(${g.id})" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:text-white flex-shrink-0"><i class="fa-solid fa-xmark"></i></button>
+                <button data-onclick="toggleGoalDetail(${g.id})" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:text-white flex-shrink-0"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <!-- Bandeau probabilité -->

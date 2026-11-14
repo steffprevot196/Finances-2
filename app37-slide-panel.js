@@ -84,7 +84,7 @@ function _injectSlidePanelToggle() {
     if (!header || document.getElementById('slide-panel-toggle-btn')) return;
 
     // Insère le bouton AVANT le bouton "split" (premier bouton d'action)
-    const splitBtn = header.querySelector('button[onclick*="openSplitModal"]');
+    const splitBtn = header.querySelector('button[data-onclick*="openSplitModal"]');
     if (!splitBtn) return;
 
     const btn = document.createElement('button');

@@ -629,7 +629,7 @@ function _renderBrokerStep1() {
     const brokerCards = Object.entries(BROKER_META).map(([id, meta]) => {
         const isActive = current === id;
         return `
-            <button type="button" onclick="selectBroker('${id}')" class="p-3 rounded-xl border ${isActive ? 'border-purple-500 bg-purple-950/30' : 'border-gray-800 bg-gray-950/40 hover:border-gray-700'} text-left transition">
+            <button type="button" data-onclick="selectBroker('${id}')" class="p-3 rounded-xl border ${isActive ? 'border-purple-500 bg-purple-950/30' : 'border-gray-800 bg-gray-950/40 hover:border-gray-700'} text-left transition">
                 <div class="flex items-center gap-2.5">
                     <span class="flex-shrink-0 w-9 h-9 rounded-lg ${meta.bg} border ${meta.bd} flex items-center justify-center ${meta.color}">
                         <i class="${meta.icon}"></i>
@@ -680,7 +680,7 @@ function _renderBrokerStep1() {
             </div>
 
             ${brokerImportState.keys.key ? `
-                <button type="button" onclick="clearBrokerKeysAndRefresh()" class="text-[10px] text-rose-400 hover:text-rose-300 underline">
+                <button type="button" data-onclick="clearBrokerKeysAndRefresh()" class="text-[10px] text-rose-400 hover:text-rose-300 underline">
                     <i class="fa-solid fa-trash text-[9px] mr-1"></i> Effacer les clés de la session pour ${escapeHTML(meta.label)}
                 </button>
             ` : ''}
@@ -899,7 +899,7 @@ function _renderBrokerStep2() {
         const isSelected = brokerImportState.selected.has(p.ticker);
         return `
             <label class="flex items-center gap-3 p-2.5 bg-gray-950/40 border ${isSelected ? 'border-purple-700/60 bg-purple-950/20' : 'border-gray-800'} rounded-lg cursor-pointer hover:border-purple-700 transition">
-                <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleBrokerPosition('${p.ticker}', this.checked)" class="accent-purple-500 mt-0.5">
+                <input type="checkbox" ${isSelected ? 'checked' : ''} data-onchange="toggleBrokerPosition('${p.ticker}', this.checked)" class="accent-purple-500 mt-0.5">
                 <span class="flex-shrink-0 w-9 h-9 rounded-lg bg-purple-950/60 border border-purple-800/50 flex items-center justify-center text-purple-400 font-bold text-[11px]">
                     ${escapeHTML(p.ticker.slice(0, 4))}
                 </span>
@@ -958,9 +958,9 @@ function _renderBrokerStep2() {
             <div class="flex justify-between items-center text-[11px]">
                 <span class="text-gray-400 font-bold uppercase tracking-wider">Positions détectées</span>
                 <div class="flex gap-1.5">
-                    <button type="button" onclick="toggleAllBrokerPositions(true)" class="text-[10px] text-purple-400 hover:text-purple-300">Tout cocher</button>
+                    <button type="button" data-onclick="toggleAllBrokerPositions(true)" class="text-[10px] text-purple-400 hover:text-purple-300">Tout cocher</button>
                     <span class="text-gray-700">·</span>
-                    <button type="button" onclick="toggleAllBrokerPositions(false)" class="text-[10px] text-purple-400 hover:text-purple-300">Tout décocher</button>
+                    <button type="button" data-onclick="toggleAllBrokerPositions(false)" class="text-[10px] text-purple-400 hover:text-purple-300">Tout décocher</button>
                 </div>
             </div>
 

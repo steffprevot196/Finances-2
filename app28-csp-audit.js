@@ -109,8 +109,8 @@ function _parseSimpleHandler(code) {
 function runCspAudit() {
     const handlers = [];
     CSP_AUDITED_ATTRS.forEach(attr => {
-        document.querySelectorAll(`[${attr}]`).forEach(el => {
-            const code = (el.getAttribute(attr) || '').trim();
+        document.querySelectorAll(`[data-${attr}], [${attr}]`).forEach(el => {
+            const code = (el.getAttribute('data-' + attr) || el.getAttribute(attr) || '').trim();
             if (!code) return;
             const category = _classifyInlineHandler(code);
             const parsed = category === 'simple' ? _parseSimpleHandler(code) : null;
@@ -473,9 +473,10 @@ const _CSP_EVENT_ATTR_MAP = {
 };
 
 // Active le délégateur global
-function enableCspFallbackDelegator() {
+function enableCspFallbackDelegator(options = {}) {
+    const silent = options && options.silent === true;
     if (_cspDelegatorActive) {
-        console.info('[CSP Delegator] Déjà actif.');
+        if (!silent) console.info('[CSP Delegator] Déjà actif.');
         return;
     }
 
@@ -484,11 +485,14 @@ function enableCspFallbackDelegator() {
             // Ignore les événements déjà traités par un autre mécanisme
             if (event._cspDelegated) return;
 
-            // Remonte la chaîne DOM pour trouver un élément avec l'attribut
-            const el = event.target.closest && event.target.closest(`[${attr}]`);
+            // Remonte la chaîne DOM jusqu'au PLUS PROCHE élément portant le handler.
+            // Format normal : data-onclick="…" (aucune violation CSP). Repli : onclick="…"
+            // brut (bloqué par une CSP stricte, mais rejoué ici si jamais il en reste un).
+            const dataAttr = 'data-' + attr;
+            const el = event.target.closest && event.target.closest(`[${dataAttr}], [${attr}]`);
             if (!el) return;
 
-            const code = el.getAttribute(attr);
+            const code = el.getAttribute(dataAttr) || el.getAttribute(attr);
             if (!code || !code.trim()) return;
 
             // Marque l'événement comme traité pour éviter les doublons
@@ -498,21 +502,19 @@ function enableCspFallbackDelegator() {
             _execCspHandler(code, el, event);
         };
 
-        // Capture en phase 1 (avant les handlers natifs) pour prendre la main
+        // Capture en phase 1 (avant les handlers natifs) pour prendre la main.
+        // Un seul handler s'exécute (le plus proche) : c'est le comportement natif tant que
+        // celui-ci appelle event.stopPropagation(), ce que font tous les handlers imbriqués de l'app.
         document.addEventListener(eventType, listener, true);
         _cspDelegatorListeners.push({ eventType, listener });
     });
 
     _cspDelegatorActive = true;
-    console.info('%c[CSP Delegator] ACTIVÉ — les handlers inline sont maintenant rejoués par le délégateur. Vous pouvez retirer \'unsafe-inline\' de la CSP.',
-        'color: #10b981; font-weight: bold;');
-
-    if (typeof toastInfo === 'function') {
-        toastInfo(
-            'Délégateur CSP activé',
-            'Testez l\'app pour vérifier que tous les handlers fonctionnent. Si OK, retirez \'unsafe-inline\' de la CSP.',
-            { duration: 8000 }
-        );
+    if (!silent) {
+        console.info('%c[CSP Delegator] ACTIVÉ', 'color: #10b981; font-weight: bold;');
+        if (typeof toastInfo === 'function') {
+            toastInfo('Délégateur CSP activé', 'Les gestionnaires data-on* sont rejoués par le délégateur.', { duration: 5000 });
+        }
     }
 }
 
@@ -621,3 +623,14 @@ window.reportCspReadiness = reportCspReadiness;
 window.enableCspFallbackDelegator = enableCspFallbackDelegator;
 window.disableCspFallbackDelegator = disableCspFallbackDelegator;
 window.isCspFallbackDelegatorActive = isCspFallbackDelegatorActive;
+
+// ---------------------------------------------------------------------
+// ACTIVATION IMMÉDIATE
+// ---------------------------------------------------------------------
+// Tous les gestionnaires de l'application sont des data-onclick="…" (aucun attribut
+// onclick brut, donc aucune violation CSP) : ils ne s'exécutent QUE via ce délégateur.
+// On l'active donc dès le chargement du script — il n'a besoin ni du DOM ni d'un module
+// tiers (écouteurs sur `document`) — pour qu'une erreur survenant plus tard dans le
+// démarrage ne rende pas l'interface inerte.
+try { enableCspFallbackDelegator({ silent: true }); }
+catch (err) { console.error('[CSP Delegator] Activation impossible :', err); }

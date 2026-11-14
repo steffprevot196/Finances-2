@@ -304,7 +304,7 @@ function _injectDcaBanner(suggestion, amount) {
             <div class="text-[11px] font-bold text-emerald-200">DCA planifié — ${formatEUR(amount)}</div>
             <div class="text-[11px] text-gray-300 mt-0.5 leading-relaxed">${suggestionTxt}</div>
         </div>
-        <button type="button" onclick="document.getElementById('dca-promotion-banner').remove();" class="flex-shrink-0 w-6 h-6 rounded-md bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800 hover:text-white flex items-center justify-center transition" title="Retirer le bandeau">
+        <button type="button" data-onclick="document.getElementById('dca-promotion-banner').remove();" class="flex-shrink-0 w-6 h-6 rounded-md bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800 hover:text-white flex items-center justify-center transition" title="Retirer le bandeau">
             <i class="fa-solid fa-xmark text-[10px]"></i>
         </button>
     `;

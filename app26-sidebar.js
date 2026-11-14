@@ -76,7 +76,7 @@ function _buildSidebarHTML() {
                 <div class="text-sm font-bold text-white tracking-tight truncate">PatriMonial</div>
                 <div class="text-[10px] text-gray-500 truncate">Suivi 360°</div>
             </div>
-            <button type="button" onclick="toggleSidebarCollapsed()" class="sidebar-toggle-btn flex-shrink-0 w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center justify-center" title="Replier / déployer la sidebar">
+            <button type="button" data-onclick="toggleSidebarCollapsed()" class="sidebar-toggle-btn flex-shrink-0 w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center justify-center" title="Replier / déployer la sidebar">
                 <i id="sidebar-toggle-icon" class="fa-solid fa-chevron-left text-[11px]"></i>
             </button>
         </div>
@@ -89,7 +89,7 @@ function _buildSidebarHTML() {
                 ? `<span id="sidebar-badge-watchlist" class="hidden ml-auto px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-bold flex-shrink-0">0</span>`
                 : '';
             return `
-                <button type="button" data-sidebar-tab="${it.id}" onclick="sidebarGoTo('${it.id}')"
+                <button type="button" data-sidebar-tab="${it.id}" data-onclick="sidebarGoTo('${it.id}')"
                         class="sidebar-nav-item group w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition relative"
                         title="${escapeHTML(it.label)}">
                     <span class="flex-shrink-0 w-6 flex items-center justify-center ${it.color || 'text-gray-400'}">
@@ -112,19 +112,19 @@ function _buildSidebarHTML() {
     // Actions secondaires en bas (préférences) — mini-barre d'icônes
     const footerHTML = `
         <div class="sidebar-footer flex-shrink-0 border-t border-gray-800 p-2 flex items-center gap-1 justify-center">
-            <button type="button" onclick="toggleLightMode()" class="sidebar-tool-btn w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center justify-center" title="Thème (sombre / clair / auto)">
+            <button type="button" data-onclick="toggleLightMode()" class="sidebar-tool-btn w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center justify-center" title="Thème (sombre / clair / auto)">
                 <i id="sidebar-theme-icon" class="fa-solid fa-moon text-[12px]"></i>
             </button>
-            <button type="button" onclick="toggleDensityMode()" class="sidebar-tool-btn w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center justify-center" title="Densité (confort / compact)">
+            <button type="button" data-onclick="toggleDensityMode()" class="sidebar-tool-btn w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center justify-center" title="Densité (confort / compact)">
                 <i id="sidebar-density-icon" class="fa-solid fa-expand text-[12px]"></i>
             </button>
-            <button type="button" onclick="togglePaperMode()" class="sidebar-tool-btn w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-purple-900/60 hover:text-purple-300 transition flex items-center justify-center" title="Paper Trading (positions fictives)">
+            <button type="button" data-onclick="togglePaperMode()" class="sidebar-tool-btn w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-purple-900/60 hover:text-purple-300 transition flex items-center justify-center" title="Paper Trading (positions fictives)">
                 <i class="fa-solid fa-flask text-[12px]"></i>
             </button>
-            <button type="button" onclick="openCommandPalette()" class="sidebar-tool-btn w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center justify-center" title="Commandes (Ctrl+K)">
+            <button type="button" data-onclick="openCommandPalette()" class="sidebar-tool-btn w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition flex items-center justify-center" title="Commandes (Ctrl+K)">
                 <i class="fa-solid fa-terminal text-[12px]"></i>
             </button>
-            <button type="button" onclick="openBrokerImportModal()" class="sidebar-tool-btn w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-purple-900/60 hover:text-purple-300 transition flex items-center justify-center" title="Import broker (Binance / Coinbase / Kraken)">
+            <button type="button" data-onclick="openBrokerImportModal()" class="sidebar-tool-btn w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-purple-900/60 hover:text-purple-300 transition flex items-center justify-center" title="Import broker (Binance / Coinbase / Kraken)">
                 <i class="fa-solid fa-plug text-[12px]"></i>
             </button>
         </div>

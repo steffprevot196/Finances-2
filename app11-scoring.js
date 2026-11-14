@@ -192,7 +192,7 @@ function scoreCellHTML(asset) {
     if (!r) return '<span class="text-gray-600">—</span>';
     const cls = scoreColorClass(r.total);
     const stars = scoreToStars(r.total);
-    return `<div class="inline-flex flex-col items-center gap-0.5 cursor-pointer" onclick="event.stopPropagation(); openScoringDetailModal(${asset.id})" title="Score ${r.total}/100 — cliquez pour voir la décomposition">
+    return `<div class="inline-flex flex-col items-center gap-0.5 cursor-pointer" data-onclick="event.stopPropagation(); openScoringDetailModal(${asset.id})" title="Score ${r.total}/100 — cliquez pour voir la décomposition">
         <span class="${cls} text-[10px] tracking-tight">${stars}</span>
         <span class="text-[10px] font-mono ${cls}">${r.total}/100</span>
     </div>`;
@@ -280,7 +280,7 @@ function renderScoringLeaderboard() {
         const stars = scoreToStars(x.score.total);
         const pnl = (a.value || 0) - (a.invested || 0);
         const pnlCls = pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
-        return `<div class="clickable-row flex items-center gap-2 p-2 bg-gray-950 border border-gray-800 rounded-lg cursor-pointer hover:border-gray-700 transition" onclick="openScoringDetailModal(${a.id})">
+        return `<div class="clickable-row flex items-center gap-2 p-2 bg-gray-950 border border-gray-800 rounded-lg cursor-pointer hover:border-gray-700 transition" data-onclick="openScoringDetailModal(${a.id})">
             ${assetClassIconHTML(a)}
             <div class="min-w-0 flex-1">
                 <div class="font-bold text-white text-[11px] truncate">${escapeHTML(a.name)}</div>

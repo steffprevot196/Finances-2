@@ -279,14 +279,14 @@ function _renderOnboardingStep2() {
             <div>
                 <label class="block text-gray-400 mb-2">Régime fiscal par défaut</label>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <label class="flex items-start gap-2.5 p-3 rounded-xl border ${d.taxMode === 'BAREME' ? 'border-gray-800' : 'border-indigo-500 bg-indigo-950/20'} cursor-pointer hover:border-indigo-500 transition" onclick="onboardingState.data.taxMode='PFU'; renderOnboardingStep();">
+                    <label class="flex items-start gap-2.5 p-3 rounded-xl border ${d.taxMode === 'BAREME' ? 'border-gray-800' : 'border-indigo-500 bg-indigo-950/20'} cursor-pointer hover:border-indigo-500 transition" data-onclick="onboardingSetTaxMode('PFU')">
                         <input type="radio" name="onb-tax" ${d.taxMode === 'BAREME' ? '' : 'checked'} class="mt-0.5 accent-indigo-500">
                         <span>
                             <span class="block font-bold text-white text-[12px]">PFU — Flat Tax 30 %</span>
                             <span class="block text-[10px] text-gray-500 mt-0.5">Simple, standard, sans condition de revenu.</span>
                         </span>
                     </label>
-                    <label class="flex items-start gap-2.5 p-3 rounded-xl border ${d.taxMode === 'BAREME' ? 'border-indigo-500 bg-indigo-950/20' : 'border-gray-800'} cursor-pointer hover:border-indigo-500 transition" onclick="onboardingState.data.taxMode='BAREME'; renderOnboardingStep();">
+                    <label class="flex items-start gap-2.5 p-3 rounded-xl border ${d.taxMode === 'BAREME' ? 'border-indigo-500 bg-indigo-950/20' : 'border-gray-800'} cursor-pointer hover:border-indigo-500 transition" data-onclick="onboardingSetTaxMode('BAREME')">
                         <input type="radio" name="onb-tax" ${d.taxMode === 'BAREME' ? 'checked' : ''} class="mt-0.5 accent-indigo-500">
                         <span>
                             <span class="block font-bold text-white text-[12px]">Barème progressif IR</span>
@@ -310,7 +310,7 @@ function _renderOnboardingStep2() {
             <div>
                 <label class="block text-gray-400 mb-1">Seuil d'alerte de concentration</label>
                 <div class="flex items-center gap-2">
-                    <input type="range" id="onb-concentration" min="10" max="50" step="5" value="${Math.round(d.concentrationThreshold * 100)}" oninput="document.getElementById('onb-concentration-label').innerText = this.value + ' %'; onboardingState.data.concentrationThreshold = parseFloat(this.value) / 100;" class="flex-1 accent-indigo-500">
+                    <input type="range" id="onb-concentration" min="10" max="50" step="5" value="${Math.round(d.concentrationThreshold * 100)}" data-oninput="onboardingConcentrationInput(this.value)" class="flex-1 accent-indigo-500">
                     <span id="onb-concentration-label" class="w-14 text-right font-mono text-white text-sm font-bold">${Math.round(d.concentrationThreshold * 100)} %</span>
                 </div>
                 <p class="text-[10px] text-gray-500 mt-1">
@@ -362,14 +362,14 @@ function _renderOnboardingStep3() {
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button onclick="onboardingState.data.driveDeferred=false; closeModal('modal-onboarding'); openDriveSyncModal();" class="p-3 rounded-xl border border-blue-700/60 bg-blue-950/30 hover:bg-blue-900/50 text-left transition">
+                <button data-onclick="onboardingOpenDriveSync()" class="p-3 rounded-xl border border-blue-700/60 bg-blue-950/30 hover:bg-blue-900/50 text-left transition">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-rocket text-blue-400"></i>
                         <span class="font-bold text-white text-[12px]">Configurer maintenant</span>
                     </div>
                     <div class="text-[10px] text-gray-400 mt-1">Ouvre le panneau Drive (le wizard reprendra après).</div>
                 </button>
-                <button onclick="onboardingState.data.driveDeferred=true; nextOnboardingStep();" class="p-3 rounded-xl border border-gray-800 bg-gray-950/40 hover:bg-gray-900/60 text-left transition">
+                <button data-onclick="onboardingDeferDrive()" class="p-3 rounded-xl border border-gray-800 bg-gray-950/40 hover:bg-gray-900/60 text-left transition">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-clock text-gray-500"></i>
                         <span class="font-bold text-gray-300 text-[12px]">Plus tard</span>
@@ -410,14 +410,14 @@ function _renderOnboardingStep4() {
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button onclick="closeModal('modal-onboarding'); openAddGoalModal();" class="p-3 rounded-xl border border-cyan-700/60 bg-cyan-950/30 hover:bg-cyan-900/50 text-left transition">
+                <button data-onclick="closeModal('modal-onboarding'); openAddGoalModal();" class="p-3 rounded-xl border border-cyan-700/60 bg-cyan-950/30 hover:bg-cyan-900/50 text-left transition">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-plus text-cyan-400"></i>
                         <span class="font-bold text-white text-[12px]">Créer un objectif maintenant</span>
                     </div>
                     <div class="text-[10px] text-gray-400 mt-1">Ouvre le formulaire dédié (le wizard se terminera automatiquement).</div>
                 </button>
-                <button onclick="onboardingState.data.goalDeferred=true; finishOnboarding();" class="p-3 rounded-xl border border-gray-800 bg-gray-950/40 hover:bg-gray-900/60 text-left transition">
+                <button data-onclick="onboardingDeferGoal()" class="p-3 rounded-xl border border-gray-800 bg-gray-950/40 hover:bg-gray-900/60 text-left transition">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-flag-checkered text-gray-500"></i>
                         <span class="font-bold text-gray-300 text-[12px]">Terminer sans objectif</span>

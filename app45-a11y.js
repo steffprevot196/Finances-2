@@ -74,7 +74,15 @@
         if (ref && document.getElementById(ref)) return;
         const heading = modal.querySelector('h1, h2, h3, h4');
         if (heading && heading.textContent.trim()) {
-            if (!heading.id) heading.id = modal.id + '-title';
+            if (!heading.id) {
+                // Identifiant garanti UNIQUE et hors espace de noms de l'application. Avant :
+                // `modal.id + '-title'` entrait en collision avec un id existant
+                // (modal-quadrant-title) : getElementById renvoyait alors le <h3>, et le code
+                // de l'app, en y écrivant le titre, écrasait le bouton de renommage du cadran.
+                let candidate = 'a11y-title-' + modal.id;
+                while (document.getElementById(candidate)) candidate += '-x';
+                heading.id = candidate;
+            }
             modal.setAttribute('aria-labelledby', heading.id);
             modal.removeAttribute('aria-label');
         } else if (!modal.hasAttribute('aria-label')) {
@@ -267,15 +275,17 @@
     const CELL_TAGS = /^(TR|TH|TD)$/;
 
     function enhanceClickable(root) {
-        // On teste la PROPRIÉTÉ `onclick` (et non l'attribut) : elle couvre à la fois
-        // onclick="…" dans le HTML et `el.onclick = () => …` posé par le JS (lignes de
-        // l'inventaire, cartes mobiles…), que le sélecteur [onclick] ne voyait pas.
+        // Trois sources de clic : data-onclick="…" (HTML/gabarits, rejoué par le délégateur),
+        // `el.onclick = () => …` posé par le JS (lignes de l'inventaire, cartes mobiles…) et,
+        // en repli, onclick="…" brut. La propriété seule ne suffit pas : sous CSP stricte
+        // un attribut onclick brut n'est pas compilé (la propriété vaut null).
         const nodes = [root, ...root.querySelectorAll('*')];
         nodes.forEach(el => {
             if (el.nodeType !== 1 || el.dataset.a11yClick || el.hasAttribute('tabindex') || el.matches(NATIVE)) return;
-            if (typeof el.onclick !== 'function' && !el.matches('tr.clickable-row')) return;
+            // data-onclick : handler géré par le délégateur CSP (app28) ; onclick brut / propriété JS sinon
+            if (!el.hasAttribute('data-onclick') && typeof el.onclick !== 'function' && !el.matches('tr.clickable-row')) return;
             if (el.closest('button, a[href], [role="button"]')) return;            // déjà dans un contrôle
-            const handler = el.getAttribute('onclick') || '';
+            const handler = el.getAttribute('data-onclick') || el.getAttribute('onclick') || '';
             if (STOP_ONLY.test(handler) || /runCommandPaletteItem|closeMobileDrawer/.test(handler)) return;
             const isCell = CELL_TAGS.test(el.tagName);
             if (!isCell && !el.querySelector(INTERACTIVE_INSIDE)) {

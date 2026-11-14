@@ -197,12 +197,12 @@ function renderThesisPanel(asset) {
                     </div>
                 </div>
                 <div class="flex gap-1 flex-shrink-0">
-                    <button type="button" onclick="event.stopPropagation(); openThesisEditModal(${asset.id})"
+                    <button type="button" data-onclick="event.stopPropagation(); openThesisEditModal(${asset.id})"
                             class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition"
                             title="Modifier la thèse">
                         <i class="fa-solid fa-pen text-[9px]"></i>
                     </button>
-                    <button type="button" onclick="event.stopPropagation(); onThesisMarkReviewed(${asset.id})"
+                    <button type="button" data-onclick="event.stopPropagation(); onThesisMarkReviewed(${asset.id})"
                             class="px-2 py-1 rounded bg-gray-800 hover:bg-emerald-900/60 text-gray-300 hover:text-emerald-300 text-[10px] transition"
                             title="Marquer comme revue (aujourd'hui)">
                         <i class="fa-solid fa-check text-[9px]"></i> Revue
@@ -230,7 +230,7 @@ function renderThesisPanel(asset) {
                         </div>
                     </div>
                 </div>
-                <button type="button" onclick="event.stopPropagation(); openThesisEditModal(${asset.id})"
+                <button type="button" data-onclick="event.stopPropagation(); openThesisEditModal(${asset.id})"
                         class="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-medium transition flex items-center gap-1.5 flex-shrink-0">
                     <i class="fa-solid fa-plus text-[9px]"></i> Rédiger
                 </button>
@@ -369,13 +369,13 @@ function renderThesesReviewSection() {
             const a = item.asset;
             return `
                 <div class="flex items-center justify-between gap-2 bg-amber-950/20 border border-amber-800/40 rounded-lg p-2.5 mb-1.5 last:mb-0">
-                    <div class="min-w-0 flex-1 cursor-pointer" onclick="openAssetDetailModal(${a.id})">
+                    <div class="min-w-0 flex-1 cursor-pointer" data-onclick="openAssetDetailModal(${a.id})">
                         <div class="font-bold text-white text-[11px] truncate">${escapeHTML(a.name)}</div>
                         <div class="text-[10px] text-gray-400 font-mono">
                             ${escapeHTML(a.ticker || '—')} · perte ${item.pnlPct.toFixed(1)} % · thèse il y a ${item.ageDays} j
                         </div>
                     </div>
-                    <button type="button" onclick="event.stopPropagation(); openThesisEditModal(${a.id})"
+                    <button type="button" data-onclick="event.stopPropagation(); openThesisEditModal(${a.id})"
                             class="px-2 py-1 rounded bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-medium transition flex-shrink-0">
                         <i class="fa-solid fa-pen text-[9px]"></i> Revoir
                     </button>

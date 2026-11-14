@@ -269,13 +269,13 @@ function renderAlertsBanner() {
             </div>
             <div class="flex items-center gap-1 flex-shrink-0">
                 <span class="text-[10px] text-gray-500 font-mono whitespace-nowrap">${new Date(t.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-                <button onclick="dismissTriggeredAlert(${i})" class="w-7 h-7 rounded-md bg-rose-900/60 text-rose-200 hover:bg-rose-800 hover:text-white flex items-center justify-center transition" title="Ignorer cette alerte">
+                <button data-onclick="dismissTriggeredAlert(${i})" class="w-7 h-7 rounded-md bg-rose-900/60 text-rose-200 hover:bg-rose-800 hover:text-white flex items-center justify-center transition" title="Ignorer cette alerte">
                     <i class="fa-solid fa-xmark text-[10px]"></i>
                 </button>
             </div>
         </div>
     `).join('') + (triggeredAlerts.length > 1
-        ? `<div class="flex justify-end"><button onclick="dismissAllTriggeredAlerts()" class="text-[11px] text-rose-300 hover:text-rose-200 underline">Tout ignorer</button></div>`
+        ? `<div class="flex justify-end"><button data-onclick="dismissAllTriggeredAlerts()" class="text-[11px] text-rose-300 hover:text-rose-200 underline">Tout ignorer</button></div>`
         : '');
 }
 
@@ -359,13 +359,13 @@ function renderAlertsList() {
                     ${a.customMessage ? `<div class="text-[10px] text-rose-300 italic mt-0.5">"${escapeHTML(a.customMessage)}"</div>` : ''}
                 </div>
                 <div class="flex items-center gap-0.5 flex-shrink-0">
-                    <button onclick="toggleAlertActive(${a.id})" class="w-7 h-7 rounded-md bg-gray-800 text-gray-300 hover:bg-amber-900/60 hover:text-amber-300 flex items-center justify-center transition" title="${isActive ? 'Désactiver' : 'Activer'}">
+                    <button data-onclick="toggleAlertActive(${a.id})" class="w-7 h-7 rounded-md bg-gray-800 text-gray-300 hover:bg-amber-900/60 hover:text-amber-300 flex items-center justify-center transition" title="${isActive ? 'Désactiver' : 'Activer'}">
                         <i class="fa-solid fa-${isActive ? 'pause' : 'play'} text-[10px]"></i>
                     </button>
-                    <button onclick="editAlert(${a.id})" class="w-7 h-7 rounded-md bg-gray-800 text-gray-300 hover:bg-indigo-900/60 hover:text-indigo-300 flex items-center justify-center transition" title="Modifier">
+                    <button data-onclick="editAlert(${a.id})" class="w-7 h-7 rounded-md bg-gray-800 text-gray-300 hover:bg-indigo-900/60 hover:text-indigo-300 flex items-center justify-center transition" title="Modifier">
                         <i class="fa-solid fa-pen text-[10px]"></i>
                     </button>
-                    <button onclick="deleteAlert(${a.id})" class="w-7 h-7 rounded-md bg-gray-800 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 flex items-center justify-center transition" title="Supprimer">
+                    <button data-onclick="deleteAlert(${a.id})" class="w-7 h-7 rounded-md bg-gray-800 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 flex items-center justify-center transition" title="Supprimer">
                         <i class="fa-solid fa-trash text-[10px]"></i>
                     </button>
                 </div>

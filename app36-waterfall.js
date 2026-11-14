@@ -358,7 +358,7 @@ function _openWaterfallOthersModal() {
                 <h3 class="font-bold text-white text-sm flex items-center gap-2">
                     <i class="fa-solid fa-chart-column text-cyan-400"></i> Contributeurs regroupés (${others.length})
                 </h3>
-                <button onclick="closeModal('modal-waterfall-others')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button data-onclick="closeModal('modal-waterfall-others')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 overflow-y-auto text-xs">
                 <div class="bg-gray-950 border border-gray-800 rounded-lg p-3 mb-3 flex justify-between items-center">
@@ -367,7 +367,7 @@ function _openWaterfallOthersModal() {
                 </div>
                 <div class="space-y-1.5">
                     ${others.map(d => `
-                        <div class="flex items-center justify-between gap-2 bg-gray-950 border border-gray-800 rounded-lg p-2 cursor-pointer hover:border-gray-700 transition" onclick="closeModal('modal-waterfall-others'); openAssetDetailModal(${d.assetId});">
+                        <div class="flex items-center justify-between gap-2 bg-gray-950 border border-gray-800 rounded-lg p-2 cursor-pointer hover:border-gray-700 transition" data-onclick="closeModal('modal-waterfall-others'); openAssetDetailModal(${d.assetId});">
                             <div class="min-w-0 flex-1">
                                 <div class="font-bold text-white text-[11px] truncate">${escapeHTML(d.name)}</div>
                                 <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(d.ticker)}</div>
@@ -419,7 +419,7 @@ function _openWaterfallTotalModal() {
                 <h3 class="font-bold text-white text-sm flex items-center gap-2">
                     <i class="fa-solid fa-list-check text-cyan-400"></i> Décomposition complète du P&L
                 </h3>
-                <button onclick="closeModal('modal-waterfall-total')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button data-onclick="closeModal('modal-waterfall-total')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 overflow-y-auto text-xs space-y-4">
                 <div class="bg-gradient-to-br from-cyan-950/40 to-blue-950/30 border border-cyan-800/50 rounded-xl p-4 flex justify-between items-center">
@@ -434,7 +434,7 @@ function _openWaterfallTotalModal() {
                     </div>
                     <div class="space-y-1">
                         ${positives.map(d => `
-                            <div class="flex items-center justify-between gap-2 bg-gray-950 border border-emerald-900/30 rounded-lg p-2 cursor-pointer hover:border-emerald-700/60 transition" onclick="closeModal('modal-waterfall-total'); openAssetDetailModal(${d.assetId});">
+                            <div class="flex items-center justify-between gap-2 bg-gray-950 border border-emerald-900/30 rounded-lg p-2 cursor-pointer hover:border-emerald-700/60 transition" data-onclick="closeModal('modal-waterfall-total'); openAssetDetailModal(${d.assetId});">
                                 <div class="min-w-0 flex-1">
                                     <div class="font-bold text-white text-[11px] truncate">${escapeHTML(d.name)}</div>
                                     <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(d.ticker)}</div>
@@ -453,7 +453,7 @@ function _openWaterfallTotalModal() {
                     </div>
                     <div class="space-y-1">
                         ${negatives.map(d => `
-                            <div class="flex items-center justify-between gap-2 bg-gray-950 border border-rose-900/30 rounded-lg p-2 cursor-pointer hover:border-rose-700/60 transition" onclick="closeModal('modal-waterfall-total'); openAssetDetailModal(${d.assetId});">
+                            <div class="flex items-center justify-between gap-2 bg-gray-950 border border-rose-900/30 rounded-lg p-2 cursor-pointer hover:border-rose-700/60 transition" data-onclick="closeModal('modal-waterfall-total'); openAssetDetailModal(${d.assetId});">
                                 <div class="min-w-0 flex-1">
                                     <div class="font-bold text-white text-[11px] truncate">${escapeHTML(d.name)}</div>
                                     <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(d.ticker)}</div>

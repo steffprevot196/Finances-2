@@ -331,7 +331,7 @@ function renderCorrelationHeatmap() {
                 <i class="fa-solid fa-circle-info text-2xl text-gray-600"></i>
                 <div>Pas assez d'historique réel pour calculer les corrélations.</div>
                 <div class="text-[10px] italic">Au moins 2 actifs avec 30 jours de cours communs sont requis.</div>
-                <button onclick="refreshRealPriceHistory()" class="mt-2 px-3 py-1.5 rounded-lg bg-teal-950/60 text-teal-300 border border-teal-700/50 hover:bg-teal-900/80 text-[11px] font-medium transition inline-flex items-center gap-1.5">
+                <button data-onclick="refreshRealPriceHistory()" class="mt-2 px-3 py-1.5 rounded-lg bg-teal-950/60 text-teal-300 border border-teal-700/50 hover:bg-teal-900/80 text-[11px] font-medium transition inline-flex items-center gap-1.5">
                     <i class="fa-solid fa-chart-line text-[10px]"></i> Télécharger l'historique
                 </button>
             `;
@@ -404,9 +404,9 @@ function renderCorrelationHeatmap() {
                 <rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2"
                       fill="${color}"
                       stroke="#0b0f19" stroke-width="0.5"
-                      ${!isDiagonal ? `onclick="openCorrelationPairDetail(${i}, ${j})"` : ''}
+                      ${!isDiagonal ? `data-onclick="openCorrelationPairDetail(${i}, ${j})"` : ''}
                       style="${!isDiagonal ? 'transition: filter 0.15s;' : ''}"
-                      ${!isDiagonal ? 'onmouseover="this.style.filter=\'brightness(1.4)\'" onmouseout="this.style.filter=\'\'"' : ''}/>
+                      ${!isDiagonal ? 'data-onmouseover="this.style.filter=\'brightness(1.4)\'" data-onmouseout="this.style.filter=\'\'"' : ''}/>
                 ${cell >= 26 ? `<text x="${x + cell/2}" y="${y + cell/2}" text-anchor="middle" dominant-baseline="middle"
                                       fill="${textColor}" font-size="9" font-family="'JetBrains Mono', monospace"
                                       font-weight="600" pointer-events="none">

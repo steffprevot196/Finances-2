@@ -318,13 +318,13 @@ function _watchlistCardHTML(w) {
 
             <!-- Actions -->
             <div class="flex justify-end gap-1 pt-2 border-t border-gray-800 flex-wrap">
-                <button onclick="promoteWatchlistToAsset('${safeId}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-emerald-900/60 text-gray-300 hover:text-emerald-300 text-[10px] transition flex items-center gap-1" title="Créer un actif réel pré-rempli depuis cette idée">
+                <button data-onclick="promoteWatchlistToAsset('${safeId}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-emerald-900/60 text-gray-300 hover:text-emerald-300 text-[10px] transition flex items-center gap-1" title="Créer un actif réel pré-rempli depuis cette idée">
                     <i class="fa-solid fa-arrow-up-right-dots text-[9px]"></i> Promouvoir
                 </button>
-                <button onclick="editWatchlistEntry('${safeId}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Modifier">
+                <button data-onclick="editWatchlistEntry('${safeId}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Modifier">
                     <i class="fa-solid fa-pen text-[9px]"></i>
                 </button>
-                <button onclick="deleteWatchlistEntry('${safeId}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-rose-900/60 text-gray-300 hover:text-rose-300 text-[10px] transition" title="Supprimer">
+                <button data-onclick="deleteWatchlistEntry('${safeId}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-rose-900/60 text-gray-300 hover:text-rose-300 text-[10px] transition" title="Supprimer">
                     <i class="fa-solid fa-trash text-[9px]"></i>
                 </button>
             </div>
@@ -411,7 +411,7 @@ function renderWatchlistTab() {
             <div class="col-span-full bg-gray-900/60 border border-dashed border-gray-700 rounded-xl p-8 text-center text-sm text-gray-500">
                 <i class="fa-solid fa-binoculars text-3xl text-amber-500/40 mb-2 block"></i>
                 Aucune idée d'investissement surveillée.<br>
-                <button onclick="openAddWatchlistModal()" class="mt-3 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-medium transition">
+                <button data-onclick="openAddWatchlistModal()" class="mt-3 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-medium transition">
                     <i class="fa-solid fa-plus text-[10px]"></i> Ajouter votre première idée
                 </button>
             </div>`;
@@ -693,7 +693,7 @@ function _injectPromotionBanner(w) {
                 Vérifiez le prix d'achat et la quantité, puis validez — l'entrée sera retirée de la watchlist.
             </div>
         </div>
-        <button type="button" onclick="document.getElementById('promotion-banner').remove(); window._pendingPromotionWatchlistId = null;" class="flex-shrink-0 w-6 h-6 rounded-md bg-amber-900/60 text-amber-200 hover:bg-amber-800 hover:text-white flex items-center justify-center transition" title="Annuler la provenance watchlist">
+        <button type="button" data-onclick="dismissPromotionBanner()" class="flex-shrink-0 w-6 h-6 rounded-md bg-amber-900/60 text-amber-200 hover:bg-amber-800 hover:text-white flex items-center justify-center transition" title="Annuler la provenance watchlist">
             <i class="fa-solid fa-xmark text-[10px]"></i>
         </button>
     `;

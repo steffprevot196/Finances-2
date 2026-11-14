@@ -384,8 +384,8 @@ function renderCessionsTable(filter = cessionFilter) {
             <td class="p-3 text-right font-mono">${formatEUR(line.base)}</td>
             <td class="p-3 text-right font-mono text-amber-300">${formatEUR(line.taxLine)}</td>
             <td class="p-3 text-center whitespace-nowrap">
-                <button onclick="editCession(${c.id})" class="p-1.5 text-gray-400 hover:text-indigo-400"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="deleteCession(${c.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
+                <button data-onclick="editCession(${c.id})" class="p-1.5 text-gray-400 hover:text-indigo-400"><i class="fa-solid fa-pen"></i></button>
+                <button data-onclick="deleteCession(${c.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('') : '<tr><td colspan="10" class="p-4 text-center text-gray-500 text-xs">Aucune cession enregistrée pour ce filtre.</td></tr>';

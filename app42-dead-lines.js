@@ -349,7 +349,7 @@ function renderDeadLinesSection() {
             <span><i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i>
             <b>${data.counts.total} ligne(s)</b> au score ≥ ${data.threshold}
             ${data.counts.critical > 0 ? `· <span class="text-rose-400">${data.counts.critical} critique(s)</span>` : ''}</span>
-            <button type="button" onclick="openDeadLinesMethodModal()" class="text-[10px] text-indigo-400 hover:text-indigo-300 normal-case">
+            <button type="button" data-onclick="openDeadLinesMethodModal()" class="text-[10px] text-indigo-400 hover:text-indigo-300 normal-case">
                 <i class="fa-solid fa-circle-question text-[9px]"></i> Méthode
             </button>
         </div>
@@ -410,10 +410,10 @@ function _deadLineRowHTML(line) {
                 </div>
             </div>
             <div class="flex items-center gap-1 flex-shrink-0">
-                <button type="button" onclick="openDeadLineDetail(${a.id})" class="px-2 py-1 rounded bg-gray-800/60 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Voir le détail du score">
+                <button type="button" data-onclick="openDeadLineDetail(${a.id})" class="px-2 py-1 rounded bg-gray-800/60 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Voir le détail du score">
                     <i class="fa-solid fa-magnifying-glass text-[9px]"></i>
                 </button>
-                <button type="button" onclick="openDeadLineActions(${a.id})" class="px-2 py-1 rounded bg-gray-800/60 hover:bg-amber-900/60 text-gray-300 hover:text-amber-300 text-[10px] transition" title="Actions : purger / renforcer / revoir">
+                <button type="button" data-onclick="openDeadLineActions(${a.id})" class="px-2 py-1 rounded bg-gray-800/60 hover:bg-amber-900/60 text-gray-300 hover:text-amber-300 text-[10px] transition" title="Actions : purger / renforcer / revoir">
                     <i class="fa-solid fa-bolt text-[9px]"></i>
                 </button>
             </div>
@@ -483,7 +483,7 @@ function openDeadLineDetail(assetId) {
                     <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
                     Score de ligne morte — ${escapeHTML(asset.name)}
                 </h3>
-                <button onclick="closeModal('modal-dead-line-detail')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button data-onclick="closeModal('modal-dead-line-detail')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-3 overflow-y-auto text-xs">
                 <div class="bg-gray-950 border border-gray-800 rounded-xl p-4 text-center">
@@ -502,7 +502,7 @@ function openDeadLineDetail(assetId) {
                 </div>
 
                 <div class="flex justify-end gap-2 pt-2 border-t border-gray-800">
-                    <button onclick="closeModal('modal-dead-line-detail'); openDeadLineActions(${assetId});" class="px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-medium">
+                    <button data-onclick="closeModal('modal-dead-line-detail'); openDeadLineActions(${assetId});" class="px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-medium">
                         <i class="fa-solid fa-bolt text-[10px] mr-1"></i> Voir les actions
                     </button>
                 </div>
@@ -545,7 +545,7 @@ function openDeadLineActions(assetId) {
                     <i class="fa-solid fa-bolt text-amber-400"></i>
                     Actions — ${escapeHTML(asset.name)}
                 </h3>
-                <button onclick="closeModal('modal-dead-line-actions')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button data-onclick="closeModal('modal-dead-line-actions')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-3 text-xs overflow-y-auto">
                 ${reviewedBanner}
@@ -566,7 +566,7 @@ function openDeadLineActions(assetId) {
                 </div>
 
                 <div class="space-y-2 pt-1">
-                    <button onclick="closeModal('modal-dead-line-actions'); openSellSimulator(${assetId});" class="w-full p-3 rounded-lg bg-rose-950/30 border border-rose-800/40 hover:bg-rose-900/50 text-left transition">
+                    <button data-onclick="closeModal('modal-dead-line-actions'); openSellSimulator(${assetId});" class="w-full p-3 rounded-lg bg-rose-950/30 border border-rose-800/40 hover:bg-rose-900/50 text-left transition">
                         <div class="flex items-center gap-3">
                             <span class="flex-shrink-0 w-8 h-8 rounded-lg bg-rose-950 border border-rose-800/60 flex items-center justify-center text-rose-300">
                                 <i class="fa-solid fa-trash text-[11px]"></i>
@@ -578,7 +578,7 @@ function openDeadLineActions(assetId) {
                         </div>
                     </button>
 
-                    <button onclick="closeModal('modal-dead-line-actions'); _dlReinforce(${assetId});" class="w-full p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/40 hover:bg-emerald-900/50 text-left transition">
+                    <button data-onclick="closeModal('modal-dead-line-actions'); _dlReinforce(${assetId});" class="w-full p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/40 hover:bg-emerald-900/50 text-left transition">
                         <div class="flex items-center gap-3">
                             <span class="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-950 border border-emerald-800/60 flex items-center justify-center text-emerald-300">
                                 <i class="fa-solid fa-plus text-[11px]"></i>
@@ -591,7 +591,7 @@ function openDeadLineActions(assetId) {
                     </button>
 
                     ${r.isReviewed
-                        ? `<button onclick="closeModal('modal-dead-line-actions'); _dlUnmarkReviewed(${assetId});" class="w-full p-3 rounded-lg bg-gray-950 border border-gray-800 hover:bg-gray-900 text-left transition">
+                        ? `<button data-onclick="closeModal('modal-dead-line-actions'); _dlUnmarkReviewed(${assetId});" class="w-full p-3 rounded-lg bg-gray-950 border border-gray-800 hover:bg-gray-900 text-left transition">
                                <div class="flex items-center gap-3">
                                    <span class="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-300">
                                        <i class="fa-solid fa-rotate-left text-[11px]"></i>
@@ -602,7 +602,7 @@ function openDeadLineActions(assetId) {
                                    </div>
                                </div>
                            </button>`
-                        : `<button onclick="closeModal('modal-dead-line-actions'); _dlMarkReviewed(${assetId});" class="w-full p-3 rounded-lg bg-gray-950 border border-gray-800 hover:bg-gray-900 text-left transition">
+                        : `<button data-onclick="closeModal('modal-dead-line-actions'); _dlMarkReviewed(${assetId});" class="w-full p-3 rounded-lg bg-gray-950 border border-gray-800 hover:bg-gray-900 text-left transition">
                                <div class="flex items-center gap-3">
                                    <span class="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-300">
                                        <i class="fa-solid fa-check text-[11px]"></i>
@@ -695,7 +695,7 @@ function _injectReinforceBanner(asset) {
                 (même ISIN/ticker) — un seul lot supplémentaire sera créé, pas une nouvelle ligne.
             </div>
         </div>
-        <button type="button" onclick="document.getElementById('reinforce-banner').remove();" class="flex-shrink-0 w-6 h-6 rounded-md bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800 hover:text-white flex items-center justify-center transition" title="Retirer le bandeau">
+        <button type="button" data-onclick="document.getElementById('reinforce-banner').remove();" class="flex-shrink-0 w-6 h-6 rounded-md bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800 hover:text-white flex items-center justify-center transition" title="Retirer le bandeau">
             <i class="fa-solid fa-xmark text-[10px]"></i>
         </button>
     `;

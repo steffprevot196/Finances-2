@@ -361,7 +361,7 @@ function _renderEsgTopFlop(list) {
         const a = x.asset;
         const esg = x.esg;
         const style = ESG_GRADE_STYLES[esg.grade] || ESG_GRADE_STYLES['NR'];
-        return `<div class="clickable-row flex items-center gap-2 p-2 bg-gray-950 border border-gray-800 rounded-lg cursor-pointer hover:border-gray-700 transition" onclick="openAssetDetailModal(${a.id})">
+        return `<div class="clickable-row flex items-center gap-2 p-2 bg-gray-950 border border-gray-800 rounded-lg cursor-pointer hover:border-gray-700 transition" data-onclick="openAssetDetailModal(${a.id})">
             ${assetClassIconHTML(a)}
             <div class="min-w-0 flex-1">
                 <div class="font-bold text-white text-[11px] truncate">${escapeHTML(a.name)}</div>

@@ -41,14 +41,14 @@ const MOBILE_NAV_SECONDARY = [
 // ---------------------------------------------------------------------
 function _buildMobileNavHTML() {
     const primaryButtons = MOBILE_NAV_PRIMARY.map(t => `
-        <button type="button" data-mobile-tab="${t.id}" onclick="mobileNavGoTo('${t.id}')" class="mobile-nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition">
+        <button type="button" data-mobile-tab="${t.id}" data-onclick="mobileNavGoTo('${t.id}')" class="mobile-nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition">
             <i class="fa-solid ${t.icon} text-lg"></i>
             <span class="text-[10px] font-medium">${escapeHTML(t.label)}</span>
         </button>
     `).join('');
 
     const drawerButtons = MOBILE_NAV_SECONDARY.map(t => `
-        <button type="button" data-mobile-tab="${t.id}" onclick="mobileNavGoTo('${t.id}'); closeMobileDrawer();" class="mobile-drawer-btn flex items-center gap-3 w-full p-3 rounded-xl border border-gray-800 bg-gray-950 hover:bg-gray-800 hover:border-gray-700 transition text-left">
+        <button type="button" data-mobile-tab="${t.id}" data-onclick="mobileNavGoTo('${t.id}'); closeMobileDrawer();" class="mobile-drawer-btn flex items-center gap-3 w-full p-3 rounded-xl border border-gray-800 bg-gray-950 hover:bg-gray-800 hover:border-gray-700 transition text-left">
             <span class="flex-shrink-0 w-9 h-9 rounded-lg bg-gray-900 border border-gray-800 flex items-center justify-center ${t.color || 'text-gray-300'}">
                 <i class="fa-solid ${t.icon}"></i>
             </span>
@@ -66,7 +66,7 @@ function _buildMobileNavHTML() {
              style="display: none;">
             <div class="flex items-stretch h-16 max-w-xl mx-auto">
                 ${primaryButtons}
-                <button type="button" onclick="toggleMobileDrawer()" class="mobile-nav-btn mobile-nav-more flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition relative">
+                <button type="button" data-onclick="toggleMobileDrawer()" class="mobile-nav-btn mobile-nav-more flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition relative">
                     <i class="fa-solid fa-ellipsis text-lg"></i>
                     <span class="text-[10px] font-medium">Plus</span>
                     <span id="mobile-nav-drawer-indicator" class="hidden absolute top-1 right-2 w-2 h-2 rounded-full bg-amber-500"></span>
@@ -77,7 +77,7 @@ function _buildMobileNavHTML() {
         <!-- DRAWER (overlay + panneau) -->
         <div id="mobile-drawer-overlay"
              class="mobile-drawer-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-[59] opacity-0 pointer-events-none transition-opacity duration-200"
-             onclick="closeMobileDrawer()">
+             data-onclick="closeMobileDrawer()">
         </div>
 
         <aside id="mobile-drawer"
@@ -86,7 +86,7 @@ function _buildMobileNavHTML() {
             <div class="w-12 h-1.5 rounded-full bg-gray-700 mx-auto mt-3 mb-1 flex-shrink-0"></div>
             <div class="px-4 pb-3 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
                 <div class="text-sm font-bold text-white">Autres onglets</div>
-                <button onclick="closeMobileDrawer()" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center transition">
+                <button data-onclick="closeMobileDrawer()" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center transition">
                     <i class="fa-solid fa-xmark text-[12px]"></i>
                 </button>
             </div>

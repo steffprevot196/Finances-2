@@ -516,14 +516,14 @@ function renderInventoryTable(filterCat = inventoryFilter, searchQuery) {
             <td class="p-3 text-right font-mono">${riskCellHTML(asset)}</td>
             <td class="p-3 text-center whitespace-nowrap">
                 <div class="inline-flex items-center gap-1">
-                    <button type="button" aria-label="Comparer cet actif" title="Comparer" onclick="event.stopPropagation(); openAssetCompare(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-indigo-900/60 hover:text-indigo-300 transition"><i class="fa-solid fa-code-compare"></i></button>
-                    <button type="button" aria-label="Voir le détail" title="Voir le détail" onclick="event.stopPropagation(); openAssetDetailModal(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-blue-900/60 hover:text-blue-300 transition"><i class="fa-solid fa-eye"></i></button>
-                    <button type="button" aria-label="Dupliquer cet actif" title="Dupliquer (créer une variante : 1/10, 1/20…)" onclick="event.stopPropagation(); duplicateAsset(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-teal-900/60 hover:text-teal-300 transition"><i class="fa-solid fa-copy"></i></button>
-                    <button type="button" aria-label="Simuler une vente de cet actif" title="Simuler une vente (impact fiscal sans rien modifier)" onclick="event.stopPropagation(); openSellSimulator(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-purple-900/60 hover:text-purple-300 transition"><i class="fa-solid fa-flask"></i></button>
-                    ${isPaperAsset(asset) ? `<button type="button" aria-label="Promouvoir en position réelle" title="Promouvoir en position réelle" onclick="event.stopPropagation(); promotePaperAsset(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-900/50 text-purple-200 hover:bg-emerald-900/60 hover:text-emerald-300 transition"><i class="fa-solid fa-arrow-up-right-dots"></i></button>` : ''}
-                    ${hasTag(asset, 'Or & Métaux') ? `<button type="button" aria-label="Mettre à jour manuellement la valeur" title="Mettre à jour manuellement la valeur AuCoffre" onclick="event.stopPropagation(); openManualGoldUpdate(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-amber-900/60 hover:text-amber-300 transition"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
-                    <button type="button" aria-label="Modifier cet actif" title="Modifier" onclick="event.stopPropagation(); openEditAssetModal(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-emerald-900/60 hover:text-emerald-300 transition"><i class="fa-solid fa-pen"></i></button>
-                    <button type="button" aria-label="Supprimer cet actif" title="Supprimer" onclick="event.stopPropagation(); deleteAsset(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
+                    <button type="button" aria-label="Comparer cet actif" title="Comparer" data-onclick="event.stopPropagation(); openAssetCompare(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-indigo-900/60 hover:text-indigo-300 transition"><i class="fa-solid fa-code-compare"></i></button>
+                    <button type="button" aria-label="Voir le détail" title="Voir le détail" data-onclick="event.stopPropagation(); openAssetDetailModal(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-blue-900/60 hover:text-blue-300 transition"><i class="fa-solid fa-eye"></i></button>
+                    <button type="button" aria-label="Dupliquer cet actif" title="Dupliquer (créer une variante : 1/10, 1/20…)" data-onclick="event.stopPropagation(); duplicateAsset(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-teal-900/60 hover:text-teal-300 transition"><i class="fa-solid fa-copy"></i></button>
+                    <button type="button" aria-label="Simuler une vente de cet actif" title="Simuler une vente (impact fiscal sans rien modifier)" data-onclick="event.stopPropagation(); openSellSimulator(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-purple-900/60 hover:text-purple-300 transition"><i class="fa-solid fa-flask"></i></button>
+                    ${isPaperAsset(asset) ? `<button type="button" aria-label="Promouvoir en position réelle" title="Promouvoir en position réelle" data-onclick="event.stopPropagation(); promotePaperAsset(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-purple-900/50 text-purple-200 hover:bg-emerald-900/60 hover:text-emerald-300 transition"><i class="fa-solid fa-arrow-up-right-dots"></i></button>` : ''}
+                    ${hasTag(asset, 'Or & Métaux') ? `<button type="button" aria-label="Mettre à jour manuellement la valeur" title="Mettre à jour manuellement la valeur AuCoffre" data-onclick="event.stopPropagation(); openManualGoldUpdate(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-amber-900/60 hover:text-amber-300 transition"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
+                    <button type="button" aria-label="Modifier cet actif" title="Modifier" data-onclick="event.stopPropagation(); openEditAssetModal(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-emerald-900/60 hover:text-emerald-300 transition"><i class="fa-solid fa-pen"></i></button>
+                    <button type="button" aria-label="Supprimer cet actif" title="Supprimer" data-onclick="event.stopPropagation(); deleteAsset(${asset.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-gray-800/60 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </td>
         `;
@@ -562,11 +562,11 @@ function renderInventoryTable(filterCat = inventoryFilter, searchQuery) {
                 <span class="text-gray-500 flex items-center gap-1.5">Score : ${scoreCellHTML(asset)}</span>
             </div>
             <div class="flex justify-end gap-1 pt-1 border-t border-gray-800">
-                <button onclick="event.stopPropagation(); openAssetCompare(${asset.id})" class="p-2 text-gray-400 hover:text-indigo-400" title="Comparer"><i class="fa-solid fa-code-compare"></i></button>
-                <button onclick="event.stopPropagation(); openSellSimulator(${asset.id})" class="p-2 text-gray-400 hover:text-purple-400" title="Simuler une vente"><i class="fa-solid fa-flask"></i></button>
-                <button onclick="event.stopPropagation(); duplicateAsset(${asset.id})" class="p-2 text-gray-400 hover:text-teal-400" title="Dupliquer"><i class="fa-solid fa-copy"></i></button>
-                <button onclick="event.stopPropagation(); openEditAssetModal(${asset.id})" class="p-2 text-gray-400 hover:text-emerald-400" title="Modifier"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="event.stopPropagation(); deleteAsset(${asset.id})" class="p-2 text-gray-400 hover:text-rose-400" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                <button data-onclick="event.stopPropagation(); openAssetCompare(${asset.id})" class="p-2 text-gray-400 hover:text-indigo-400" title="Comparer"><i class="fa-solid fa-code-compare"></i></button>
+                <button data-onclick="event.stopPropagation(); openSellSimulator(${asset.id})" class="p-2 text-gray-400 hover:text-purple-400" title="Simuler une vente"><i class="fa-solid fa-flask"></i></button>
+                <button data-onclick="event.stopPropagation(); duplicateAsset(${asset.id})" class="p-2 text-gray-400 hover:text-teal-400" title="Dupliquer"><i class="fa-solid fa-copy"></i></button>
+                <button data-onclick="event.stopPropagation(); openEditAssetModal(${asset.id})" class="p-2 text-gray-400 hover:text-emerald-400" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                <button data-onclick="event.stopPropagation(); deleteAsset(${asset.id})" class="p-2 text-gray-400 hover:text-rose-400" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
             </div>`;
         cards.appendChild(card);
     });
@@ -610,7 +610,7 @@ function renderCryptoTable() {
         total += a.value || 0;
         const pnl = (a.value || 0) - (a.invested || 0);
         const isPos = pnl >= 0;
-        return `<tr class="clickable-row ${rowTintClass(a)}" onclick="openAssetDetailModal(${a.id})">
+        return `<tr class="clickable-row ${rowTintClass(a)}" data-onclick="openAssetDetailModal(${a.id})">
             <td class="p-3">
                 <div class="flex items-center gap-1.5 min-w-0">
                     ${assetClassIconHTML(a)}
@@ -627,8 +627,8 @@ function renderCryptoTable() {
             <td class="p-3 text-right font-mono font-bold text-white">${formatEUR(a.value)}</td>
             <td class="p-3 text-right font-mono font-bold ${isPos ? 'text-emerald-400' : 'text-rose-400'}">${isPos ? '+' : ''}${formatEUR(pnl)}</td>
             <td class="p-3 text-center">
-                <button onclick="event.stopPropagation(); openEditAssetModal(${a.id})" class="p-1.5 text-gray-400 hover:text-emerald-400"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="event.stopPropagation(); deleteAsset(${a.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
+                <button data-onclick="event.stopPropagation(); openEditAssetModal(${a.id})" class="p-1.5 text-gray-400 hover:text-emerald-400"><i class="fa-solid fa-pen"></i></button>
+                <button data-onclick="event.stopPropagation(); deleteAsset(${a.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('') || '<tr><td colspan="7" class="p-4 text-center text-gray-500 text-xs">Aucun actif crypto enregistré.</td></tr>';
@@ -750,7 +750,7 @@ function renderHorsGaveTable(filterCat = horsGaveFilter) {
         total += a.value || 0;
         const pnl = (a.value || 0) - (a.invested || 0);
         const isPos = pnl >= 0;
-        return `<tr class="clickable-row ${rowTintClass(a)}" onclick="openAssetDetailModal(${a.id})">
+        return `<tr class="clickable-row ${rowTintClass(a)}" data-onclick="openAssetDetailModal(${a.id})">
             <td class="p-3">
                 <div class="flex items-center gap-1.5 min-w-0">
                     ${assetClassIconHTML(a)}
@@ -767,8 +767,8 @@ function renderHorsGaveTable(filterCat = horsGaveFilter) {
             <td class="p-3 text-right font-mono font-bold text-white">${formatEUR(a.value)}</td>
             <td class="p-3 text-right font-mono font-bold ${isPos ? 'text-emerald-400' : 'text-rose-400'}">${isPos ? '+' : ''}${formatEUR(pnl)}</td>
             <td class="p-3 text-center">
-                <button onclick="event.stopPropagation(); openEditAssetModal(${a.id})" class="p-1.5 text-gray-400 hover:text-emerald-400"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="event.stopPropagation(); deleteAsset(${a.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
+                <button data-onclick="event.stopPropagation(); openEditAssetModal(${a.id})" class="p-1.5 text-gray-400 hover:text-emerald-400"><i class="fa-solid fa-pen"></i></button>
+                <button data-onclick="event.stopPropagation(); deleteAsset(${a.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('') || '<tr><td colspan="7" class="p-4 text-center text-gray-500 text-xs">Aucun actif hors-cadran.</td></tr>';
@@ -852,10 +852,10 @@ function renderGaveDetailTable() {
 
     // Mise à jour des boutons
     const group = document.getElementById('gave-detail-filter-group');
-    group.innerHTML = `<button onclick="toggleGaveDetailFilter('ALL')" class="px-3 py-1.5 rounded-lg text-xs border font-medium ${allSelected ? 'bg-gray-800 text-white border-gray-700' : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'}">Tous</button>` +
+    group.innerHTML = `<button data-onclick="toggleGaveDetailFilter('ALL')" class="px-3 py-1.5 rounded-lg text-xs border font-medium ${allSelected ? 'bg-gray-800 text-white border-gray-700' : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'}">Tous</button>` +
         GAVE_QUADRANTS.map(q => {
             const active = allSelected || gaveDetailFilter.has(q);
-            return `<button onclick="toggleGaveDetailFilter('${q}')" class="px-3 py-1.5 rounded-lg text-xs border font-medium ${active ? activeClasses[q] : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'}">${escapeHTML(cadranLabel(q))}</button>`;
+            return `<button data-onclick="toggleGaveDetailFilter('${q}')" class="px-3 py-1.5 rounded-lg text-xs border font-medium ${active ? activeClasses[q] : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'}">${escapeHTML(cadranLabel(q))}</button>`;
         }).join('');
 
     // Filtrage des actifs
@@ -872,7 +872,7 @@ function renderGaveDetailTable() {
     tbody.innerHTML = items.length ? items.map(a => {
         const pnl = (a.value || 0) - (a.invested || 0);
         const isPos = pnl >= 0;
-        return `<tr class="clickable-row ${rowTintClass(a)}" onclick="openAssetDetailModal(${a.id})">
+        return `<tr class="clickable-row ${rowTintClass(a)}" data-onclick="openAssetDetailModal(${a.id})">
             <td class="p-3">
                 <div class="flex items-center gap-1.5 min-w-0">
                     ${assetClassIconHTML(a)}
@@ -889,8 +889,8 @@ function renderGaveDetailTable() {
             <td class="p-3 text-right font-mono font-bold text-white">${formatEUR(a.value)}</td>
             <td class="p-3 text-right font-mono ${isPos ? 'text-emerald-400' : 'text-rose-400'}">${isPos ? '+' : ''}${formatEUR(pnl)}</td>
             <td class="p-3 text-center whitespace-nowrap">
-                <button onclick="event.stopPropagation(); openEditAssetModal(${a.id})" class="p-1.5 text-gray-400 hover:text-emerald-400"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="event.stopPropagation(); deleteAsset(${a.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
+                <button data-onclick="event.stopPropagation(); openEditAssetModal(${a.id})" class="p-1.5 text-gray-400 hover:text-emerald-400"><i class="fa-solid fa-pen"></i></button>
+                <button data-onclick="event.stopPropagation(); deleteAsset(${a.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('') : '<tr><td colspan="8" class="p-4 text-center text-gray-500 text-xs">Aucun placement pour ce filtre.</td></tr>';
@@ -947,8 +947,8 @@ function renderArbitragesTable() {
             <td class="p-3 text-right text-white font-bold">${formatEUR(a.montant)}</td>
             <td class="p-3 text-gray-400 font-sans">${escapeHTML(a.motif) || '—'}</td>
             <td class="p-3 text-center whitespace-nowrap">
-                <button onclick="editArbitrage(${a.id})" class="p-1.5 text-gray-400 hover:text-indigo-400"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="deleteArbitrage(${a.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
+                <button data-onclick="editArbitrage(${a.id})" class="p-1.5 text-gray-400 hover:text-indigo-400"><i class="fa-solid fa-pen"></i></button>
+                <button data-onclick="deleteArbitrage(${a.id})" class="p-1.5 text-gray-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`).join('') : '<tr><td colspan="6" class="p-4 text-center text-gray-500 text-xs">Aucun arbitrage consigné pour le moment.</td></tr>';
 }
@@ -1403,7 +1403,6 @@ function getCommandList() {
         { label: 'Importer depuis un exchange', hint: 'Binance, Coinbase ou Kraken (lecture seule)', icon: 'fa-plug', category: 'Données', run: () => { if (typeof openBrokerImportModal === 'function') openBrokerImportModal(); else alert('Module broker non chargé.'); } },
         { label: 'Lancer les tests unitaires', hint: 'Vérifier l\'intégrité du code (~85 assertions) — chargés à la demande', icon: 'fa-flask-vial', category: 'Action', run: () => { const go = () => { if (typeof runTests === 'function') runTests(); else alert('Module de tests non chargé.'); }; if (typeof runTests === 'function') return go(); if (!confirm('Les tests manipulent temporairement les données en mémoire (puis les restaurent). Pensez à exporter une sauvegarde avant. Continuer ?')) return; const sc = document.createElement('script'); sc.src = 'tests.js'; sc.onload = go; sc.onerror = () => alert('Fichier tests.js introuvable.'); document.head.appendChild(sc); } },
         { label: 'Audit CSP (handlers inline)', hint: 'Rapport console des onclick= présents dans le DOM', icon: 'fa-shield-halved', category: 'Action', run: () => { if (typeof runCspAudit === 'function') runCspAudit(); else alert('Module audit CSP non chargé.'); } },
-        { label: (typeof isCspFallbackDelegatorActive === 'function' && isCspFallbackDelegatorActive() ? 'Désactiver' : 'Activer') + ' le délégateur CSP', hint: 'Rejouer les handlers inline sans unsafe-inline (test)', icon: 'fa-toggle-on', category: 'Action', run: () => { if (typeof enableCspFallbackDelegator !== 'function') return alert('Module CSP non chargé.'); if (isCspFallbackDelegatorActive()) { disableCspFallbackDelegator(); toastInfo('Délégateur désactivé', 'Les handlers inline natifs reprennent la main.'); } else { enableCspFallbackDelegator(); } } },
         { label: 'Vider tout',                    hint: 'Effacer actifs, cessions et arbitrages', icon: 'fa-trash-can',           category: 'Action',     run: () => clearAllData() },
         { label: (tintRowsEnabled ? 'Désactiver' : 'Activer') + ' le teintage des lignes', hint: 'Vert = gain · Rouge = perte', icon: 'fa-palette', category: 'Action', run: () => { toggleTintRows(); } },
         { label: (lightMode ? 'Passer en mode sombre' : 'Passer en mode clair'), hint: 'Basculer le thème de l\'interface', icon: lightMode ? 'fa-moon' : 'fa-sun', category: 'Action', run: () => { toggleLightMode(); } },
@@ -1571,7 +1570,7 @@ function renderCommandPaletteResults(query) {
         lastCat = c.category;
         const sel = i === _cmdPaletteSelectedIndex;
         return header + `
-            <div data-cmd-index="${i}" onclick="runCommandPaletteItem(${i})" onmouseenter="hoverCommandPaletteItem(${i})"
+            <div data-cmd-index="${i}" data-onclick="runCommandPaletteItem(${i})" onmouseenter="hoverCommandPaletteItem(${i})"
                  class="flex items-center gap-3 px-3 py-2 cursor-pointer border-l-2 ${sel ? 'bg-teal-950/60 border-teal-400' : 'border-transparent hover:bg-gray-800/60'}">
                 <i class="fa-solid ${c.icon} w-4 text-center ${sel ? 'text-teal-400' : 'text-gray-500'}"></i>
                 <div class="flex-1 min-w-0">
@@ -1672,7 +1671,7 @@ function renderPortfolioMenu() {
         const val = computePortfolioTotal(p.id);
         const safeId = safeInlineArg(p.id);
         return `<div class="flex items-center justify-between border-b border-gray-800/60 last:border-b-0 ${isCurrent ? 'bg-indigo-950/30' : ''}">
-            <button onclick="switchPortfolio(${safeId})" class="flex-1 text-left min-w-0 flex items-center gap-2 p-2.5 hover:bg-gray-800/50 transition">
+            <button data-onclick="switchPortfolio(${safeId})" class="flex-1 text-left min-w-0 flex items-center gap-2 p-2.5 hover:bg-gray-800/50 transition">
                 <i class="fa-solid ${isCurrent ? 'fa-circle-check text-indigo-400' : 'fa-circle text-gray-700'} text-[10px] flex-shrink-0"></i>
                 <span class="min-w-0 flex-1">
                     <span class="block text-xs font-medium ${isCurrent ? 'text-white' : 'text-gray-300'} truncate">${escapeHTML(p.name)}</span>
@@ -1680,8 +1679,8 @@ function renderPortfolioMenu() {
                 </span>
             </button>
             <div class="flex gap-0.5 flex-shrink-0 pr-1.5">
-                <button onclick="event.stopPropagation(); renamePortfolio(${safeId})" class="p-1.5 text-gray-500 hover:text-indigo-400 transition" title="Renommer"><i class="fa-solid fa-pen text-[10px]"></i></button>
-                ${portfolios.length > 1 ? `<button onclick="event.stopPropagation(); deletePortfolio(${safeId})" class="p-1.5 text-gray-500 hover:text-rose-400 transition" title="Supprimer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
+                <button data-onclick="event.stopPropagation(); renamePortfolio(${safeId})" class="p-1.5 text-gray-500 hover:text-indigo-400 transition" title="Renommer"><i class="fa-solid fa-pen text-[10px]"></i></button>
+                ${portfolios.length > 1 ? `<button data-onclick="event.stopPropagation(); deletePortfolio(${safeId})" class="p-1.5 text-gray-500 hover:text-rose-400 transition" title="Supprimer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -1998,22 +1997,22 @@ function renderStrategyCardHTML(scenario) {
 
             <!-- Actions -->
             <div class="flex justify-end gap-1 pt-2 border-t border-gray-800 flex-wrap">
-                <button onclick="setCurrentPaperScenario(${safeInlineArg(scenario.id)}); switchTab('tab-inventaire');" class="px-2 py-1 rounded bg-gray-800 hover:bg-purple-900/60 text-gray-300 hover:text-purple-300 text-[10px] transition" title="Voir les positions dans l'inventaire">
+                <button data-onclick="setCurrentPaperScenario(${safeInlineArg(scenario.id)}); switchTab('tab-inventaire');" class="px-2 py-1 rounded bg-gray-800 hover:bg-purple-900/60 text-gray-300 hover:text-purple-300 text-[10px] transition" title="Voir les positions dans l'inventaire">
                     <i class="fa-solid fa-eye text-[9px]"></i> Voir
                 </button>
-                <button onclick="renamePaperScenarioUI(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Renommer">
+                <button data-onclick="renamePaperScenarioUI(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-900/60 text-gray-300 hover:text-indigo-300 text-[10px] transition" title="Renommer">
                     <i class="fa-solid fa-pen text-[9px]"></i>
                 </button>
-                <button onclick="duplicatePaperScenario(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-teal-900/60 text-gray-300 hover:text-teal-300 text-[10px] transition" title="Dupliquer (positions + paramètres)">
+                <button data-onclick="duplicatePaperScenario(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-teal-900/60 text-gray-300 hover:text-teal-300 text-[10px] transition" title="Dupliquer (positions + paramètres)">
                     <i class="fa-solid fa-copy text-[9px]"></i>
                 </button>
-                <button onclick="toggleArchivePaperScenario(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-amber-900/60 text-gray-300 hover:text-amber-300 text-[10px] transition" title="${scenario.archived ? 'Désarchiver' : 'Archiver'}">
+                <button data-onclick="toggleArchivePaperScenario(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-amber-900/60 text-gray-300 hover:text-amber-300 text-[10px] transition" title="${scenario.archived ? 'Désarchiver' : 'Archiver'}">
                     <i class="fa-solid fa-${scenario.archived ? 'box-open' : 'box-archive'} text-[9px]"></i>
                 </button>
-                <button onclick="deleteAllPaperAssets(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-amber-900/60 text-gray-300 hover:text-amber-300 text-[10px] transition" title="Purger les positions (garde le scénario vide)">
+                <button data-onclick="deleteAllPaperAssets(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-amber-900/60 text-gray-300 hover:text-amber-300 text-[10px] transition" title="Purger les positions (garde le scénario vide)">
                     <i class="fa-solid fa-broom text-[9px]"></i>
                 </button>
-                <button onclick="deletePaperScenario(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-rose-900/60 text-gray-300 hover:text-rose-300 text-[10px] transition" title="Supprimer le scénario et ses positions">
+                <button data-onclick="deletePaperScenario(${safeInlineArg(scenario.id)})" class="px-2 py-1 rounded bg-gray-800 hover:bg-rose-900/60 text-gray-300 hover:text-rose-300 text-[10px] transition" title="Supprimer le scénario et ses positions">
                     <i class="fa-solid fa-trash text-[9px]"></i>
                 </button>
             </div>
@@ -2061,7 +2060,7 @@ function renderStrategiesTab() {
         grid.innerHTML = `<div class="col-span-full bg-gray-900/60 border border-dashed border-gray-700 rounded-xl p-8 text-center text-sm text-gray-500">
             <i class="fa-solid fa-flask text-3xl text-purple-500/40 mb-2 block"></i>
             Aucun scénario Paper Trading ${showArchived ? '' : 'actif'} pour le moment.<br>
-            <button onclick="createPaperScenarioUI()" class="mt-3 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-medium transition">
+            <button data-onclick="createPaperScenarioUI()" class="mt-3 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-medium transition">
                 <i class="fa-solid fa-plus text-[10px]"></i> Créer un premier scénario
             </button>
         </div>`;
@@ -2640,7 +2639,7 @@ function renderRebalanceModal() {
                             <div class="text-[10px] text-gray-400 font-mono">≈ ${fmtQty(est.qty)} unité(s) · ${formatEUR(sell.amount)} dans le cadran ${escapeHTML(sell.label)}</div>
                         </div>
                     </div>
-                    <button onclick="convertRebalanceToArbitrage(this)" class="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-medium flex items-center gap-1 flex-shrink-0">
+                    <button data-onclick="convertRebalanceToArbitrageFromButton()" class="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-medium flex items-center gap-1 flex-shrink-0">
                         <i class="fa-solid fa-plus text-[9px]"></i> Arbitrage
                     </button>
                 </div>
@@ -2681,7 +2680,7 @@ function renderRebalanceModal() {
                         <div class="text-[10px] text-gray-400 font-mono">${formatEUR(buy.amount)} à réinvestir dans ce cadran</div>
                     </div>
                 </div>
-                <button onclick="convertRebalanceToArbitrage(this)" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-medium flex items-center gap-1 flex-shrink-0">
+                <button data-onclick="convertRebalanceToArbitrageFromButton()" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-medium flex items-center gap-1 flex-shrink-0">
                     <i class="fa-solid fa-plus text-[9px]"></i> Arbitrage
                 </button>
             </div>

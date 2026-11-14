@@ -13,7 +13,7 @@ let _addValueTouched = false;
 function renderAssetTagChips() {
     document.getElementById('add-tags-wrap').innerHTML = ASSET_TAGS.map(t => `
         <label class="cursor-pointer select-none">
-            <input type="checkbox" value="${t}" onchange="onAssetTagsChanged()" class="peer hidden">
+            <input type="checkbox" value="${t}" data-onchange="onAssetTagsChanged()" class="peer hidden">
             <span class="inline-block px-2.5 py-1 rounded-full border border-gray-700 bg-gray-900 text-gray-400 text-[11px] peer-checked:bg-emerald-950 peer-checked:text-emerald-300 peer-checked:border-emerald-600 hover:text-white">${t}</span>
         </label>`).join('');
 }
@@ -1023,7 +1023,7 @@ function goToSellStep2() {
 
     const list = document.getElementById('sell-asset-list');
     list.innerHTML = eligible.length ? eligible.map(a => `
-        <div onclick="selectAssetToSell(${a.id})" class="clickable-row flex justify-between items-center p-2.5 bg-gray-950 border border-gray-800 rounded-lg cursor-pointer hover:border-rose-700">
+        <div data-onclick="selectAssetToSell(${a.id})" class="clickable-row flex justify-between items-center p-2.5 bg-gray-950 border border-gray-800 rounded-lg cursor-pointer hover:border-rose-700">
             <div>
                 <div class="font-bold text-white">${escapeHTML(a.name)}</div>
                 <div class="text-[10px] text-gray-500 font-mono">${escapeHTML(a.ticker)} • Qté ${fmtQty(a.qty)} • Frais ${formatEUR(a.frais || 0)}</div>
@@ -1190,7 +1190,7 @@ function renderCessionLotPicker(asset) {
         const prixStr = formatEUR(lot.price || 0);
         return `
             <label class="flex items-start gap-2 p-2 bg-gray-950 border border-gray-800 rounded-lg cursor-pointer hover:border-indigo-500 transition">
-                <input type="radio" name="cession-lot-radio" value="${lot.id}" ${i === 0 ? 'checked' : ''} class="mt-0.5 accent-indigo-500" onchange="onCessionLotChange()">
+                <input type="radio" name="cession-lot-radio" value="${lot.id}" ${i === 0 ? 'checked' : ''} class="mt-0.5 accent-indigo-500" data-onchange="onCessionLotChange()">
                 <span class="flex-1 min-w-0">
                     <span class="block text-[11px] font-bold text-white font-mono truncate">Réf. ${escapeHTML(lot.reference)}</span>
                     <span class="block text-[10px] text-gray-400">
@@ -1674,7 +1674,7 @@ function openRecapModal() {
             </div>
         </div>
         <div class="text-[10px] text-gray-500 font-sans leading-relaxed">Basé sur ${securities.length} cession(s) CTO/crypto, ${metals.length} cession(s) de métaux/jetons et ${enveloppes.length} cession(s) en enveloppe PEA/Assurance-Vie/PER enregistrée(s) dans le registre. Cette estimation est fournie à titre indicatif et ne remplace pas les cases précises de votre déclaration de revenus (2042, 2086, 2074...) ni l'avis d'un professionnel — en particulier pour le PER, dont la fiscalité dépend fortement du mode de sortie et de la déductibilité des versements.</div>
-        <button onclick="exportRecapPDF()" class="w-full mt-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center justify-center gap-2 font-sans"><i class="fa-solid fa-file-pdf"></i> Exporter en PDF (mise en page A4)</button>
+        <button data-onclick="exportRecapPDF()" class="w-full mt-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center justify-center gap-2 font-sans"><i class="fa-solid fa-file-pdf"></i> Exporter en PDF (mise en page A4)</button>
     `;
     document.getElementById('modal-recap').classList.remove('hidden');
 }
@@ -1871,10 +1871,10 @@ function renderBrokerManager(modal) {
             return `<div class="flex items-center gap-2 p-2.5 bg-gray-950 border border-gray-800 rounded-lg">
                 <span class="flex-1 min-w-0 font-mono text-[12px] text-white truncate" title="${escapeHTML(b)}">${escapeHTML(b)}</span>
                 ${count > 0 ? `<span class="text-[10px] text-gray-500 whitespace-nowrap flex-shrink-0">${count} actif(s)</span>` : ''}
-                <button type="button" onclick="renameBroker(${safeArg})" class="w-7 h-7 rounded-md bg-gray-800 text-gray-400 hover:bg-indigo-900/60 hover:text-indigo-300 flex items-center justify-center transition flex-shrink-0" title="Renommer">
+                <button type="button" data-onclick="renameBroker(${safeArg})" class="w-7 h-7 rounded-md bg-gray-800 text-gray-400 hover:bg-indigo-900/60 hover:text-indigo-300 flex items-center justify-center transition flex-shrink-0" title="Renommer">
                     <i class="fa-solid fa-pen text-[10px]"></i>
                 </button>
-                <button type="button" onclick="deleteBroker(${safeArg})" class="w-7 h-7 rounded-md bg-gray-800 flex items-center justify-center transition flex-shrink-0 ${deleteDisabled ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:bg-rose-900/60 hover:text-rose-300'}" title="${deleteDisabled ? 'Impossible : actif(s) lié(s)' : 'Supprimer'}" ${deleteDisabled ? 'disabled' : ''}>
+                <button type="button" data-onclick="deleteBroker(${safeArg})" class="w-7 h-7 rounded-md bg-gray-800 flex items-center justify-center transition flex-shrink-0 ${deleteDisabled ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:bg-rose-900/60 hover:text-rose-300'}" title="${deleteDisabled ? 'Impossible : actif(s) lié(s)' : 'Supprimer'}" ${deleteDisabled ? 'disabled' : ''}>
                     <i class="fa-solid fa-trash text-[10px]"></i>
                 </button>
             </div>`;
@@ -1890,16 +1890,16 @@ function renderBrokerManager(modal) {
                     </h3>
                     <p class="text-[11px] text-gray-500 mt-0.5">Renommer, ajouter ou supprimer les courtiers mémorisés.</p>
                 </div>
-                <button onclick="closeModal('modal-broker-manager')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button data-onclick="closeModal('modal-broker-manager')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-2 overflow-y-auto text-xs">
                 ${rowsHTML}
             </div>
             <div class="p-3 border-t border-gray-800 bg-gray-950 flex justify-between items-center gap-2">
-                <button type="button" onclick="promptAddBrokerFromManager()" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium flex items-center gap-1.5 transition">
+                <button type="button" data-onclick="promptAddBrokerFromManager()" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium flex items-center gap-1.5 transition">
                     <i class="fa-solid fa-plus text-[10px]"></i> Ajouter un courtier
                 </button>
-                <button type="button" onclick="closeModal('modal-broker-manager')" class="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium">Fermer</button>
+                <button type="button" data-onclick="closeModal('modal-broker-manager')" class="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium">Fermer</button>
             </div>
         </div>
     `;
@@ -2151,7 +2151,7 @@ function renderCsvMapping() {
         ).join('');
         return `<div>
             <label class="block text-[10px] text-gray-400 uppercase mb-1">${escapeHTML(f.label)}</label>
-            <select data-csv-field="${f.key}" onchange="renderCsvPreview()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-1.5 text-white text-xs focus:outline-none focus:border-teal-500">${opts}</select>
+            <select data-csv-field="${f.key}" data-onchange="renderCsvPreview()" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-1.5 text-white text-xs focus:outline-none focus:border-teal-500">${opts}</select>
         </div>`;
     }).join('');
 }

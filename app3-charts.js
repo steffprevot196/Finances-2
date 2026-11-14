@@ -340,13 +340,13 @@ function renderDashboardTreemap() {
         const tooltip = `${escapeHTML(item.name)}&#10;${formatEUR(item.value)} · ${weight.toFixed(1)} % du portefeuille&#10;P&L : ${isPos ? '+' : ''}${item.pnlPct.toFixed(2)} %`;
 
         // Rectangle cliquable avec effet hover
-        html += `<g class="cursor-pointer" onclick="openAssetDetailModal(${item.id})">
+        html += `<g class="cursor-pointer" data-onclick="openAssetDetailModal(${item.id})">
             <title>${tooltip}</title>
             <rect x="${x + 0.5}" y="${y + 0.5}" width="${Math.max(0, w - 1)}" height="${Math.max(0, h - 1)}"
                   fill="${color}" stroke="#0b0f19" stroke-width="1" rx="3"
                   style="transition: filter 0.15s;"
-                  onmouseover="this.style.filter='brightness(1.25)'"
-                  onmouseout="this.style.filter=''"/>
+                  data-onmouseover="this.style.filter='brightness(1.25)'"
+                  data-onmouseout="this.style.filter=''"/>
         </g>`;
 
         // Labels : affichés seulement si la case est suffisamment grande
@@ -843,8 +843,8 @@ function renderAssetLotsTable(asset) {
             </td>
             <td class="p-2.5 text-right text-gray-500">${formatEUR(l.frais || 0)}</td>
             <td class="p-2.5 text-center whitespace-nowrap">
-                <button type="button" aria-label="Modifier ce lot" title="Modifier ce lot" onclick="event.stopPropagation(); openEditLotModal(${asset.id}, ${l.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-emerald-900/60 hover:text-emerald-300 transition"><i class="fa-solid fa-pen"></i></button>
-                <button type="button" aria-label="Supprimer ce lot" title="Supprimer ce lot" onclick="event.stopPropagation(); deleteLot(${asset.id}, ${l.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" aria-label="Modifier ce lot" title="Modifier ce lot" data-onclick="event.stopPropagation(); openEditLotModal(${asset.id}, ${l.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-emerald-900/60 hover:text-emerald-300 transition"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" aria-label="Supprimer ce lot" title="Supprimer ce lot" data-onclick="event.stopPropagation(); deleteLot(${asset.id}, ${l.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('');
@@ -1012,8 +1012,8 @@ function renderAssetDividendsTable(asset) {
             <td class="p-2.5 text-right font-bold ${netCls}">+${formatEUR(d._net)}</td>
             <td class="p-2.5 text-right text-gray-400">${d._rolling12m > 0 ? formatEUR(d._rolling12m) : '—'}</td>
             <td class="p-2.5 text-center whitespace-nowrap">
-                <button type="button" aria-label="Modifier" title="Modifier" onclick="event.stopPropagation(); openAddDividendModal(${asset.id}, ${d.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-emerald-900/60 hover:text-emerald-300 transition"><i class="fa-solid fa-pen"></i></button>
-                <button type="button" aria-label="Supprimer" title="Supprimer" onclick="event.stopPropagation(); deleteDividend(${asset.id}, ${d.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" aria-label="Modifier" title="Modifier" data-onclick="event.stopPropagation(); openAddDividendModal(${asset.id}, ${d.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-emerald-900/60 hover:text-emerald-300 transition"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" aria-label="Supprimer" title="Supprimer" data-onclick="event.stopPropagation(); deleteDividend(${asset.id}, ${d.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('');
@@ -1082,7 +1082,7 @@ function renderAssetSplitsTable(asset) {
             <td class="p-2.5 text-right font-bold text-white">${ratioTxt}</td>
             <td class="p-2.5 text-gray-400 truncate max-w-[220px]" title="${escapeHTML(s.note || '')}">${escapeHTML(s.note) || '—'}</td>
             <td class="p-2.5 text-center whitespace-nowrap">
-                <button type="button" aria-label="Supprimer cette entrée d'historique" title="Supprimer l'entrée d'historique (ne défait PAS le split)" onclick="event.stopPropagation(); deleteSplit(${asset.id}, ${s.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" aria-label="Supprimer cette entrée d'historique" title="Supprimer l'entrée d'historique (ne défait PAS le split)" data-onclick="event.stopPropagation(); deleteSplit(${asset.id}, ${s.id})" class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800/60 text-gray-300 hover:bg-rose-900/60 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('');

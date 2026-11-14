@@ -546,7 +546,7 @@ function escapeHTML(str) {
 }
 
 // --- Sécurité : génération d'arguments sûrs pour les handlers inline ---
-// Les handlers du type `onclick="fn('${id}')"` sont vulnérables même avec
+// Les handlers du type `data-onclick="fn('${id}')"` sont vulnérables même avec
 // escapeHTML : le navigateur HTML-décode l'attribut AVANT de le parser
 // comme JS, donc `&#39;` redevient `'` et casse le littéral de chaîne.
 // Le seul pattern sûr est : JSON.stringify (échappe le JS) + escapeHTML
@@ -963,7 +963,7 @@ function isSecurityAsset(a) {
 // SECURITY — Coercition d'un identifiant en nombre (protection XSS stocké)
 // ---------------------------------------------------------------------
 // Les IDs sont interpolés dans des handlers inline :
-//   onclick="fn(${asset.id})"   (app2-ui.js, app3-charts.js, app5-fiscal.js…)
+//   data-onclick="fn(${asset.id})"   (app2-ui.js, app3-charts.js, app5-fiscal.js…)
 // Un JSON importé contenant un `id` de type chaîne casserait la quote et
 // permettrait d'injecter du code exécutable. On force systématiquement
 // un nombre fini strictement positif, sinon on génère un nouvel ID.
@@ -1243,7 +1243,7 @@ function cadranSelectHTML(assetId, currentCadran) {
             : (code === 'CRYPTO' ? 'Cryptomonnaies' : `Cadran ${CADRAN_NUM[code]} : ${cadranLabel(code)}`);
         return `<option value="${code}" ${code === currentCadran ? 'selected' : ''}>${escapeHTML(label)}</option>`;
     }).join('');
-    return `<select onchange="reassignAssetCadran(${assetId}, this.value)" class="bg-gray-950 border border-gray-800 rounded-md px-1.5 py-1 text-[10px] text-white focus:outline-none focus:border-indigo-500">${opts}</select>`;
+    return `<select data-onchange="reassignAssetCadran(${assetId}, this.value)" class="bg-gray-950 border border-gray-800 rounded-md px-1.5 py-1 text-[10px] text-white focus:outline-none focus:border-indigo-500">${opts}</select>`;
 }
 
 // =====================================================================
@@ -1829,7 +1829,7 @@ function renderPaperScenarioMenu() {
         // Validation de la couleur (anti-injection CSS dans style="")
         const safeColor = HEX_COLOR_RE.test(String(s.color || '')) ? s.color : PAPER_FALLBACK_COLOR;
         return `<div class="flex items-center justify-between border-b border-gray-800/60 last:border-b-0 ${isCurrent ? 'bg-purple-950/30' : ''}">
-            <button onclick="setCurrentPaperScenario(${safeId}); closePaperScenarioMenu();" class="flex-1 text-left min-w-0 flex items-center gap-2 p-2.5 hover:bg-gray-800/50 transition">
+            <button data-onclick="setCurrentPaperScenario(${safeId}); closePaperScenarioMenu();" class="flex-1 text-left min-w-0 flex items-center gap-2 p-2.5 hover:bg-gray-800/50 transition">
                 <span class="w-3 h-3 rounded-full flex-shrink-0" style="background:${safeColor};"></span>
                 <span class="min-w-0 flex-1">
                     <span class="block text-xs font-medium ${isCurrent ? 'text-white' : 'text-gray-300'} truncate">${escapeHTML(s.name)}</span>
@@ -1838,8 +1838,8 @@ function renderPaperScenarioMenu() {
                 ${isCurrent ? '<i class="fa-solid fa-circle-check text-purple-400 text-[10px]"></i>' : ''}
             </button>
             <div class="flex gap-0.5 flex-shrink-0 pr-1.5">
-                <button onclick="event.stopPropagation(); renamePaperScenarioUI(${safeId})" class="p-1.5 text-gray-500 hover:text-purple-400 transition" title="Renommer"><i class="fa-solid fa-pen text-[10px]"></i></button>
-                ${paperScenarios.length > 1 ? `<button onclick="event.stopPropagation(); deletePaperScenario(${safeId})" class="p-1.5 text-gray-500 hover:text-rose-400 transition" title="Supprimer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
+                <button data-onclick="event.stopPropagation(); renamePaperScenarioUI(${safeId})" class="p-1.5 text-gray-500 hover:text-purple-400 transition" title="Renommer"><i class="fa-solid fa-pen text-[10px]"></i></button>
+                ${paperScenarios.length > 1 ? `<button data-onclick="event.stopPropagation(); deletePaperScenario(${safeId})" class="p-1.5 text-gray-500 hover:text-rose-400 transition" title="Supprimer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -2456,7 +2456,7 @@ function rangeSelectHTML(id, currentVal, years, onChangeFn) {
     let opts = `<option value="ALL" ${currentVal === 'ALL' ? 'selected' : ''}>Tout l'historique</option>`;
     opts += `<option value="M12" ${currentVal === 'M12' ? 'selected' : ''}>12 derniers mois</option>`;
     years.forEach(y => { opts += `<option value="Y-${y}" ${currentVal === 'Y-' + y ? 'selected' : ''}>Année ${y}</option>`; });
-    return `<select id="${id}" onchange="${onChangeFn}(this.value)" class="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-indigo-500">${opts}</select>`;
+    return `<select id="${id}" data-onchange="${onChangeFn}(this.value)" class="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-indigo-500">${opts}</select>`;
 }
 
 // =====================================================================

@@ -200,9 +200,9 @@ function renderTimelineView() {
             <div class="flex items-center gap-1.5">
                 <span class="text-[10px] text-gray-500 uppercase tracking-wider">Grouper par :</span>
                 <div class="flex rounded-lg bg-gray-950 border border-gray-800 p-0.5 text-[10px]">
-                    <button onclick="setTimelineGroupBy('day')"   class="timeline-group-btn px-2 py-1 rounded transition ${_timelineGroupBy === 'day' ? 'bg-emerald-950 text-emerald-300' : 'text-gray-400 hover:text-white'}">Jour</button>
-                    <button onclick="setTimelineGroupBy('month')" class="timeline-group-btn px-2 py-1 rounded transition ${_timelineGroupBy === 'month' ? 'bg-emerald-950 text-emerald-300' : 'text-gray-400 hover:text-white'}">Mois</button>
-                    <button onclick="setTimelineGroupBy('year')"  class="timeline-group-btn px-2 py-1 rounded transition ${_timelineGroupBy === 'year' ? 'bg-emerald-950 text-emerald-300' : 'text-gray-400 hover:text-white'}">Année</button>
+                    <button data-onclick="setTimelineGroupBy('day')"   class="timeline-group-btn px-2 py-1 rounded transition ${_timelineGroupBy === 'day' ? 'bg-emerald-950 text-emerald-300' : 'text-gray-400 hover:text-white'}">Jour</button>
+                    <button data-onclick="setTimelineGroupBy('month')" class="timeline-group-btn px-2 py-1 rounded transition ${_timelineGroupBy === 'month' ? 'bg-emerald-950 text-emerald-300' : 'text-gray-400 hover:text-white'}">Mois</button>
+                    <button data-onclick="setTimelineGroupBy('year')"  class="timeline-group-btn px-2 py-1 rounded transition ${_timelineGroupBy === 'year' ? 'bg-emerald-950 text-emerald-300' : 'text-gray-400 hover:text-white'}">Année</button>
                 </div>
             </div>
         </div>

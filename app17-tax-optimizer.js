@@ -332,7 +332,7 @@ function _renderTaxOptimizerPool(poolKey, poolState, simResult) {
         html += `<div class="space-y-2 max-h-80 overflow-y-auto">
             <div class="flex justify-between items-center text-[10px] text-gray-500 uppercase tracking-wider px-1">
                 <span>Lot candidat</span>
-                <button type="button" onclick="toggleAllTaxOptimizerLots('${poolKey}')" class="text-[10px] text-indigo-400 hover:text-indigo-300 normal-case">
+                <button type="button" data-onclick="toggleAllTaxOptimizerLots('${poolKey}')" class="text-[10px] text-indigo-400 hover:text-indigo-300 normal-case">
                     <i class="fa-solid fa-check-double text-[9px]"></i> Tout sélectionner / désélectionner
                 </button>
             </div>`;
@@ -345,7 +345,7 @@ function _renderTaxOptimizerPool(poolKey, poolState, simResult) {
 
             html += `
                 <label class="flex items-start gap-2.5 p-2.5 bg-gray-900/40 border ${rowCls} rounded-lg cursor-pointer hover:border-emerald-700 transition" data-pool="${poolKey}" data-key="${key}">
-                    <input type="checkbox" ${checkedAttr} onchange="toggleTaxOptimizerLot('${key}', this.checked)" class="mt-0.5 accent-emerald-500">
+                    <input type="checkbox" ${checkedAttr} data-onchange="toggleTaxOptimizerLot('${key}', this.checked)" class="mt-0.5 accent-emerald-500">
                     <div class="flex-1 min-w-0">
                         <div class="flex justify-between items-baseline gap-2 mb-0.5">
                             <div class="font-bold text-white text-[11px] truncate" title="${escapeHTML(c.assetName)}">${escapeHTML(c.assetName)}</div>
@@ -364,7 +364,7 @@ function _renderTaxOptimizerPool(poolKey, poolState, simResult) {
                             </div>
                         </div>
                     </div>
-                    <button type="button" onclick="event.preventDefault(); event.stopPropagation(); openSellSimulator(${c.assetId})" class="flex-shrink-0 px-2 py-1 rounded bg-gray-800 hover:bg-purple-900/60 text-gray-400 hover:text-purple-300 text-[10px] transition self-start" title="Ouvrir le simulateur de vente pour cet actif">
+                    <button type="button" data-onclick="event.preventDefault(); event.stopPropagation(); openSellSimulator(${c.assetId})" class="flex-shrink-0 px-2 py-1 rounded bg-gray-800 hover:bg-purple-900/60 text-gray-400 hover:text-purple-300 text-[10px] transition self-start" title="Ouvrir le simulateur de vente pour cet actif">
                         <i class="fa-solid fa-flask text-[9px]"></i>
                     </button>
                 </label>`;
