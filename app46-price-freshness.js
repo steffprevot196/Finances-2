@@ -268,6 +268,75 @@
         line.title = detailText(f);
     }
 
+
+    // ----------------------------------------------------------------
+    // Historique aberrant (valeur ≈ 0) — détection et réparation
+    // ----------------------------------------------------------------
+    // Contexte : un cours converti à tort (ex. ETF coté en USD divisé par 100) écrit, à CHAQUE
+    // actualisation, un point d'historique avec une valeur ≈ 1 % de l'investi. Une fois le cours
+    // corrigé, ces anciens points restent : le filtre anti-corruption de buildPortfolioTimeline
+    // ne rejette que les valeurs trop HAUTES, il ne les écarte donc pas et la courbe plonge.
+    //
+    // Règle volontairement CONSERVATRICE — un point est aberrant si :
+    //   • sa valeur est inférieure à 5 % de son capital investi, ET
+    //   • l'actif est AUJOURD'HUI sain (valeur actuelle ≥ 50 % de l'investi) : un actif qui a
+    //     réellement perdu l'essentiel de sa valeur n'est jamais touché.
+    // La réparation demande confirmation (détail par actif) et reste annulable (Ctrl+Z).
+    function findAbnormalHistoryPoints() {
+        const list = (typeof assets !== 'undefined' && Array.isArray(assets)) ? assets : [];
+        const out = [];
+        list.forEach(a => {
+            const curInv = Number(a.invested) || 0;
+            const curVal = Number(a.value) || 0;
+            if (!(curInv > 0) || curVal < 0.5 * curInv) return;
+            const indexes = [];
+            (a.history || []).forEach((h, i) => {
+                const inv = Number(h && h.invested), val = Number(h && h.value);
+                if (Number.isFinite(inv) && Number.isFinite(val) && inv > 0 && val < 0.05 * inv) indexes.push(i);
+            });
+            if (indexes.length) out.push({ asset: a, indexes });
+        });
+        return out;
+    }
+
+    function repairAbnormalHistory() {
+        const found = findAbnormalHistoryPoints();
+        if (!found.length) {
+            if (typeof toastInfo === 'function') toastInfo('Historique', 'Aucun point aberrant détecté.');
+            return 0;
+        }
+        const total = found.reduce((s, x) => s + x.indexes.length, 0);
+        const detail = found.slice(0, 8).map(x => '\u2022 ' + x.asset.name + ' : ' + x.indexes.length + ' point(s)').join('\n');
+        const ok = confirm(total + ' point(s) d\u2019historique ont une valeur inférieure à 5 % du capital investi, '
+            + 'alors que ' + (found.length > 1 ? 'ces actifs sont' : 'cet actif est') + ' sain' + (found.length > 1 ? 's' : '')
+            + ' aujourd\u2019hui :\n\n' + detail + '\n\nLes supprimer ? (Annulable avec Ctrl+Z.)');
+        if (!ok) return 0;
+        if (typeof pushUndo === 'function') pushUndo('Nettoyage de l\u2019historique aberrant');
+        found.forEach(x => {
+            const drop = new Set(x.indexes);
+            x.asset.history = x.asset.history.filter((_, i) => !drop.has(i));
+        });
+        if (typeof saveToStorage === 'function') saveToStorage();
+        if (typeof refreshAllUI === 'function') refreshAllUI();
+        if (typeof toastSuccess === 'function') toastSuccess('Historique nettoyé', total + ' point(s) supprimé(s).');
+        return total;
+    }
+
+    // Prévient UNE fois par session, après une actualisation des cours, si des points suspects existent
+    function notifyAbnormalHistory() {
+        if (window.__abnormalHistoryNotified) return;
+        const found = findAbnormalHistoryPoints();
+        if (!found.length || typeof showToast !== 'function') return;
+        window.__abnormalHistoryNotified = true;
+        const total = found.reduce((s, x) => s + x.indexes.length, 0);
+        showToast({
+            type: 'warning', title: 'Historique à vérifier', duration: 14000,
+            message: total + ' point(s) de valeur \u2248 0 sur ' + found.length + ' actif(s) pourtant sain(s) (ex. '
+                + found.slice(0, 2).map(x => x.asset.name).join(', ') + ').',
+            actions: [{ label: 'Voir et réparer', primary: true, onClick: repairAbnormalHistory }]
+        });
+    }
+
     // ----------------------------------------------------------------
     // Exports + branchement
     // ----------------------------------------------------------------
@@ -276,6 +345,9 @@
     window.getPriceFreshness = getPriceFreshness;
     window.priceFreshnessBadgeHTML = priceFreshnessBadgeHTML;
     window.renderPriceFreshnessSummary = renderPriceFreshnessSummary;
+    window.findAbnormalHistoryPoints = findAbnormalHistoryPoints;
+    window.repairAbnormalHistory = repairAbnormalHistory;
+    window.notifyAbnormalHistory = notifyAbnormalHistory;
 
     function init() {
         const sub = document.getElementById('modal-asset-subtitle');

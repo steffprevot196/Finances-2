@@ -206,21 +206,43 @@ const YAHOO_TICKER_FALLBACKS = {
     'IUES.AS': ['IUES.L']
 };
 
-async function fetchYahooQuote(symbol) {
+// Retourne { price, currency, symbol } ou null.
+//   • price    : cours dans la devise de COTATION réelle de la place (ex. 300 pour CEMA.L, qui
+//                cote en USD), pence déjà ramenés en livres quand Yahoo indique « GBp » ;
+//   • currency : devise indiquée par Yahoo ('USD', 'EUR', 'GBP'…), '' si Yahoo ne la donne pas ;
+//   • symbol   : symbole effectivement utilisé (le principal, ou un de ses alternatifs).
+async function fetchYahooQuoteDetailed(symbol) {
     // 1) Test du symbole principal
-    let price = await _fetchYahooQuoteRaw(symbol);
-    if (price !== null) return price;
+    let q = await _fetchYahooQuoteRaw(symbol);
+    if (q !== null) return Object.assign({ symbol }, q);
 
     // 2) Test des symboles alternatifs connus
     const fallbacks = YAHOO_TICKER_FALLBACKS[symbol] || [];
     for (const alt of fallbacks) {
-        price = await _fetchYahooQuoteRaw(alt);
-        if (price !== null) {
-            console.info(`[Yahoo] ${symbol} → fallback ${alt} utilisé (prix ${price})`);
-            return price;
+        q = await _fetchYahooQuoteRaw(alt);
+        if (q !== null) {
+            console.info(`[Yahoo] ${symbol} → fallback ${alt} utilisé (prix ${q.price} ${q.currency})`);
+            return Object.assign({ symbol: alt }, q);
         }
     }
     return null;
+}
+
+// Contrat HISTORIQUE conservé : un prix numérique, dans la devise de cotation (pas d'euros).
+// Utilisé tel quel par les métaux (GC=F / SI=F, en USD) et par la watchlist (devise native).
+async function fetchYahooQuote(symbol) {
+    const q = await fetchYahooQuoteDetailed(symbol);
+    return q ? q.price : null;
+}
+
+// Convertit un cours Yahoo en EUR (`value` et `invested` sont TOUJOURS en euros dans l'app).
+// Retourne null si le taux de change est indisponible : mieux vaut signaler un échec que
+// d'écrire une valeur fausse. Devise inconnue → comportement historique (EUR supposé).
+async function convertQuoteToEUR(price, currency) {
+    const cur = String(currency || '').toUpperCase();
+    if (!cur || cur === 'EUR') return price;
+    const rate = await getFxRateToEUR(cur);
+    return (Number.isFinite(rate) && rate > 0) ? price * rate : null;
 }
 
 // Extraction bas niveau du prix, avec correction pence→livres pour les .L.
@@ -248,11 +270,21 @@ async function _fetchYahooQuoteRaw(symbol) {
         let p = meta?.regularMarketPrice;
         if (!Number.isFinite(p) || p <= 0) return null;
 
-        // Correction pence → livres pour les symboles LSE
-        if (/\.L$/i.test(symbol) && p > 100) {
+        // Devise de cotation, telle que l'indique Yahoo ('GBp' = pence, 'GBP' = livres…).
+        // ⚠ BUG CORRIGÉ : l'ancienne règle « symbole en .L ET prix > 100 → pence » divisait par
+        // 100 les ETF cotés à Londres EN DOLLARS (CEMA.L ≈ 300 USD devenait 3,00) : la valeur
+        // de la position tombait à ~1 % de sa vraie valeur (« valeur ≈ 0, performance −100 % »).
+        let currency = String(meta?.currency || '').trim();
+        if (currency === 'GBp' || currency === 'GBX') {
+            p = p / 100;                 // pence → livres
+            currency = 'GBP';
+        } else if (currency) {
+            currency = currency.toUpperCase();
+        } else if (/\.L$/i.test(symbol) && p > 100) {
+            // Yahoo n'indique pas la devise : dernier recours, l'ancienne heuristique.
             p = p / 100;
         }
-        return p;
+        return { price: p, currency };
     } catch (err) {
         // Erreur réseau (timeout, CORS, etc.) : on laisse remonter pour
         // que la boucle principale puisse tenter un autre proxy ou un autre
@@ -1211,8 +1243,16 @@ async function fetchLivePrices() {
             while (queue.length) {
                 const item = queue.shift();
                 try {
-                    const price = await fetchYahooQuote(item.symbol);
-                    yahooResults[item.symbol] = { price: price || null };
+                    const q = await fetchYahooQuoteDetailed(item.symbol);
+                    if (!q) {
+                        yahooResults[item.symbol] = { price: null };
+                    } else {
+                        // Yahoo cote dans la devise de la place (CEMA.L = USD) ; `value` est en EUR.
+                        const eur = await convertQuoteToEUR(q.price, q.currency);
+                        yahooResults[item.symbol] = eur
+                            ? { price: eur, quote: q.price, currency: q.currency }
+                            : { price: null, error: `taux de change ${q.currency} indisponible` };
+                    }
                 } catch (err) {
                     yahooResults[item.symbol] = { price: null, error: err.message };
                 }
@@ -1305,6 +1345,7 @@ async function fetchLivePrices() {
     // sont notés sur chaque actif (badge « Échec actualisation »).
     saveToStorage();
     refreshAllUI();
+    if (typeof notifyAbnormalHistory === 'function') notifyAbnormalHistory();
 
     if (icon) icon.classList.remove('fa-spin');
     if (btn)  btn.disabled = false;
