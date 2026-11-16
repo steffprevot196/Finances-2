@@ -372,7 +372,7 @@ function renderQuickSearchResults(query) {
         const isPos = pnl >= 0;
         const isSel = i === _quickSearchSelectedIndex;
         return `
-            <div data-qs-index="${i}" data-onclick="runQuickSearchItem(${i})" onmouseenter="hoverQuickSearchItem(${i})"
+            <div data-qs-index="${i}" data-onclick="runQuickSearchItem(${i})" data-onmouseover="hoverQuickSearchItem(${i})"
                  class="flex items-center gap-3 px-3 py-2 cursor-pointer border-l-2 transition
                         ${isSel ? 'bg-teal-950/60 border-teal-400' : 'border-transparent hover:bg-gray-800/60'}">
                 <div class="flex-shrink-0">

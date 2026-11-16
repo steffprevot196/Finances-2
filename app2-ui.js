@@ -1571,7 +1571,7 @@ function renderCommandPaletteResults(query) {
         lastCat = c.category;
         const sel = i === _cmdPaletteSelectedIndex;
         return header + `
-            <div data-cmd-index="${i}" data-onclick="runCommandPaletteItem(${i})" onmouseenter="hoverCommandPaletteItem(${i})"
+            <div data-cmd-index="${i}" data-onclick="runCommandPaletteItem(${i})" data-onmouseover="hoverCommandPaletteItem(${i})"
                  class="flex items-center gap-3 px-3 py-2 cursor-pointer border-l-2 ${sel ? 'bg-teal-950/60 border-teal-400' : 'border-transparent hover:bg-gray-800/60'}">
                 <i class="fa-solid ${c.icon} w-4 text-center ${sel ? 'text-teal-400' : 'text-gray-500'}"></i>
                 <div class="flex-1 min-w-0">
