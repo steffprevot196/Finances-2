@@ -4167,9 +4167,17 @@
             <form data-onsubmit="handleAddWatchlist(event)" class="p-4 space-y-3 text-xs overflow-y-auto">
                 <input type="hidden" id="wl-edit-id">
 
-                <div>
-                    <label class="block text-gray-400 mb-1">Nom de l'actif *</label>
-                    <input type="text" id="wl-name" required placeholder="ex: TotalEnergies, Bitcoin, CW8…" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
+                <div class="relative" id="wl-name-wrap">
+                    <label class="block text-gray-400 mb-1" for="wl-name">Nom de l'actif *</label>
+                    <input type="text" id="wl-name" required autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="wl-search-results"
+                           placeholder="ex: TotalEnergies, Bitcoin, CW8…"
+                           data-oninput="onWatchlistNameInput(this.value)" data-onkeydown="onWatchlistNameKeydown(event)"
+                           class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500">
+                    <!-- Suggestions : catalogue, ISIN, Yahoo (par nom), CoinGecko, Finnhub (si clé). Même principe que « Ajouter un actif ». -->
+                    <div id="wl-search-results" role="listbox" aria-label="Suggestions d'actifs"
+                         class="hidden absolute left-0 right-0 top-full mt-1 z-30 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-h-64 overflow-y-auto"></div>
+                    <p id="wl-name-hint" class="hidden text-[11px] text-gray-500 mt-1" role="status"></p>
+                    <p id="wl-search-status" class="sr-only" role="status" aria-live="polite"></p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">

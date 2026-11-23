@@ -2101,6 +2101,38 @@ function resetCsvImport() {
     if (inp) inp.value = '';
 }
 
+// ---------------------------------------------------------------------
+// LECTURE DU FICHIER D'IMPORT (CSV / XLS / XLSX)
+// ---------------------------------------------------------------------
+// Texte d'un CSV : UTF-8 strict d'abord, repli Windows-1252 (CSV exporté par Excel français).
+// ⚠ Avant : les octets du CSV allaient tels quels à XLSX.read, qui les décode en Windows-1252 PAR DÉFAUT :
+// un CSV UTF-8 sans BOM donnait « SociÃ©tÃ© GÃ©nÃ©rale » dans les noms d'actifs importés.
+function _decodeCsvBytes(bytes) {
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }   // retire aussi un éventuel BOM
+    catch (_) { return new TextDecoder('windows-1252').decode(bytes); }
+}
+
+// Classeur binaire ? .xlsx = zip (« PK »), .xls = OLE (D0 CF 11 E0). Sinon : texte (CSV, TSV…).
+function _isBinaryWorkbook(b) {
+    return (b[0] === 0x50 && b[1] === 0x4B) || (b[0] === 0xD0 && b[1] === 0xCF && b[2] === 0x11 && b[3] === 0xE0);
+}
+
+// Cellules de type DATE d'un classeur binaire : on remplace leur texte formaté (`w`) par la date ISO.
+// Ce texte dépend du format de la cellule : le format Excel natif sort en `m/d/yy` (« 1/2/25 » pour le 2 janvier),
+// ambigu pour un lecteur français (le lire en jj/mm donnerait le 1er février). Les composantes UTC de la Date
+// fournie par SheetJS 0.20.x sont la date AFFICHÉE dans Excel, quel que soit le fuseau du navigateur
+// (les composantes locales se trompent d'un jour à l'ouest de l'UTC). Vérifié à Paris, New York et Auckland.
+function _isoizeDateCells(ws) {
+    for (const ref of Object.keys(ws)) {
+        if (ref[0] === '!') continue;
+        const c = ws[ref];
+        if (c && c.t === 'd' && c.v instanceof Date && !isNaN(c.v)) {
+            const p = n => String(n).padStart(2, '0');
+            c.w = `${c.v.getUTCFullYear()}-${p(c.v.getUTCMonth() + 1)}-${p(c.v.getUTCDate())}`;
+        }
+    }
+}
+
 function handleImportCSVFile(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -2109,11 +2141,15 @@ function handleImportCSVFile(e) {
         try {
             if (typeof XLSX === 'undefined') {
                 try { await ensureXLSX(); }
-                catch (_) { alert('SheetJS n\'a pas pu être chargé — vérifiez votre connexion internet.'); return; }
+                catch (_) { alert('SheetJS n\'a pas pu être chargé — rechargez la page (Ctrl+Maj+R) et réessayez.'); return; }
             }
             const data = new Uint8Array(ev.target.result);
-            const wb = XLSX.read(data, { type: 'array', cellDates: true });
+            const binary = _isBinaryWorkbook(data);
+            const wb = binary
+                ? XLSX.read(data, { type: 'array', cellDates: true })
+                : XLSX.read(_decodeCsvBytes(data), { type: 'string', cellDates: true });
             const ws = wb.Sheets[wb.SheetNames[0]];
+            if (binary) _isoizeDateCells(ws);
             const json = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
 
             if (!json.length || json.length < 2) { alert('Fichier vide ou trop court.'); return; }
@@ -2178,6 +2214,38 @@ function renderCsvPreview() {
         : '');
 }
 
+// ---------------------------------------------------------------------
+// DATES D'IMPORT — { y, m, d } calculé SANS objet Date, donc sans aucun effet de fuseau horaire
+// ---------------------------------------------------------------------
+// ⚠ Avant : parseFlexDate() donnait un Date à minuit LOCAL puis d.toISOString().slice(0, 10) le convertissait
+// en UTC : en France (UTC+1/+2), « 02/01/2025 » devenait le lot du 2025-01-01. De plus parseFlexDate ne lisait
+// que jj/mm/aaaa avec des « / » ; « 02.01.2025 », « 02-01-2025 » ou « 15/01/24 » tombaient sur la date du jour
+// SANS avertissement.
+function _validYMD(y, m, d) {
+    const t = new Date(Date.UTC(y, m - 1, d));
+    return (t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d) ? { y, m, d } : null;
+}
+
+function _parseImportDate(raw) {
+    const s = String(raw === undefined || raw === null ? '' : raw).trim();
+    if (!s) return null;
+    // aaaa-mm-jj (aussi aaaa/mm/jj, aaaa.mm.jj) ; une heure éventuelle est ignorée
+    let m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:[T\s].*)?$/);
+    if (m) return _validYMD(+m[1], +m[2], +m[3]);
+    // jj/mm/aaaa, jj-mm-aaaa, jj.mm.aaaa, jj/mm/aa (année sur 2 chiffres : 70-99 → 19xx, sinon 20xx)
+    m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4}|\d{2})(?:[T\s,].*)?$/);
+    if (m) {
+        let y = +m[3];
+        if (m[3].length === 2) y += (y >= 70 ? 1900 : 2000);
+        // Application française : jj/mm d'abord. Si cela ne donne pas une date valide (2e champ > 12),
+        // c'est une date américaine mm/jj/aaaa.
+        return _validYMD(y, +m[2], +m[1]) || _validYMD(y, +m[1], +m[2]);
+    }
+    // Autres formes (« 5 janv. 2025 », « Jan 5, 2025 », « aujourd'hui »…) : ancien analyseur
+    const d = parseFlexDate(s);
+    return (d && !isNaN(d)) ? { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() } : null;
+}
+
 function confirmCsvImport() {
     const map = getCsvFieldMap();
     if (map.name === undefined || map.qty === undefined || map.price === undefined) {
@@ -2190,8 +2258,12 @@ function confirmCsvImport() {
     // Skeleton immédiat sur l'inventaire pendant la construction des actifs
     if (!dryRun) showSkeletonFor('#table-inventory-body', 6, 13);
 
-    let created = 0, merged = 0, skipped = 0;
-    const todayISO = new Date().toISOString().slice(0, 10);
+    let created = 0, merged = 0, skipped = 0, unreadableDates = 0;
+    const p2 = n => String(n).padStart(2, '0');
+    const now = new Date();
+    // Date du jour LOCALE (toISOString donnait la veille entre minuit et 1 h/2 h du matin en France)
+    const todayISO = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`;
+    const todayFR = `${p2(now.getDate())}/${p2(now.getMonth() + 1)}/${now.getFullYear()}`;
 
     _csvRows.forEach((row, lineNo) => {
         const name = String(row[map.name] || '').trim();
@@ -2206,12 +2278,14 @@ function confirmCsvImport() {
         const frais = map.frais !== undefined ? (_parseNumberLoose(row[map.frais]) || 0) : 0;
 
         let dateISO = todayISO;
-        let dateFR = new Date().toLocaleDateString('fr-FR');
+        let dateFR = todayFR;
         if (map.date !== undefined && row[map.date]) {
-            const d = parseFlexDate(String(row[map.date]).trim());
-            if (d) {
-                dateISO = d.toISOString().slice(0, 10);
-                dateFR = d.toLocaleDateString('fr-FR');
+            const pd = _parseImportDate(row[map.date]);
+            if (pd) {
+                dateISO = `${pd.y}-${p2(pd.m)}-${p2(pd.d)}`;
+                dateFR = `${p2(pd.d)}/${p2(pd.m)}/${pd.y}`;
+            } else {
+                unreadableDates++;       // date illisible : on garde la date du jour mais on le SIGNALE
             }
         }
 
@@ -2273,7 +2347,8 @@ function confirmCsvImport() {
         `Import ${dryRun ? '(PRÉVISUALISATION) ' : ''}terminé :\n` +
         `• ${created} nouvel/aux actif(s)\n` +
         `• ${merged} lot(s) ajouté(s) à des actifs existants\n` +
-        `• ${skipped} ligne(s) ignorée(s) (données manquantes ou invalides)`
+        `• ${skipped} ligne(s) ignorée(s) (données manquantes ou invalides)` +
+        (unreadableDates ? `\n• ⚠ ${unreadableDates} date(s) illisible(s) : date du jour utilisée, à corriger` : '')
     );
 }
 

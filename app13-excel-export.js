@@ -353,18 +353,25 @@ function _xlsxBuildArbitragesSheet() {
 }
 
 // ---------------------------------------------------------------------
-// CHARGEMENT À LA DEMANDE DE SHEETJS (≈ 880 Ko) — avec SRI
+// CHARGEMENT À LA DEMANDE DE SHEETJS (≈ 950 Ko) — auto-hébergé, avec SRI
 // ---------------------------------------------------------------------
 // Appelé avant tout import/export Excel. Résout quand `XLSX` est disponible.
+//
+// SheetJS 0.20.3 (vendor/xlsx.full.min.js) remplace la 0.18.5, dont la lecture de fichiers était
+// vulnérable : pollution de prototype (CVE-2023-30533, corrigée en 0.19.3) et déni de service par
+// expression régulière (CVE-2024-22363, corrigée en 0.20.2). Le point d'entrée à risque était
+// l'IMPORT (fichier fourni par l'utilisateur). Les versions corrigées ne sont plus publiées sur npm :
+// le fichier est donc hébergé dans le projet (voir vendor/README.md pour sa provenance et la
+// commande de contrôle). Même origine → aucune dépendance à un CDN tiers, et l'export Excel
+// fonctionne hors ligne (le service worker le met en cache).
 let _xlsxLoadPromise = null;
 function ensureXLSX() {
     if (typeof XLSX !== 'undefined') return Promise.resolve();
     if (_xlsxLoadPromise) return _xlsxLoadPromise;
     _xlsxLoadPromise = new Promise((resolve, reject) => {
         const sc = document.createElement('script');
-        sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-        sc.integrity = 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw';
-        sc.crossOrigin = 'anonymous';
+        sc.src = 'vendor/xlsx.full.min.js';
+        sc.integrity = 'sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT';
         sc.referrerPolicy = 'no-referrer';
         sc.onload = () => (typeof XLSX !== 'undefined')
             ? resolve()
@@ -383,7 +390,7 @@ async function exportToExcel() {
     if (typeof XLSX === 'undefined') {
         try { await ensureXLSX(); }
         catch (err) {
-            alert('SheetJS (XLSX) n\'a pas pu être chargé. Vérifiez votre connexion internet et réessayez.');
+            alert('SheetJS (XLSX) n\'a pas pu être chargé. Rechargez la page (Ctrl+Maj+R) et réessayez.');
             return;
         }
     }

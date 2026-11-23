@@ -453,6 +453,7 @@ function _populateWatchlistCurrencySelect(selected) {
 }
 
 function openAddWatchlistModal() {
+    _resetWatchlistSearch();
     // Réutilise le même modal pour création et édition — on reset tout
     document.getElementById('wl-edit-id').value = '';
     document.getElementById('modal-watchlist-title').innerHTML =
@@ -476,6 +477,7 @@ function openAddWatchlistModal() {
 }
 
 function editWatchlistEntry(id) {
+    _resetWatchlistSearch();
     const w = watchlist.find(x => String(x.id) === String(id));
     if (!w) return;
 
@@ -743,3 +745,289 @@ function initWatchlistModule() {
         }).catch(() => {});
     }
 }
+
+
+// =====================================================================
+// RECHERCHE PAR NOM — autocomplétion du champ « Nom de l'actif »
+// =====================================================================
+// Avant : taper un nom (action, ETF, crypto) dans « Ajouter une idée » ne produisait RIEN ; seule la fenêtre
+// « Ajouter un actif » proposait des résultats. Mêmes sources ici :
+//   • catalogues locaux (actions/ETF, crypto) et ISIN ;
+//   • CoinGecko (crypto, en direct) ;
+//   • Finnhub, seulement si une clé a été saisie pour la session ;
+//   • NOUVEAU : recherche Yahoo par nom (aucune clé), qui couvre n'importe quelle action ou ETF coté.
+// Un résultat remplit nom, ticker, ticker Yahoo, ID CoinGecko, catégories et cadran ; la DEVISE est lue sur la
+// cotation réelle (fetchYahooQuoteDetailed) : un ETF coté en USD n'est plus affiché comme s'il valait des euros.
+let _wlCandidates = [];         // suggestions affichées (même ordre que la liste)
+let _wlActive = -1;             // suggestion mise en évidence (clavier / survol) ; -1 = aucune
+let _wlSearchSeq = 0;           // invalide les réponses d'une recherche déjà dépassée
+let _wlSelectToken = 0;         // invalide la détection de devise si une autre suggestion est choisie entre-temps
+let _wlTimer = null;
+const _WL_MAX_RESULTS = 10;
+
+const _WL_YAHOO_TYPES = {       // quoteType Yahoo → catégories du formulaire + libellé
+    EQUITY:         { tags: ['Action'],             badge: 'Action' },
+    ETF:            { tags: ['ETF'],                badge: 'ETF' },
+    MUTUALFUND:     { tags: ['ETF'],                badge: 'Fonds' },
+    CRYPTOCURRENCY: { tags: ['Crypto'],             badge: 'Crypto' },
+    CURRENCY:       { tags: ['Devises/Liquidités'], badge: 'Devise' },
+    FUTURE:         { tags: ['Matières Premières'], badge: 'Matière première' },
+    INDEX:          { tags: [],                     badge: 'Indice' }
+};
+
+function _wlNorm(s) {
+    return String(s === undefined || s === null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function _resetWatchlistSearch() {
+    clearTimeout(_wlTimer);
+    _wlSearchSeq++; _wlSelectToken++;
+    _wlCandidates = []; _wlActive = -1;
+    _wlCloseResults();
+    const hint = document.getElementById('wl-name-hint');
+    if (hint) { hint.textContent = ''; hint.classList.add('hidden'); }
+}
+
+function _wlCloseResults() {
+    const box = document.getElementById('wl-search-results');
+    const input = document.getElementById('wl-name');
+    if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+    if (input) { input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); }
+    _wlActive = -1;
+}
+
+// ---- 1) catalogues locaux (immédiat) --------------------------------
+function _wlLocalCandidates(q) {
+    const nq = _wlNorm(q);
+    const out = [];
+    const market = (typeof popularMarketAssets !== 'undefined') ? popularMarketAssets : [];
+    market.forEach(m => {
+        if ([m.name, m.ticker, m.yahooTicker, m.isin].some(f => _wlNorm(f).includes(nq))) {
+            const isEtf = /\b(ETF|UCITS)\b/i.test(m.name || '');
+            const tags = (typeof tagsFromLegacy === 'function') ? tagsFromLegacy(m.category, isEtf, m.name) : [];
+            out.push({ name: m.name, ticker: m.ticker, yahooTicker: m.yahooTicker || '', coingeckoId: '', tags,
+                       cadran: m.cadran || '', badge: m.category === 'Devises/Liquidités' ? 'Devise' : (isEtf ? 'ETF' : 'Action'), source: 'Catalogue' });
+        }
+    });
+    const crypto = (typeof cryptoCatalog !== 'undefined') ? cryptoCatalog : [];
+    crypto.forEach(c => {
+        if ([c.name, c.ticker].some(f => _wlNorm(f).includes(nq))) {
+            const cgId = (typeof CRYPTO_COINGECKO_IDS !== 'undefined' && CRYPTO_COINGECKO_IDS[String(c.ticker).toUpperCase()]) || '';
+            out.push({ name: c.name, ticker: c.ticker, yahooTicker: '', coingeckoId: cgId, tags: ['Crypto'], cadran: '',
+                       badge: 'Crypto', source: 'Catalogue' });
+        }
+    });
+    return out;
+}
+
+// ---- 2) services en ligne (différé) -----------------------------------
+async function _wlYahooSearch(q) {
+    if (typeof _fetchViaProxy !== 'function') return [];
+    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8&newsCount=0&listsCount=0`;
+    const data = await _fetchViaProxy(url);
+    const quotes = (data && Array.isArray(data.quotes)) ? data.quotes : [];
+    return quotes.filter(x => x && x.symbol && _WL_YAHOO_TYPES[x.quoteType]).map(x => {
+        const t = _WL_YAHOO_TYPES[x.quoteType];
+        const isCrypto = x.quoteType === 'CRYPTOCURRENCY';
+        return {
+            name: x.longname || x.shortname || x.symbol,
+            // « TTE.PA » → « TTE » ; « BTC-EUR » → « BTC »
+            ticker: String(x.symbol).split('.')[0].split('-')[0].toUpperCase(),
+            yahooTicker: x.symbol, coingeckoId: '', tags: t.tags, cadran: '',
+            badge: t.badge + (x.exchDisp ? ' · ' + x.exchDisp : ''), source: 'Yahoo' + (isCrypto ? ' (crypto)' : '')
+        };
+    });
+}
+
+async function _wlCoinGeckoSearch(q) {
+    const res = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data && Array.isArray(data.coins) ? data.coins : []).slice(0, 6).map(c => ({
+        name: c.name, ticker: String(c.symbol || '').toUpperCase(), yahooTicker: '', coingeckoId: c.id || '',
+        tags: ['Crypto'], cadran: '', badge: 'Crypto', source: 'CoinGecko'
+    }));
+}
+
+async function _wlIsinSearch(isin) {
+    const r = await resolveIsinToYahooTicker(isin);
+    if (!r || !r.yahooTicker) return [];
+    return [{ name: r.name || ('Actif ' + isin), ticker: r.ticker || isin.slice(0, 6), yahooTicker: r.yahooTicker, coingeckoId: '',
+              tags: (typeof tagsFromLegacy === 'function') ? tagsFromLegacy('Actions/ETF', false, r.name || '') : [], cadran: '',
+              badge: 'ISIN' + (r.exchange ? ' · ' + r.exchange : ''), source: r.source || 'ISIN' }];
+}
+
+async function _wlFinnhubSearch(q) {
+    const list = await searchFinnhubSymbol(q);
+    return (Array.isArray(list) ? list : []).map(r => ({
+        name: r.name, ticker: r.ticker, yahooTicker: r.yahooTicker || r.ticker || '', coingeckoId: '',
+        tags: r.tags || [], cadran: r.cadran || '', badge: 'Action / ETF', source: 'Finnhub'
+    })).filter(c => c.name && c.ticker);
+}
+
+function _wlMerge(extra) {
+    const key = c => (c.yahooTicker ? 'y:' + c.yahooTicker.toUpperCase() : (c.coingeckoId ? 'c:' + c.coingeckoId : 't:' + _wlNorm(c.ticker + c.name)));
+    const seen = new Set(_wlCandidates.map(key));
+    extra.forEach(c => {
+        if (!c || !c.name || !c.ticker) return;
+        // Le catalogue local n'a presque jamais de ticker Yahoo (1 entrée sur 14). Si Yahoo renvoie la MÊME valeur
+        // (même nom, même ticker), on enrichit l'entrée du catalogue plutôt que d'afficher un doublon.
+        if (c.yahooTicker) {
+            const twin = _wlCandidates.find(e => e.source === 'Catalogue' && !e.yahooTicker && !e.coingeckoId
+                && String(e.ticker).toUpperCase() === String(c.ticker).toUpperCase() && _wlNorm(e.name) === _wlNorm(c.name));
+            if (twin) { twin.yahooTicker = c.yahooTicker; if (c.badge) twin.badge = c.badge; return; }
+        }
+        // Yahoo renvoie aussi les lignes crypto en « BTC-EUR » : on les écarte si CoinGecko/le catalogue couvre déjà ce ticker
+        if (/crypto/i.test(c.source) && _wlCandidates.some(x => x.coingeckoId && x.ticker === c.ticker)) return;
+        const k = key(c);
+        if (!seen.has(k) && _wlCandidates.length < _WL_MAX_RESULTS) { seen.add(k); _wlCandidates.push(c); }
+    });
+}
+
+// ---- 3) saisie ---------------------------------------------------------
+function onWatchlistNameInput(value) {
+    clearTimeout(_wlTimer);
+    const q = String(value || '').trim();
+    const seq = ++_wlSearchSeq;
+    _wlSelectToken++;
+    _wlActive = -1;
+    if (q.length < 2) { _wlCandidates = []; _wlCloseResults(); return; }
+    _wlCandidates = [];
+    _wlMerge(_wlLocalCandidates(q));                          // immédiat
+    _renderWatchlistCandidates({ loading: true });
+    _wlTimer = setTimeout(() => _wlRunOnlineSearch(q, seq), 350);   // antirebond
+}
+
+function _wlRunOnlineSearch(q, seq) {
+    const tasks = [];
+    if (/^[A-Za-z]{2}[A-Za-z0-9]{9}[0-9]$/.test(q) && typeof resolveIsinToYahooTicker === 'function') tasks.push(_wlIsinSearch(q.toUpperCase()));
+    tasks.push(_wlYahooSearch(q));
+    tasks.push(_wlCoinGeckoSearch(q));
+    if (typeof finnhubApiKey !== 'undefined' && finnhubApiKey && typeof searchFinnhubSymbol === 'function') tasks.push(_wlFinnhubSearch(q));
+    let pending = tasks.length;
+    tasks.forEach(t => {
+        t.then(list => { if (seq === _wlSearchSeq) _wlMerge(list || []); })
+         .catch(() => { /* une source indisponible ne doit jamais bloquer les autres */ })
+         .finally(() => { pending--; if (seq === _wlSearchSeq) _renderWatchlistCandidates({ loading: pending > 0 }); });
+    });
+}
+
+// ---- 4) affichage -------------------------------------------------------
+function _renderWatchlistCandidates(opts = {}) {
+    const box = document.getElementById('wl-search-results');
+    const input = document.getElementById('wl-name');
+    if (!box || !input) return;
+    const esc = (typeof escapeHTML === 'function') ? escapeHTML : (s => String(s));
+    box.classList.remove('hidden');
+    input.setAttribute('aria-expanded', 'true');
+    let html = _wlCandidates.map((c, i) => {
+        const active = i === _wlActive;
+        const sub = [c.yahooTicker || c.ticker, c.badge, c.source].filter(Boolean).join(' · ');
+        return `<button type="button" role="option" id="wl-opt-${i}" tabindex="-1" aria-selected="${active}"
+                    data-onclick="selectWatchlistCandidate(${i})" data-onmouseover="hoverWatchlistCandidate(${i})"
+                    class="wl-opt w-full text-left px-3 py-2 border-b border-gray-800/60 last:border-b-0 transition ${active ? 'bg-amber-950/50' : 'hover:bg-gray-800'}">
+                    <div class="text-sm text-white truncate">${esc(c.name)}</div>
+                    <div class="text-[11px] text-gray-500 truncate">${esc(sub)}</div>
+                </button>`;
+    }).join('');
+    if (opts.loading) html += '<div class="px-3 py-2 text-[11px] text-gray-500 italic">Recherche en cours…</div>';
+    else if (!_wlCandidates.length) html += '<div class="px-3 py-2 text-[11px] text-gray-500 italic">Aucun résultat — vous pouvez remplir le formulaire à la main.</div>';
+    box.innerHTML = html;
+    if (_wlActive >= 0) input.setAttribute('aria-activedescendant', 'wl-opt-' + _wlActive); else input.removeAttribute('aria-activedescendant');
+    const status = document.getElementById('wl-search-status');
+    if (status && !opts.loading) status.textContent = _wlCandidates.length ? `${_wlCandidates.length} suggestion(s) disponible(s)` : 'Aucune suggestion';
+}
+
+function _wlPaintActive() {
+    document.querySelectorAll('#wl-search-results .wl-opt').forEach((el, i) => {
+        const on = i === _wlActive;
+        el.setAttribute('aria-selected', String(on));
+        el.classList.toggle('bg-amber-950/50', on);
+        el.classList.toggle('hover:bg-gray-800', !on);
+        if (on) el.scrollIntoView({ block: 'nearest' });
+    });
+    const input = document.getElementById('wl-name');
+    if (input) { if (_wlActive >= 0) input.setAttribute('aria-activedescendant', 'wl-opt-' + _wlActive); else input.removeAttribute('aria-activedescendant'); }
+}
+
+function hoverWatchlistCandidate(i) {
+    if (_wlActive === i) return;
+    _wlActive = i;
+    _wlPaintActive();
+}
+
+function onWatchlistNameKeydown(event) {
+    const box = document.getElementById('wl-search-results');
+    const open = !!box && !box.classList.contains('hidden') && _wlCandidates.length > 0;
+    if (!open) {
+        // Liste fermée (Échap) : ↓ la rouvre ; sinon touches normales (Entrée envoie le formulaire)
+        if (event.key === 'ArrowDown' && _wlCandidates.length) { event.preventDefault(); _renderWatchlistCandidates(); }
+        return;
+    }
+    const n = _wlCandidates.length;
+    if (event.key === 'ArrowDown') { event.preventDefault(); _wlActive = (_wlActive + 1) % n; _wlPaintActive(); }
+    else if (event.key === 'ArrowUp') { event.preventDefault(); _wlActive = (_wlActive - 1 + n) % n; _wlPaintActive(); }
+    else if (event.key === 'Enter' && _wlActive >= 0) { event.preventDefault(); selectWatchlistCandidate(_wlActive); }
+    else if (event.key === 'Escape') { event.preventDefault(); _wlCloseResults(); }   // ferme la liste, PAS la fenêtre
+}
+
+// ---- 5) sélection -------------------------------------------------------
+function _wlSetTags(tags) {
+    const wanted = new Set((tags || []).map(_wlNorm));
+    document.querySelectorAll('#wl-tags-wrap input[type="checkbox"]').forEach(cb => { cb.checked = wanted.has(_wlNorm(cb.value)); });
+}
+
+function selectWatchlistCandidate(i) {
+    const c = _wlCandidates[i];
+    if (!c) return;
+    const $ = id => document.getElementById(id);
+    clearTimeout(_wlTimer);
+    _wlSearchSeq++;                          // ignore les réponses encore en attente
+    const token = ++_wlSelectToken;
+    $('wl-name').value = c.name;
+    $('wl-ticker').value = c.ticker || '';
+    $('wl-yahoo-ticker').value = c.yahooTicker || '';
+    $('wl-coingecko-id').value = c.coingeckoId || '';
+    _wlSetTags(c.tags);
+    if (c.cadran && [...$('wl-cadran').options].some(o => o.value === c.cadran)) $('wl-cadran').value = c.cadran;
+    _wlCloseResults();
+    _wlCandidates = [];
+
+    const hint = $('wl-name-hint');
+    const say = txt => { hint.textContent = txt; hint.classList.toggle('hidden', !txt); };
+    if (c.coingeckoId && !c.yahooTicker) {
+        $('wl-currency').value = 'EUR';       // les prix CoinGecko de l'application sont en euros
+        say('');
+    } else if ((c.tags || []).includes('Devises/Liquidités')) {
+        say('');                                   // une paire de devises n'a pas de « devise de cotation » à détecter
+    } else if (typeof fetchYahooQuoteDetailed === 'function') {
+        // Même règle que la watchlist elle-même (fetch des cours) : symbole = ticker Yahoo, sinon le ticker
+        const symbol = c.yahooTicker || c.ticker;
+        say('Lecture de la devise de cotation…');
+        fetchYahooQuoteDetailed(symbol).then(q => {
+            if (token !== _wlSelectToken) return;      // une autre suggestion a été choisie entre-temps
+            if (!q) {
+                say(c.yahooTicker
+                    ? 'Cours indisponible pour le moment : choisissez la devise à la main.'
+                    : `Aucun cours Yahoo pour « ${symbol} » tel quel : renseignez le ticker Yahoo (ex. ${symbol}.PA pour Paris) pour des cours automatiques, et choisissez la devise.`);
+                return;
+            }
+            const sel = $('wl-currency');
+            if (q.currency && [...sel.options].some(o => o.value === q.currency)) {
+                sel.value = q.currency;
+                say(`Cotation Yahoo : ${q.price} ${q.currency} — devise réglée sur ${q.currency}.`);
+            } else if (q.currency) {
+                say(`Cotation en ${q.currency}, devise non proposée : choisissez-la à la main.`);
+            } else say('');
+        }).catch(() => { if (token === _wlSelectToken) say('Cours indisponible pour le moment : choisissez la devise à la main.'); });
+    } else say('');
+    $('wl-target-price').focus();
+}
+
+// Clic en dehors du champ et de ses suggestions → la liste se ferme
+document.addEventListener('click', (e) => {
+    if (e.target.closest && !e.target.closest('#wl-name-wrap')) {
+        const box = document.getElementById('wl-search-results');
+        if (box && !box.classList.contains('hidden')) _wlCloseResults();
+    }
+}, true);
